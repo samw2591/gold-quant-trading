@@ -22,7 +22,7 @@ import yfinance as yf
 import config
 from mt4_bridge import MT4Bridge
 from strategies.signals import (prepare_indicators, scan_all_signals, check_exit_signal,
-                                get_keltner_state_machine, get_orb_strategy, calc_auto_lot_size)
+                                get_orb_strategy, calc_auto_lot_size)
 
 # 舆情分析模块 (安全导入，失败不影响交易)
 try:
@@ -341,10 +341,8 @@ class GoldTrader:
             adx_val = float(df_h1.iloc[-1]['ADX']) if not pd.isna(df_h1.iloc[-1].get('ADX', float('nan'))) else 0
             atr_val = float(df_h1.iloc[-1]['ATR']) if not pd.isna(df_h1.iloc[-1].get('ATR', float('nan'))) else 0
             adx_status = '趋势✅' if adx_val >= 25 else '震荡⚠️'
-            sm = get_keltner_state_machine()
             orb = get_orb_strategy()
             log.info(f"  ADX={adx_val:.1f} ({adx_status})  ATR=${atr_val:.2f}  止损=${atr_val*2.5:.2f}")
-            log.info(f"  🎰 Keltner状态机: {sm.get_status()}")
             log.info(f"  🇺🇸 ORB: {orb.get_status()}")
         
         if sentiment_ctx:
