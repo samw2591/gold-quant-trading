@@ -27,8 +27,9 @@ from strategies.signals import prepare_indicators, scan_all_signals, check_exit_
 try:
     from sentiment import SentimentEngine
     SENTIMENT_AVAILABLE = True
-except ImportError:
+except Exception as _import_err:
     SENTIMENT_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"舆情模块导入失败: {_import_err}")
 
 # 策略默认止损止盈 (美元)
 STRATEGY_PARAMS = {
