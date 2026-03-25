@@ -6,6 +6,7 @@
 #property copyright "Gold Quant Trading System"
 #property version   "1.00"
 #property strict
+#include <stdlib.mqh>  // 包含ErrorDescription函数
 
 // 输入参数
 extern int    TIMER_MS        = 500;     // 检查指令间隔(毫秒)
@@ -151,20 +152,41 @@ void ExecuteOpen(string json)
         if(cmd == OP_SELL) price = MarketInfo(symbol, MODE_BID);
     }
     
+    // 打印详细参数用于调试
+    Print("[GoldBridge] 下单参数: symbol=", symbol, " cmd=", cmd, " lots=", lots, 
+          " price=", price, " sl=", sl, " tp=", tp, " slippage=", slippage, " magic=", magic);
+    Print("[GoldBridge] 当前报价: Bid=", MarketInfo(symbol, MODE_BID), " Ask=", MarketInfo(symbol, MODE_ASK),
+          " StopLevel=", MarketInfo(symbol, MODE_STOPLEVEL), " Digits=", (int)MarketInfo(symbol, MODE_DIGITS));
+    
+    // 检查最小止损距离
+    double stopLevel = MarketInfo(symbol, MODE_STOPLEVEL) * MarketInfo(symbol, MODE_POINT);
+    if(cmd == OP_BUY && sl > 0 && (price - sl) < stopLevel)
+    {
+        Print("[GoldBridge] ⚠️ 止损距离太近, 调整: ", (price - sl), " < ", stopLevel);
+        sl = price - stopLevel - MarketInfo(symbol, MODE_POINT);
+    }
+    if(cmd == OP_SELL && sl > 0 && (sl - price) < stopLevel)
+    {
+        Print("[GoldBridge] ⚠️ 止损距离太近, 调整: ", (sl - price), " < ", stopLevel);
+        sl = price + stopLevel + MarketInfo(symbol, MODE_POINT);
+    }
+    
     // 发送订单
     int ticket = OrderSend(symbol, cmd, lots, price, slippage, sl, tp, comment, magic, 0, clrGreen);
     
     if(ticket > 0)
     {
-        Print("[GoldBridge] ✅ 开仓成功: #", ticket, " ", type_str, " ", symbol, " ", lots, "手 @ ", price);
+        Print("[GoldBridge] ✅ 开仓成功: #", ticket, " ", type_str, " ", symbol, " ", lots, "手 @ ", price, " SL=", sl);
         WriteResponse(true, "开仓成功 #" + IntegerToString(ticket));
         WritePositions();
     }
     else
     {
         int err = GetLastError();
-        Print("[GoldBridge] ❌ 开仓失败: Error ", err);
-        WriteResponse(false, "开仓失败 Error: " + IntegerToString(err));
+        Print("[GoldBridge] ❌ 开仓失败: Error ", err, 
+              " (", ErrorDescription(err), ")",
+              " price=", price, " sl=", sl, " lots=", lots);
+        WriteResponse(false, "开仓失败 Error: " + IntegerToString(err) + " " + ErrorDescription(err));
     }
 }
 
