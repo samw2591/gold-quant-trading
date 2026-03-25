@@ -101,6 +101,7 @@ class MT4Bridge:
             "timestamp": datetime.now().isoformat(),
         }
 
+        self._clear_response()  # 清除旧响应
         self._write_json(self.commands_file, command)
         log.info(f"📤 发送指令: {order_type} {symbol} {lots}手 SL={sl} TP={tp}")
 
@@ -115,6 +116,7 @@ class MT4Bridge:
             "timestamp": datetime.now().isoformat(),
         }
 
+        self._clear_response()  # 清除旧响应
         self._write_json(self.commands_file, command)
         log.info(f"📤 发送平仓指令: ticket={ticket}")
 
@@ -130,20 +132,30 @@ class MT4Bridge:
             "timestamp": datetime.now().isoformat(),
         }
 
+        self._clear_response()  # 清除旧响应
         self._write_json(self.commands_file, command)
         return self._wait_response(timeout=10)
+
+    def _clear_response(self):
+        """清除旧的响应文件（在发送指令前调用）"""
+        try:
+            if self.response_file.exists():
+                self.response_file.unlink()
+        except:
+            pass
 
     def _wait_response(self, timeout: int = 10) -> bool:
         """等待EA执行结果"""
         start = time.time()
         while time.time() - start < timeout:
             resp = self._read_json(self.response_file)
-            if resp and resp.get('timestamp', '') > datetime.now().isoformat()[:10]:
+            if resp and 'success' in resp:
                 success = resp.get('success', False)
+                message = resp.get('message', '')
                 if success:
-                    log.info(f"✅ 执行成功: {resp.get('message', '')}")
+                    log.info(f"✅ 执行成功: {message}")
                 else:
-                    log.error(f"❌ 执行失败: {resp.get('error', 'unknown')}")
+                    log.error(f"❌ 执行失败: {message}")
                 # 清除响应文件
                 try:
                     self.response_file.unlink()
@@ -152,7 +164,7 @@ class MT4Bridge:
                 return success
             time.sleep(0.5)
 
-        log.warning("⏰ 等待EA响应超时")
+        log.warning("⏰ 等待EA响应超时 (10秒)")
         return False
 
     def is_connected(self) -> bool:
