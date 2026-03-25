@@ -18,7 +18,7 @@ BRIDGE_DIR = Path(METATRADER_DIR_PATH) / "MQL4" / "Files" / "DWX"
 # ============================================================
 # 交易账户参数
 # ============================================================
-SYMBOL = "XAUUSD"         # 交易品种 (你的经纪商可能用 GOLD 或 XAUUSDm)
+SYMBOL = "XAUUSD.mx"      # EMX Pro Limited 的黄金品种名称
 CAPITAL = 3000            # 本金 (USD)
 MAX_TOTAL_LOSS = 1500     # 最大总亏损 (USD)，达到后停止交易
 LOT_SIZE = 0.01           # 手数 (0.01手 = 1盎司 = $1/点)
