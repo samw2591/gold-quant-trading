@@ -66,7 +66,7 @@ def main():
     log.info(f"   手数: {config.LOT_SIZE}")
     log.info(f"   本金: ${config.CAPITAL}  止损上限: ${config.MAX_TOTAL_LOSS}")
     log.info(f"   扫描频率: 每{config.SCAN_INTERVAL_SECONDS}秒")
-    log.info(f"   策略: 布林带 + RSI<5激进 + 窄幅突破")
+    log.info(f"   策略: H1 Keltner+MACD(做多做空) + M5 RSI均值回归")
 
     trader = GoldTrader()
     signal_scanned_today = False
@@ -104,8 +104,8 @@ def main():
             except Exception as e:
                 log.error(f"出场检查出错: {e}")
 
-            # 每小时做一次完整信号扫描 (第一次和每60次≈60分钟)
-            if scan_count == 1 or scan_count % 60 == 0:
+            # 每5分钟做一次完整信号扫描 (M5策略需要, 每10次循环×30秒≈5分钟)
+            if scan_count == 1 or scan_count % 10 == 0:
                 log.info(f"\n📊 完整信号扫描 (#{scan_count})")
                 try:
                     result = trader.scan_and_trade()

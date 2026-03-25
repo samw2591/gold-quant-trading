@@ -27,6 +27,7 @@ from strategies.signals import prepare_indicators, scan_all_signals, check_exit_
 STRATEGY_PARAMS = {
     'keltner': {'sl': 20, 'tp': 35, 'max_bars': 15},
     'macd': {'sl': 20, 'tp': 50, 'max_bars': 20},
+    'm5_rsi': {'sl': 15, 'tp': 0, 'max_bars': 12},  # RSI出场，不用固定止盈
 }
 
 log = logging.getLogger(__name__)
@@ -68,20 +69,26 @@ class GoldTrader:
 
     # ── 数据获取 ──
 
-    def get_hourly_data(self) -> Optional[pd.DataFrame]:
-        """获取黄金H1数据 (COMEX黄金期货GC=F)"""
+    def get_data(self, interval='1h', period='60d') -> Optional[pd.DataFrame]:
+        """获取黄金数据 (COMEX黄金期货GC=F)"""
         try:
-            df = yf.download('GC=F', period='60d', interval='1h', progress=False)
+            df = yf.download('GC=F', period=period, interval=interval, progress=False)
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
             df = df.dropna(subset=['Close'])
             if len(df) < 55:
-                log.warning("黄金H1数据不足55根K线")
+                log.warning(f"黄金{interval}数据不足55根K线")
                 return None
             return prepare_indicators(df)
         except Exception as e:
-            log.error(f"获取数据失败: {e}")
+            log.error(f"获取{interval}数据失败: {e}")
             return None
+
+    def get_hourly_data(self) -> Optional[pd.DataFrame]:
+        return self.get_data('1h', '60d')
+    
+    def get_m5_data(self) -> Optional[pd.DataFrame]:
+        return self.get_data('5m', '5d')
 
     # ── 风控检查 ──
 
@@ -111,23 +118,38 @@ class GoldTrader:
         if self.check_total_loss_limit():
             return {"status": "stopped", "reason": "total_loss_limit"}
 
-        # 获取H1数据
-        df = self.get_hourly_data()
-        if df is None:
+        # 获取多时间框架数据
+        df_h1 = self.get_hourly_data()
+        df_m5 = self.get_m5_data()
+        
+        if df_h1 is None and df_m5 is None:
             return {"status": "error", "reason": "no_data"}
 
-        latest = df.iloc[-1]
-        close = float(latest['Close'])
-        rsi2 = float(latest['RSI2']) if not pd.isna(latest['RSI2']) else 0
-        rsi14 = float(latest['RSI14']) if not pd.isna(latest['RSI14']) else 50
-        macd_h = float(latest['MACD_hist']) if not pd.isna(latest['MACD_hist']) else 0
-        log.info(f"  XAU/USD: ${close:.2f}  RSI(14): {rsi14:.1f}  MACD: {macd_h:+.2f}")
+        if df_h1 is not None:
+            latest = df_h1.iloc[-1]
+            close = float(latest['Close'])
+            rsi14 = float(latest['RSI14']) if not pd.isna(latest['RSI14']) else 50
+            macd_h = float(latest['MACD_hist']) if not pd.isna(latest['MACD_hist']) else 0
+            log.info(f"  XAU/USD H1: ${close:.2f}  RSI(14): {rsi14:.1f}  MACD: {macd_h:+.2f}")
+        
+        if df_m5 is not None:
+            m5_latest = df_m5.iloc[-1]
+            m5_rsi = float(m5_latest['RSI2']) if not pd.isna(m5_latest['RSI2']) else 50
+            log.info(f"  XAU/USD M5: RSI(2): {m5_rsi:.1f}")
 
-        # Step 1: 检查现有持仓出场
-        exits = self._check_exits(df)
+        # Step 1: 检查现有持仓出场 (H1和M5都检查)
+        exits = []
+        if df_h1 is not None:
+            exits += self._check_exits(df_h1)
+        if df_m5 is not None:
+            exits += self._check_exits(df_m5)
 
-        # Step 2: 检查新入场信号
-        entries = self._check_entries(df)
+        # Step 2: 检查新入场信号 (H1 + M5)
+        entries = []
+        if df_h1 is not None:
+            entries += self._check_entries(df_h1, 'H1')
+        if df_m5 is not None:
+            entries += self._check_entries(df_m5, 'M5')
 
         total = len(exits) + len(entries)
         log.info(f"\n{'='*60}")
@@ -226,7 +248,7 @@ class GoldTrader:
 
         return exits
 
-    def _check_entries(self, df: pd.DataFrame) -> List[Dict]:
+    def _check_entries(self, df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
         """检查新入场信号"""
         # 持仓数检查
         current_positions = self.get_strategy_positions()
@@ -237,8 +259,8 @@ class GoldTrader:
         slots = config.MAX_POSITIONS - len(current_positions)
         log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
 
-        # 扫描所有策略信号
-        signals = scan_all_signals(df)
+        # 扫描对应时间框架的策略信号
+        signals = scan_all_signals(df, timeframe)
 
         if not signals:
             # 打印接近触发的信号
@@ -297,8 +319,12 @@ class GoldTrader:
         return entries
 
     def check_exits_only(self) -> Dict:
-        """仅检查出场 (盘中监控)"""
-        df = self.get_daily_data()
-        if df is None:
-            return {"status": "error"}
-        return {"exits": self._check_exits(df)}
+        """仅检查出场 (盘中监控, H1+M5双时间框架)"""
+        exits = []
+        df_h1 = self.get_hourly_data()
+        if df_h1 is not None:
+            exits += self._check_exits(df_h1)
+        df_m5 = self.get_m5_data()
+        if df_m5 is not None:
+            exits += self._check_exits(df_m5)
+        return {"exits": exits}

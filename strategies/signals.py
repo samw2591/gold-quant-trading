@@ -1,13 +1,14 @@
 """
-黄金盘中量化交易信号引擎
-========================
-基于11年XAU/USD H1真实数据(Dukascopy) + 特朗普时期分段验证
+黄金多时间框架量化交易信号引擎
+====================================
+基于6年Dukascopy真实数据(M5 35.7万K线 + H1 3.6万K线) + 11年H1验证
 
 策略组合:
-1. Keltner通道突破 (全周期Sharpe 0.92, 特朗普2年化+51.7%)
-2. MACD+SMA50趋势 (全周期Sharpe 1.14, 特朗普2年化+24.7%, 回撤仅-4.5%)
+1. H1 Keltner通道突破 (主力, 6年Sharpe 1.25, 年化+15.6%/0.01手)
+2. H1 MACD+SMA50趋势 (补充, 6年Sharpe 1.01, 回撤仅-7.7%)
+3. M5 RSI均值回归 (低风险补充, 6年Sharpe 0.98, 回撤-3.7%)
 
-两个策略都支持做多+做空，双向捕捉趋势
+所有策略支持做多+做空
 """
 import numpy as np
 import pandas as pd
@@ -181,19 +182,84 @@ def check_exit_signal(df: pd.DataFrame, strategy: str, direction: str) -> Option
             elif direction == 'SELL' and macd_hist > 0 and macd_hist_prev <= 0:
                 return f"MACD空头出场: 柱状图转正"
     
+    elif strategy == 'm5_rsi':
+        rsi2 = float(latest['RSI2'])
+        if not pd.isna(rsi2):
+            if direction == 'BUY' and rsi2 > 55:
+                return f"M5 RSI多头出场: RSI(2)={rsi2:.1f} > 55"
+            elif direction == 'SELL' and rsi2 < 45:
+                return f"M5 RSI空头出场: RSI(2)={rsi2:.1f} < 45"
+    
     return None
 
 
-def scan_all_signals(df: pd.DataFrame) -> List[Dict]:
-    """扫描所有策略信号"""
+def check_m5_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
+    """
+    M5 RSI均值回归信号
+    回测(6年M5): Sharpe 0.98, 胜率68%, 年坘1784笔, 回撤-3.7%
+    
+    做多: RSI(2)<15 + 价格>SMA50
+    做空: RSI(2)>85 + 价格<SMA50
+    出场: RSI回到中性区(55以上/45以下)
+    """
+    if len(df) < 55:
+        return None
+    
+    latest = df.iloc[-1]
+    close = float(latest['Close'])
+    rsi2 = float(latest['RSI2'])
+    sma50 = float(latest['SMA50'])
+    
+    if pd.isna(rsi2) or pd.isna(sma50):
+        return None
+    
+    # 做多: 超卖反弹
+    if rsi2 < 15 and close > sma50:
+        return {
+            'strategy': 'm5_rsi',
+            'signal': 'BUY',
+            'reason': f"M5 RSI做多: RSI(2)={rsi2:.1f} < 15, 超卖反弹",
+            'close': close,
+            'sl': 15,
+            'tp': 0,  # 用RSI出场而不是固定止盈
+        }
+    
+    # 做空: 超买回落
+    if rsi2 > 85 and close < sma50:
+        return {
+            'strategy': 'm5_rsi',
+            'signal': 'SELL',
+            'reason': f"M5 RSI做空: RSI(2)={rsi2:.1f} > 85, 超买回落",
+            'close': close,
+            'sl': 15,
+            'tp': 0,
+        }
+    
+    return None
+
+
+def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
+    """
+    扫描所有策略信号
+    
+    Args:
+        df: 行情数据
+        timeframe: 'H1' 或 'M5'
+    """
     signals = []
     
-    sig = check_keltner_signal(df)
-    if sig:
-        signals.append(sig)
+    if timeframe == 'H1':
+        sig = check_keltner_signal(df)
+        if sig:
+            signals.append(sig)
+        
+        sig = check_macd_signal(df)
+        if sig:
+            signals.append(sig)
     
-    sig = check_macd_signal(df)
-    if sig:
-        signals.append(sig)
+    elif timeframe == 'M5':
+        sig = check_m5_rsi_signal(df)
+        if sig:
+            signals.append(sig)
     
     return signals
