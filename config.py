@@ -36,30 +36,33 @@ STRATEGIES = {
         "name": "布林带均值回归",
         "bb_period": 20,
         "bb_std": 2.0,
-        "ma_trend": 200,        # 趋势过滤均线
-        "exit_target": "bb_mid", # 出场目标: 布林带中轨
-        "stop_loss": 50,         # 止损 (点)
-        "max_hold_bars": 15,     # 最大持仓K线数 (日线=15天)
-    },
-    "rsi_aggressive": {
-        "enabled": True,
-        "name": "RSI<5 激进均值回归",
-        "rsi_period": 2,
-        "rsi_entry": 5,         # RSI < 5 才入场
         "ma_trend": 200,
-        "ma_exit": 10,           # MA10 出场
+        "exit_target": "bb_mid",
         "stop_loss": 50,
         "max_hold_bars": 15,
+        # GC=F回测: Sharpe 2.21, 胜率75%, 均收+$9.6/笔, 回撤-8.9%
     },
     "range_breakout": {
         "enabled": True,
         "name": "窄幅突破",
-        "range_pct": 0.6,       # 日内波幅 < 平均的60%
-        "lookback": 5,           # 前N日高点突破
+        "range_pct": 0.6,
+        "lookback": 5,
         "ma_trend": 200,
         "ma_exit": 10,
         "stop_loss": 50,
         "max_hold_bars": 15,
+        # GC=F回测: Sharpe 1.27, 胜率43.2%, 均收+$13.6/笔, 回撤-9.9%
+    },
+    "atr_squeeze": {
+        "enabled": True,
+        "name": "ATR收缩突破",
+        "atr_squeeze_mult": 1.3,   # ATR < 近50日最低值×1.3
+        "lookback": 5,
+        "ma_trend": 200,
+        "ma_exit": 10,
+        "stop_loss": 50,
+        "max_hold_bars": 15,
+        # GC=F回测: Sharpe 1.19, 胜率43%, 均收+$21.8/笔, 回撤-20%
     },
 }
 

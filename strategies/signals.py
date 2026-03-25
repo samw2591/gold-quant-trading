@@ -1,10 +1,10 @@
 """
 黄金交易信号引擎
 ================
-基于12种策略回测结果，选择Sharpe最高的3种:
-1. 布林带均值回归 (Sharpe 2.56)
-2. RSI<5激进均值回归 (Sharpe 2.06)
-3. 窄幅突破 (Sharpe 1.53)
+基于COMEX黄金期货(GC=F)真实价格数据回测，选择Sharpe最高的3种:
+1. 布林带均值回归 (Sharpe 2.21, 胜率75%, 回撤-8.9%)
+2. 窄幅突破 (Sharpe 1.27, 胜率43.2%, 盈亏比高)
+3. ATR收缩突破 (Sharpe 1.19, 胜率43%, 总盈亏最高)
 """
 import numpy as np
 import pandas as pd
@@ -84,32 +84,36 @@ def check_bollinger_signal(df: pd.DataFrame) -> Optional[Dict]:
     return None
 
 
-def check_rsi_aggressive_signal(df: pd.DataFrame) -> Optional[Dict]:
+def check_atr_squeeze_signal(df: pd.DataFrame) -> Optional[Dict]:
     """
-    RSI<5 激进均值回归信号
-    回测: Sharpe 2.06, 胜率 78.8%, 回撤 -10.6%
+    ATR收缩突破信号
+    回测(GC=F): Sharpe 1.19, 胜率43%, 均收+$21.8/笔, 总盈亏+$1,722
 
-    入场: MA200上方 + RSI(2) < 5
-    出场: 收盘上穿MA10
+    入场: MA200上方 + ATR低于近50日最低值的1.3倍(波动率收缩) + 突破前5日高点
+    出场: 收盘跌破MA10
     """
     if len(df) < 201:
         return None
 
     latest = df.iloc[-1]
     close = float(latest['Close'])
-    rsi2 = float(latest['RSI2'])
     sma200 = float(latest['SMA200'])
+    atr = float(latest['ATR'])
+    atr_min = float(latest['ATR_min50'])
+    high5 = float(latest['High5'])
 
-    if pd.isna(sma200) or pd.isna(rsi2):
+    if pd.isna(sma200) or pd.isna(atr) or pd.isna(atr_min) or pd.isna(high5):
         return None
 
-    if close > sma200 and rsi2 < 5:
+    squeeze = atr < atr_min * 1.3 if atr_min > 0 else False
+
+    if close > sma200 and squeeze and close > high5:
         return {
-            'strategy': 'rsi_aggressive',
+            'strategy': 'atr_squeeze',
             'signal': 'BUY',
-            'reason': f"RSI激进买入: RSI(2)={rsi2:.1f} < 5",
+            'reason': f"ATR收缩突破: ATR={atr:.1f} < 阈值{atr_min*1.3:.1f}, 破前高{high5:.2f}",
             'close': close,
-            'rsi2': rsi2,
+            'atr': atr,
         }
 
     return None
@@ -152,7 +156,7 @@ def check_exit_signal(df: pd.DataFrame, strategy: str) -> Optional[str]:
     检查出场信号
 
     布林带: 价格 > BB中轨
-    RSI/窄幅突破: 价格 > MA10 或 价格 < MA10 (跌破)
+    窄幅突破/ATR收缩: 价格 < MA10 (跌破)
     """
     if len(df) < 20:
         return None
@@ -165,13 +169,10 @@ def check_exit_signal(df: pd.DataFrame, strategy: str) -> Optional[str]:
         if not pd.isna(bb_mid) and close > bb_mid:
             return f"布林带出场: 价格{close:.2f} > 中轨{bb_mid:.2f}"
 
-    elif strategy in ('rsi_aggressive', 'range_breakout'):
+    elif strategy in ('range_breakout', 'atr_squeeze'):
         sma10 = float(latest['SMA10'])
-        if not pd.isna(sma10):
-            if strategy == 'rsi_aggressive' and close > sma10:
-                return f"RSI出场: 价格{close:.2f} > MA10 {sma10:.2f}"
-            elif strategy == 'range_breakout' and close < sma10:
-                return f"突破出场: 价格{close:.2f} < MA10 {sma10:.2f}"
+        if not pd.isna(sma10) and close < sma10:
+            return f"突破出场: 价格{close:.2f} < MA10 {sma10:.2f}"
 
     return None
 
@@ -185,8 +186,8 @@ def scan_all_signals(df: pd.DataFrame) -> List[Dict]:
     if sig:
         signals.append(sig)
 
-    # RSI激进
-    sig = check_rsi_aggressive_signal(df)
+    # ATR收缩突破
+    sig = check_atr_squeeze_signal(df)
     if sig:
         signals.append(sig)
 
