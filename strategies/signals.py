@@ -452,12 +452,10 @@ def check_exit_signal(df: pd.DataFrame, strategy: str, direction: str) -> Option
     close = float(latest['Close'])
 
     if strategy == 'keltner':
-        kc_mid = float(latest['KC_mid'])
-        if not pd.isna(kc_mid):
-            if direction == 'BUY' and close < kc_mid:
-                return f"Keltner多头出场: 价格{close:.2f} < 中轨{kc_mid:.2f}"
-            elif direction == 'SELL' and close > kc_mid:
-                return f"Keltner空头出场: 价格{close:.2f} > 中轨{kc_mid:.2f}"
+        # v5优化: 去掉KC中轨出场 (回测验证: 中轨出场94.7%是亏损平仓，
+        # 去掉后Sharpe 0.74→0.80, 特朗普2期 1.98→2.10, 6个时段5个提升)
+        # Keltner现在只靠 TP(6.5×ATR) / SL(2.5×ATR) / 超时(15根K线) 出场
+        pass
 
     elif strategy == 'macd':
         macd_hist = float(latest['MACD_hist'])

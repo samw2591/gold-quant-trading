@@ -42,8 +42,8 @@ ORB_ENABLED = True                # 是否启用NY开盘区间突破策略
 ORB_NY_OPEN_HOUR_UTC = 14         # 纽约开盘时间 UTC (14:30 = 纽约9:30, 用14近似)
 ORB_RANGE_MINUTES = 15            # 开盘后前15分钟的高低点作为区间
 ORB_EXPIRY_MINUTES = 120          # 突破窗口有效期 (2小时)
-ORB_SL_MULTIPLIER = 1.0           # 止损 = 1.0 × 区间宽度
-ORB_TP_MULTIPLIER = 2.2           # 止盈 = 2.2 × 区间宽度 (RR 1:2.2)
+ORB_SL_MULTIPLIER = 0.75          # 止损 = 0.75 × 区间宽度 (v5优化: 1.0→0.75, Sharpe+0.36)
+ORB_TP_MULTIPLIER = 3.0           # 止盈 = 3.0 × 区间宽度 (v5优化: 2.2→3.0, 特朗普2期Sharpe+0.62)
 
 # ============================================================
 # 策略参数
@@ -66,7 +66,7 @@ STRATEGIES = {
     "orb": {
         "enabled": True,
         "name": "NY开盘区间突破",
-        "max_hold_bars": 8,  # 最多持仓8根H1 K线 (~8小时)
+        "max_hold_bars": 6,  # v5优化: 8→6根K线 (~6小时, Sharpe 1.31→1.51)
     },
 }
 
