@@ -16,6 +16,9 @@ extern string BRIDGE_SUBDIR   = "DWX";   // 桥接子目录
 // 全局变量
 string bridge_path;
 datetime last_heartbeat;
+datetime last_bar_write;      // K线数据上次写入时间
+extern int    BAR_WRITE_SEC  = 30;     // K线数据写入间隔(秒)
+extern int    BAR_COUNT      = 200;    // 写入的K线数量
 
 //+------------------------------------------------------------------+
 //| 初始化                                                            |
@@ -66,6 +69,14 @@ void OnTimer()
         WriteAccountInfo();
         WritePositions();
         last_heartbeat = TimeCurrent();
+    }
+    
+    // K线数据 (每30秒写一次)
+    if(TimeCurrent() - last_bar_write >= BAR_WRITE_SEC)
+    {
+        WriteBarData(PERIOD_H1, "bars_h1.json");
+        WriteBarData(PERIOD_M15, "bars_m15.json");
+        last_bar_write = TimeCurrent();
     }
     
     // 检查Python指令
@@ -338,6 +349,54 @@ void WritePositions()
     
     json += "],\"timestamp\":\"" + TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS) + "\"}";
     
+    FileWriteString(handle, json);
+    FileClose(handle);
+}
+
+//+------------------------------------------------------------------+
+//| 写K线数据                                                          |
+//+------------------------------------------------------------------+
+void WriteBarData(int timeframe, string filename)
+{
+    string filepath = bridge_path + filename;
+    int handle = FileOpen(filepath, FILE_WRITE | FILE_TXT | FILE_ANSI);
+    if(handle == INVALID_HANDLE) return;
+    
+    string sym = Symbol();
+    int count = MathMin(BAR_COUNT, iBars(sym, timeframe));
+    if(count < 10)
+    {
+        FileClose(handle);
+        return;
+    }
+    
+    // JSON数组格式: {"bars":[{"t":"...","o":...,"h":...,"l":...,"c":...,"v":...}, ...]}
+    string json = "{\"symbol\":\"" + sym + 
+                  "\",\"timeframe\":" + IntegerToString(timeframe) + 
+                  ",\"count\":" + IntegerToString(count) + 
+                  ",\"bars\":[";
+    
+    // 从最旧到最新 (count-1 = 最旧, 0 = 最新)
+    for(int i = count - 1; i >= 0; i--)
+    {
+        if(i < count - 1) json += ",";
+        
+        datetime bar_time = iTime(sym, timeframe, i);
+        double bar_open   = iOpen(sym, timeframe, i);
+        double bar_high   = iHigh(sym, timeframe, i);
+        double bar_low    = iLow(sym, timeframe, i);
+        double bar_close  = iClose(sym, timeframe, i);
+        long   bar_vol    = iVolume(sym, timeframe, i);
+        
+        json += "{\"t\":\"" + TimeToString(bar_time, TIME_DATE|TIME_SECONDS) + "\"" +
+                ",\"o\":" + DoubleToString(bar_open, Digits) +
+                ",\"h\":" + DoubleToString(bar_high, Digits) +
+                ",\"l\":" + DoubleToString(bar_low, Digits) +
+                ",\"c\":" + DoubleToString(bar_close, Digits) +
+                ",\"v\":" + IntegerToString(bar_vol) + "}";
+    }
+    
+    json += "]}";
     FileWriteString(handle, json);
     FileClose(handle);
 }
