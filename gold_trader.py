@@ -505,13 +505,10 @@ class GoldTrader:
         # 获取当前持仓方向，防止开反向仓
         current_dir = self._get_current_direction()
         
-        # 舆情修正参数
-        sentiment_bias = None
-        lot_multiplier = 1.0
-        if sentiment_ctx:
-            modifier = sentiment_ctx.get('trade_modifier', {})
-            sentiment_bias = modifier.get('direction_bias')  # 'BUY'/'SELL'/None
-            lot_multiplier = modifier.get('lot_multiplier', 1.0)
+        # 舆情参数 (方向过滤已关闭，仅保留经济日历暂停 + 日志显示)
+        # 原因: 舆情准确率未验证，如果<55%只会增加噪音
+        sentiment_bias = None   # 已关闭: 不再用舆情过滤方向
+        lot_multiplier = 1.0    # 已关闭: 不再用舆情调整仓位
 
         slots = config.MAX_POSITIONS - len(current_positions)
         log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
@@ -547,10 +544,10 @@ class GoldTrader:
                 log.info(f"    ⛔ {reason} — 但当前持仓方向为{current_dir}，跳过反向{direction}信号")
                 continue
 
-            # 舆情方向过滤: 如果舆情有明确偏好且与信号方向相反，跳过
-            if sentiment_bias and direction != sentiment_bias:
-                log.info(f"    🌐 {reason} — 但舆情偏好{sentiment_bias}，跳过反向{direction}信号")
-                continue
+            # 舆情方向过滤: 已关闭 (等待准确率验证)
+            # if sentiment_bias and direction != sentiment_bias:
+            #     log.info(f"    🌐 {reason} — 但舆情偏好{sentiment_bias}，跳过反向{direction}信号")
+            #     continue
 
             log.info(f"    🚀 {reason}")
 
