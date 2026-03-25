@@ -57,7 +57,7 @@ STRATEGIES = {
         "max_hold_bars": 15,
     },
     "macd": {
-        "enabled": True,
+        "enabled": False,  # v5禁用: 11年Sharpe=-0.36, 71%信号与Keltner重叠, 拉低组合Sharpe
         "name": "MACD+EMA100趋势",
         "stop_loss": 20,
         "take_profit": 50,

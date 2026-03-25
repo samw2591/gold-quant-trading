@@ -714,19 +714,22 @@ def calc_auto_lot_size(atr: float, sl_distance: float) -> float:
 # ═══════════════════════════════════════════════════════════════
 
 def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
-    """扫描所有策略信号"""
+    """扫描所有已启用策略的信号"""
+    import config as _scan_cfg
     signals = []
     if timeframe == 'H1':
         sig = check_keltner_signal(df)
         if sig:
             signals.append(sig)
-        sig = check_macd_signal(df)
-        if sig:
-            signals.append(sig)
+        if _scan_cfg.STRATEGIES.get('macd', {}).get('enabled', True):
+            sig = check_macd_signal(df)
+            if sig:
+                signals.append(sig)
         # ORB策略 (也用H1数据)
-        sig = check_orb_signal(df)
-        if sig:
-            signals.append(sig)
+        if _scan_cfg.ORB_ENABLED:
+            sig = check_orb_signal(df)
+            if sig:
+                signals.append(sig)
     elif timeframe in ('M5', 'M15'):
         sig = check_m15_rsi_signal(df)
         if sig:
