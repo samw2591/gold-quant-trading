@@ -21,7 +21,8 @@ import yfinance as yf
 
 import config
 from mt4_bridge import MT4Bridge
-from strategies.signals import prepare_indicators, scan_all_signals, check_exit_signal, get_keltner_state_machine
+from strategies.signals import (prepare_indicators, scan_all_signals, check_exit_signal,
+                                get_keltner_state_machine, get_orb_strategy, calc_auto_lot_size)
 
 # 舆情分析模块 (安全导入，失败不影响交易)
 try:
@@ -299,8 +300,10 @@ class GoldTrader:
             atr_val = float(df_h1.iloc[-1]['ATR']) if not pd.isna(df_h1.iloc[-1].get('ATR', float('nan'))) else 0
             adx_status = '趋势✅' if adx_val >= 25 else '震荡⚠️'
             sm = get_keltner_state_machine()
+            orb = get_orb_strategy()
             log.info(f"  ADX={adx_val:.1f} ({adx_status})  ATR=${atr_val:.2f}  止损=${atr_val*2.5:.2f}")
             log.info(f"  🎰 Keltner状态机: {sm.get_status()}")
+            log.info(f"  🇺🇸 ORB: {orb.get_status()}")
         
         if sentiment_ctx:
             s = sentiment_ctx['sentiment']
@@ -511,17 +514,17 @@ class GoldTrader:
 
             log.info(f"    🚀 {reason}")
 
-            # 计算止损价
-            sl_pips = config.STRATEGIES.get(strategy, {}).get('stop_loss', config.STOP_LOSS_PIPS)
-
-            # 执行交易 (做多或做空)
+            # 止损距离 (优先用信号自带的ATR止损)
             sl_pips = sig.get('sl', config.STOP_LOSS_PIPS)
             
-            # 舆情仓位调整
-            actual_lots = round(config.LOT_SIZE * lot_multiplier, 2)
-            actual_lots = max(actual_lots, 0.01)  # 最小0.01手
+            # ATR自动调仓: 根据止损距离计算手数，保持每笔风险$100
+            base_lots = calc_auto_lot_size(0, sl_pips)
+            actual_lots = round(base_lots * lot_multiplier, 2)
+            actual_lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, actual_lots))
+            if actual_lots != config.LOT_SIZE:
+                log.info(f"    📊 自动调仓: 止损${sl_pips:.1f} → {actual_lots}手 (风险${sl_pips*actual_lots*config.POINT_VALUE_PER_LOT:.0f})")
             if lot_multiplier != 1.0:
-                log.info(f"    🌐 舆情仓位调整: {config.LOT_SIZE}手 × {lot_multiplier:.1f} = {actual_lots}手")
+                log.info(f"    🌐 舆情仓位调整: ×{lot_multiplier:.1f}")
             
             if direction == 'BUY':
                 success = self.bridge.buy(

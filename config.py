@@ -31,6 +31,20 @@ SLIPPAGE = 5              # 最大滑点 (点)
 DAILY_MAX_LOSS = 100      # 单日最大亏损 ($100，达到后暂停当日交易)
 COOLDOWN_BARS = 3         # 止损后冷却期 (3根H1 K线 = 3小时)
 
+# ── ATR自动调仓 ──
+RISK_PER_TRADE = 100      # 每笔交易最大风险金额 ($100)
+AUTO_LOT_SIZING = True    # 是否启用ATR自动调仓 (True=根据ATR调整手数, False=固定LOT_SIZE)
+MIN_LOT_SIZE = 0.01       # 最小手数
+MAX_LOT_SIZE = 0.05       # 最大手数
+
+# ── ORB策略参数 ──
+ORB_ENABLED = True                # 是否启用NY开盘区间突破策略
+ORB_NY_OPEN_HOUR_UTC = 14         # 纽约开盘时间 UTC (14:30 = 纽约9:30, 用14近似)
+ORB_RANGE_MINUTES = 15            # 开盘后前15分钟的高低点作为区间
+ORB_EXPIRY_MINUTES = 120          # 突破窗口有效期 (2小时)
+ORB_SL_MULTIPLIER = 1.0           # 止损 = 1.0 × 区间宽度
+ORB_TP_MULTIPLIER = 2.2           # 止盈 = 2.2 × 区间宽度 (RR 1:2.2)
+
 # ============================================================
 # 策略参数
 # ============================================================
@@ -41,19 +55,18 @@ STRATEGIES = {
         "stop_loss": 20,
         "take_profit": 35,
         "max_hold_bars": 15,
-        # 11年回测: Sharpe 0.92, 年均260笔, 胜率49%
-        # 特朗普2: 年化+51.7%, 回撤-17.5%
-        # 支持做多+做空
     },
     "macd": {
         "enabled": True,
-        "name": "MACD+SMA50趋势",
+        "name": "MACD+EMA100趋势",
         "stop_loss": 20,
         "take_profit": 50,
         "max_hold_bars": 20,
-        # 11年回测: Sharpe 1.14, 年均123笔, 盈亏比2.46
-        # 特朗普2: 年化+24.7%, 回撤仅-4.5%
-        # 支持做多+做空
+    },
+    "orb": {
+        "enabled": True,
+        "name": "NY开盘区间突破",
+        "max_hold_bars": 8,  # 最多持仓8根H1 K线 (~8小时)
     },
 }
 

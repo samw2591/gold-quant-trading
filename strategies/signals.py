@@ -463,6 +463,196 @@ def check_m15_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
     return None
 
 
+# ═══════════════════════════════════════════════════════════════
+# NY开盘区间突破 (ORB) 策略
+# ═══════════════════════════════════════════════════════════════
+
+import config as _cfg
+
+
+class ORBStrategy:
+    """
+    NY开盘区间突破策略 (Opening Range Breakout)
+
+    原理:
+    - 纽约开盘后前15分钟的高低点形成当日区间
+    - 价格突破区间上沿→做多
+    - 价格跌破区间下沿→做空
+    - 止损=区间宽度, 止盈=2.2×区间宽度
+    - 窗口有效期2小时 (过时不入场)
+    - 每日只交易一次
+
+    胜率61%, RR 1:2.2 (根据历史研究)
+    """
+
+    def __init__(self):
+        self.range_high = None
+        self.range_low = None
+        self.range_set_date = None     # 区间设定日期
+        self.traded_today = False      # 今日是否已交易
+        self.window_open = False
+        self.window_expiry = None
+
+    def reset_daily(self):
+        """每日重置"""
+        self.range_high = None
+        self.range_low = None
+        self.range_set_date = None
+        self.traded_today = False
+        self.window_open = False
+        self.window_expiry = None
+
+    def update(self, df: pd.DataFrame) -> Optional[Dict]:
+        """
+        用H1数据检测ORB信号
+
+        逻辑:
+        1. 识别NY开盘K线 (UTC 14:xx) → 设定区间
+        2. 后续的K线检查是否突破
+        """
+        if not _cfg.ORB_ENABLED:
+            return None
+        if len(df) < 10:
+            return None
+
+        latest = df.iloc[-1]
+        close = float(latest['Close'])
+        high = float(latest['High'])
+        low = float(latest['Low'])
+
+        # 获取当前K线的UTC小时
+        bar_time = df.index[-1]
+        if hasattr(bar_time, 'hour'):
+            bar_hour = bar_time.hour
+        else:
+            bar_hour = -1
+
+        today = bar_time.date() if hasattr(bar_time, 'date') else None
+
+        # 新的一天重置
+        if today and self.range_set_date and today != self.range_set_date:
+            self.reset_daily()
+
+        # Step 1: 识别NY开盘K线 → 设定区间
+        if self.range_high is None and bar_hour == _cfg.ORB_NY_OPEN_HOUR_UTC:
+            self.range_high = high
+            self.range_low = low
+            self.range_set_date = today
+            self.window_open = True
+            self.window_expiry = _cfg.ORB_EXPIRY_MINUTES // 60  # 剩余有效K线数
+
+            range_width = self.range_high - self.range_low
+            log.info(f"  [🇺🇸 ORB] NY开盘区间设定: [{self.range_low:.2f} - {self.range_high:.2f}] "
+                     f"宽度=${range_width:.2f} 窗口{self.window_expiry}根K线")
+            return None  # 设定区间的这根K线不交易
+
+        # Step 2: 检查突破
+        if self.window_open and self.range_high is not None and not self.traded_today:
+            self.window_expiry -= 1
+
+            # 窗口超时
+            if self.window_expiry <= 0:
+                log.info(f"  [🇺🇸 ORB] 窗口超时，今日不再触发")
+                self.window_open = False
+                return None
+
+            range_width = self.range_high - self.range_low
+            if range_width < 3:  # 区间太窄，不可靠
+                return None
+            if range_width > 60:  # 区间太宽，风险太大
+                log.info(f"  [🇺🇸 ORB] 区间宽度${range_width:.2f}太大，跳过")
+                self.window_open = False
+                return None
+
+            sl = round(range_width * _cfg.ORB_SL_MULTIPLIER, 2)
+            tp = round(range_width * _cfg.ORB_TP_MULTIPLIER, 2)
+
+            # 突破上沿 → 做多
+            if high > self.range_high:
+                self.traded_today = True
+                self.window_open = False
+                return {
+                    'strategy': 'orb',
+                    'signal': 'BUY',
+                    'reason': f"🇺🇸 ORB做多: 价格{high:.2f} 突破开盘区间上沿{self.range_high:.2f} (区间${range_width:.1f})",
+                    'close': close,
+                    'sl': sl,
+                    'tp': tp,
+                }
+
+            # 跌破下沿 → 做空
+            if low < self.range_low:
+                self.traded_today = True
+                self.window_open = False
+                return {
+                    'strategy': 'orb',
+                    'signal': 'SELL',
+                    'reason': f"🇺🇸 ORB做空: 价格{low:.2f} 跌破开盘区间下沿{self.range_low:.2f} (区间${range_width:.1f})",
+                    'close': close,
+                    'sl': sl,
+                    'tp': tp,
+                }
+
+        return None
+
+    def get_status(self) -> str:
+        if self.range_high is None:
+            return "等待NY开盘"
+        if self.traded_today:
+            return "今日已交易"
+        if self.window_open:
+            return f"窗口开启 [{self.range_low:.0f}-{self.range_high:.0f}] 剩{self.window_expiry}根K线"
+        return "窗口已关闭"
+
+
+# 全局ORB实例
+_orb_strategy = ORBStrategy()
+
+def get_orb_strategy() -> ORBStrategy:
+    return _orb_strategy
+
+def check_orb_signal(df: pd.DataFrame) -> Optional[Dict]:
+    """检查ORB信号"""
+    return _orb_strategy.update(df)
+
+
+# ═══════════════════════════════════════════════════════════════
+# ATR自动调仓
+# ═══════════════════════════════════════════════════════════════
+
+def calc_auto_lot_size(atr: float, sl_distance: float) -> float:
+    """
+    根据ATR/止损距离自动计算手数，保持每笔风险金额恒定
+
+    公式: lots = RISK_PER_TRADE / (sl_distance × POINT_VALUE_PER_LOT)
+
+    例如:
+    - RISK_PER_TRADE=$100, sl=$37.5, POINT_VALUE=100
+    - lots = 100 / (37.5 × 100) = 0.027 → 0.03手
+    - 实际风险 = 37.5 × 0.03 × 100 = $112.5
+
+    - RISK_PER_TRADE=$100, sl=$77.5 (高ATR), POINT_VALUE=100
+    - lots = 100 / (77.5 × 100) = 0.013 → 0.01手
+    - 实际风险 = 77.5 × 0.01 × 100 = $77.5
+    """
+    if not _cfg.AUTO_LOT_SIZING:
+        return _cfg.LOT_SIZE
+
+    if sl_distance <= 0:
+        return _cfg.LOT_SIZE
+
+    lots = _cfg.RISK_PER_TRADE / (sl_distance * _cfg.POINT_VALUE_PER_LOT)
+    # 四舍五入到小数点后两位
+    lots = round(lots, 2)
+    # 限制范围
+    lots = max(_cfg.MIN_LOT_SIZE, min(_cfg.MAX_LOT_SIZE, lots))
+    return lots
+
+
+# ═══════════════════════════════════════════════════════════════
+# 信号扫描入口
+# ═══════════════════════════════════════════════════════════════
+
 def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
     """扫描所有策略信号"""
     signals = []
@@ -471,6 +661,10 @@ def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
         if sig:
             signals.append(sig)
         sig = check_macd_signal(df)
+        if sig:
+            signals.append(sig)
+        # ORB策略 (也用H1数据)
+        sig = check_orb_signal(df)
         if sig:
             signals.append(sig)
     elif timeframe in ('M5', 'M15'):

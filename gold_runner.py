@@ -66,7 +66,7 @@ def main():
     log.info(f"   手数: {config.LOT_SIZE}")
     log.info(f"   本金: ${config.CAPITAL}  止损上限: ${config.MAX_TOTAL_LOSS}")
     log.info(f"   扫描频率: 每{config.SCAN_INTERVAL_SECONDS}秒")
-    log.info(f"   策略: H1 Keltner+MACD(做多做空) + M15 RSI均值回归")
+    log.info(f"   策略: H1 Keltner(状态机)+MACD+ORB(NY开盘突破) + M15 RSI")
 
     trader = GoldTrader()
     signal_scanned_today = False
