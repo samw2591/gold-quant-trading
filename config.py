@@ -10,7 +10,7 @@ from pathlib import Path
 # ============================================================
 # MT4 数据文件夹路径 (在MT4中 File → Open Data Folder 获取)
 # 例如: C:\Users\hlin2\AppData\Roaming\MetaQuotes\Terminal\XXXXXXXX
-METATRADER_DIR_PATH = r"C:\Users\hlin2\AppData\Roaming\MetaQuotes\Terminal\YOUR_TERMINAL_ID"
+METATRADER_DIR_PATH = r"C:\Users\hlin2\AppData\Roaming\MetaQuotes\Terminal\35EEC3EFDB656AF6FC775F21FEAD053B"
 
 # MT4 文件桥接目录 (EA和Python通过这个目录通信)
 BRIDGE_DIR = Path(METATRADER_DIR_PATH) / "MQL4" / "Files" / "DWX"
