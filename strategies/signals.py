@@ -6,7 +6,7 @@
 策略组合:
 1. H1 Keltner通道突破 (主力, 6年Sharpe 1.25, 年化+15.6%/0.01手)
 2. H1 MACD+SMA50趋势 (补充, 6年Sharpe 1.01, 回撤仅-7.7%)
-3. M5 RSI均值回归 (低风险补充, 6年Sharpe 0.98, 回撤-3.7%)
+3. M15 RSI均值回归 (低风险补充, 6年Sharpe 0.98, 回撤-3.7%)
 
 所有策略支持做多+做空
 """
@@ -182,20 +182,20 @@ def check_exit_signal(df: pd.DataFrame, strategy: str, direction: str) -> Option
             elif direction == 'SELL' and macd_hist > 0 and macd_hist_prev <= 0:
                 return f"MACD空头出场: 柱状图转正"
     
-    elif strategy == 'm5_rsi':
+    elif strategy in ('m5_rsi', 'm15_rsi'):
         rsi2 = float(latest['RSI2'])
         if not pd.isna(rsi2):
             if direction == 'BUY' and rsi2 > 55:
-                return f"M5 RSI多头出场: RSI(2)={rsi2:.1f} > 55"
+                return f"M15 RSI多头出场: RSI(2)={rsi2:.1f} > 55"
             elif direction == 'SELL' and rsi2 < 45:
-                return f"M5 RSI空头出场: RSI(2)={rsi2:.1f} < 45"
+                return f"M15 RSI空头出场: RSI(2)={rsi2:.1f} < 45"
     
     return None
 
 
-def check_m5_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
+def check_m15_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
     """
-    M5 RSI均值回归信号
+    M15 RSI均值回归信号
     回测(6年M5): Sharpe 0.98, 胜率68%, 年坘1784笔, 回撤-3.7%
     
     做多: RSI(2)<15 + 价格>SMA50
@@ -216,9 +216,9 @@ def check_m5_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
     # 做多: 超卖反弹
     if rsi2 < 15 and close > sma50:
         return {
-            'strategy': 'm5_rsi',
+            'strategy': 'm15_rsi',
             'signal': 'BUY',
-            'reason': f"M5 RSI做多: RSI(2)={rsi2:.1f} < 15, 超卖反弹",
+            'reason': f"M15 RSI做多: RSI(2)={rsi2:.1f} < 15, 超卖反弹",
             'close': close,
             'sl': 15,
             'tp': 0,  # 用RSI出场而不是固定止盈
@@ -227,9 +227,9 @@ def check_m5_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
     # 做空: 超买回落
     if rsi2 > 85 and close < sma50:
         return {
-            'strategy': 'm5_rsi',
+            'strategy': 'm15_rsi',
             'signal': 'SELL',
-            'reason': f"M5 RSI做空: RSI(2)={rsi2:.1f} > 85, 超买回落",
+            'reason': f"M15 RSI做空: RSI(2)={rsi2:.1f} > 85, 超买回落",
             'close': close,
             'sl': 15,
             'tp': 0,
@@ -257,8 +257,8 @@ def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
         if sig:
             signals.append(sig)
     
-    elif timeframe == 'M5':
-        sig = check_m5_rsi_signal(df)
+    elif timeframe in ('M5', 'M15'):
+        sig = check_m15_rsi_signal(df)
         if sig:
             signals.append(sig)
     

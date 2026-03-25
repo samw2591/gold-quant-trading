@@ -21,9 +21,11 @@ BRIDGE_DIR = Path(METATRADER_DIR_PATH) / "MQL4" / "Files" / "DWX"
 SYMBOL = "XAUUSD.mx"      # EMX Pro Limited 的黄金品种名称
 CAPITAL = 3000            # 本金 (USD)
 MAX_TOTAL_LOSS = 1500     # 最大总亏损 (USD)，达到后停止交易
-LOT_SIZE = 0.03           # 手数 (0.03手 = 3盎司 = $3/点) — 先用模拟盘验证，确认后可加0.05
+LOT_SIZE = 0.03           # 手数 (0.03手 = 3盎司)
+# 每点价值: 0.03手 × $100/点/标准手 = $3/点 (价格每变动$1 = 盈亏$3)
+POINT_VALUE_PER_LOT = 100  # 标准手每点价值 ($100/点)
 MAX_POSITIONS = 2         # 最大同时持仓数
-STOP_LOSS_PIPS = 50       # 止损距离 (点/$)
+STOP_LOSS_PIPS = 20       # 默认止损距离 ($20 = 0.03手亏$60)
 MAGIC_NUMBER = 20260325   # EA魔术号 (区分手动单和策略单)
 SLIPPAGE = 5              # 最大滑点 (点)
 
@@ -56,8 +58,8 @@ STRATEGIES = {
 # ============================================================
 # 扫描频率
 # ============================================================
-SCAN_INTERVAL_SECONDS = 30    # 每30秒扫描一次 (M5策略需要高频扫描)
-SIGNAL_CHECK_TIMEFRAME = "MULTI"  # 多时间框架: H1 + M5
+SCAN_INTERVAL_SECONDS = 30    # 每30秒扫描一次 (M15策略)
+SIGNAL_CHECK_TIMEFRAME = "MULTI"  # 多时间框架: H1 + M15
 
 # ============================================================
 # 通知

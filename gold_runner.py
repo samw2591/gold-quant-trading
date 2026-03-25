@@ -66,24 +66,43 @@ def main():
     log.info(f"   手数: {config.LOT_SIZE}")
     log.info(f"   本金: ${config.CAPITAL}  止损上限: ${config.MAX_TOTAL_LOSS}")
     log.info(f"   扫描频率: 每{config.SCAN_INTERVAL_SECONDS}秒")
-    log.info(f"   策略: H1 Keltner+MACD(做多做空) + M5 RSI均值回归")
+    log.info(f"   策略: H1 Keltner+MACD(做多做空) + M15 RSI均值回归")
 
     trader = GoldTrader()
     signal_scanned_today = False
     last_date = None
     scan_count = 0
+    daily_start_pnl = trader.total_pnl.get('total_pnl', 0)
+    daily_trades = 0
 
     while True:
         try:
             now = datetime.now(LOCAL_TZ)
             today = now.date()
 
-            # 新的一天重置
+            # 新的一天重置 + 打印前一天绩效报告
             if today != last_date:
+                if last_date is not None:
+                    # 前一天绩效报告
+                    current_pnl = trader.total_pnl.get('total_pnl', 0)
+                    day_pnl = round(current_pnl - daily_start_pnl, 2)
+                    total_trades = trader.total_pnl.get('trade_count', 0)
+                    emoji = '🟢' if day_pnl >= 0 else '🔴'
+                    log.info(f"\n{'='*60}")
+                    log.info(f"📊 每日绩效报告 — {last_date}")
+                    log.info(f"  {emoji} 当日盈亏: ${day_pnl:+.2f}")
+                    log.info(f"  💰 累计盈亏: ${current_pnl:+.2f}")
+                    log.info(f"  📊 总交易笔数: {total_trades}")
+                    log.info(f"  🛡️ 止损余量: ${config.MAX_TOTAL_LOSS + current_pnl:.2f}")
+                    log.info(f"{'='*60}")
+                
                 signal_scanned_today = False
                 last_date = today
                 scan_count = 0
+                daily_start_pnl = trader.total_pnl.get('total_pnl', 0)
+                daily_trades = 0
                 log.info(f"\n📅 {today} ({now.strftime('%A')})")
+                log.info(f"  💰 今日起始盈亏: ${daily_start_pnl:+.2f}")
 
             is_open, status = is_market_open()
 
@@ -104,7 +123,7 @@ def main():
             except Exception as e:
                 log.error(f"出场检查出错: {e}")
 
-            # 每5分钟做一次完整信号扫描 (M5策略需要, 每10次循环×30秒≈5分钟)
+            # 每5分钟做一次完整信号扫描 (M15策略需要, 每10次循环×30秒≈5分钟)
             if scan_count == 1 or scan_count % 10 == 0:
                 log.info(f"\n📊 完整信号扫描 (#{scan_count})")
                 try:

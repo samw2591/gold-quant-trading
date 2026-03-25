@@ -35,7 +35,7 @@ except Exception as _import_err:
 STRATEGY_PARAMS = {
     'keltner': {'sl': 20, 'tp': 35, 'max_bars': 15},
     'macd': {'sl': 20, 'tp': 50, 'max_bars': 20},
-    'm5_rsi': {'sl': 15, 'tp': 0, 'max_bars': 12},  # RSI出场，不用固定止盈
+    'm15_rsi': {'sl': 15, 'tp': 0, 'max_bars': 12},  # RSI出场，不用固定止盈
 }
 
 log = logging.getLogger(__name__)
@@ -106,8 +106,8 @@ class GoldTrader:
     def get_hourly_data(self) -> Optional[pd.DataFrame]:
         return self.get_data('1h', '60d')
     
-    def get_m5_data(self) -> Optional[pd.DataFrame]:
-        return self.get_data('5m', '5d')
+    def get_m15_data(self) -> Optional[pd.DataFrame]:
+        return self.get_data('15m', '30d')
 
     # ── 风控检查 ──
 
@@ -128,13 +128,22 @@ class GoldTrader:
 
     def _sync_positions_tracking(self):
         """同步MT4持仓与tracking记录
-        1. 新开仓单自动补录tracking
-        2. 已平仓单(止损/手动)自动检测并记录
+        1. 更新现有持仓的实时盈亏
+        2. 已平仓单(止损/手动)自动检测并记录盈亏
+        3. 新开仓单自动补录tracking
         """
         mt4_positions = self.get_strategy_positions()
-        mt4_tickets = {str(p['ticket']) for p in mt4_positions}
+        mt4_tickets = {str(p['ticket']): p for p in mt4_positions}
         
-        # 1. 检测已消失的持仓 (被MT4止损/手动平仓)
+        # 1. 更新现有持仓的实时盈亏 (存入tracking，平仓时用)
+        for pos in mt4_positions:
+            tk = str(pos['ticket'])
+            if tk in self.tracking:
+                self.tracking[tk]['last_profit'] = pos.get('profit', 0)
+                self.tracking[tk]['last_price'] = pos.get('current_price', 0)
+        self._save_tracking()
+        
+        # 2. 检测已消失的持仓 (被MT4止损/手动平仓)
         tracked_tickets = list(self.tracking.keys())
         for ticket_key in tracked_tickets:
             if ticket_key not in mt4_tickets:
@@ -142,14 +151,25 @@ class GoldTrader:
                 strategy = track.get('strategy', 'unknown')
                 direction = track.get('direction', 'BUY')
                 entry_price = track.get('entry_price', 0)
+                last_profit = track.get('last_profit', 0)
+                lots = track.get('lots', config.LOT_SIZE)
                 
-                log.info(f"  ⚠️ 检测到 #{ticket_key} ({strategy}) 已被MT4平仓 (可能触发止损)")
+                log.info(f"  ⚠️ 检测到 #{ticket_key} ({strategy}) 已被MT4平仓")
+                log.info(f"     估算盈亏: ${last_profit:+.2f} (开仓价: {entry_price})")
+                
+                # 更新总盈亏
+                self.total_pnl['total_pnl'] = round(
+                    self.total_pnl.get('total_pnl', 0) + last_profit, 2
+                )
+                self.total_pnl['trade_count'] = self.total_pnl.get('trade_count', 0) + 1
+                self._save_pnl()
                 
                 # 记录到交易日志
                 trade = {
                     'action': 'CLOSE_DETECTED', 'ticket': int(ticket_key),
                     'strategy': strategy, 'direction': direction,
-                    'entry_price': entry_price,
+                    'entry_price': entry_price, 'lots': lots,
+                    'profit': last_profit,
                     'reason': '🚨 MT4自动平仓 (止损或手动)',
                     'time': datetime.now().isoformat(),
                 }
@@ -170,8 +190,8 @@ class GoldTrader:
                     strategy = 'keltner'
                 elif 'macd' in comment.lower():
                     strategy = 'macd'
-                elif 'rsi' in comment.lower() or 'm5_r' in comment.lower():
-                    strategy = 'm5_rsi'
+                elif 'rsi' in comment.lower() or 'm15_r' in comment.lower():
+                    strategy = 'm15_rsi'
                 
                 direction = 'SELL' if pos.get('type', 0) == 1 else 'BUY'
                 
@@ -212,9 +232,9 @@ class GoldTrader:
 
         # 获取多时间框架数据
         df_h1 = self.get_hourly_data()
-        df_m5 = self.get_m5_data()
+        df_m15 = self.get_m15_data()
         
-        if df_h1 is None and df_m5 is None:
+        if df_h1 is None and df_m15 is None:
             return {"status": "error", "reason": "no_data"}
 
         if df_h1 is not None:
@@ -224,24 +244,24 @@ class GoldTrader:
             macd_h = float(latest['MACD_hist']) if not pd.isna(latest['MACD_hist']) else 0
             log.info(f"  XAU/USD H1: ${close:.2f}  RSI(14): {rsi14:.1f}  MACD: {macd_h:+.2f}")
         
-        if df_m5 is not None:
-            m5_latest = df_m5.iloc[-1]
-            m5_rsi = float(m5_latest['RSI2']) if not pd.isna(m5_latest['RSI2']) else 50
-            log.info(f"  XAU/USD M5: RSI(2): {m5_rsi:.1f}")
+        if df_m15 is not None:
+            m15_latest = df_m15.iloc[-1]
+            m15_rsi = float(m15_latest['RSI2']) if not pd.isna(m5_latest['RSI2']) else 50
+            log.info(f"  XAU/USD M15: RSI(2): {m15_rsi:.1f}")
 
         # Step 1: 检查现有持仓出场 (H1和M5都检查)
         exits = []
         if df_h1 is not None:
             exits += self._check_exits(df_h1)
-        if df_m5 is not None:
-            exits += self._check_exits(df_m5)
+        if df_m15 is not None:
+            exits += self._check_exits(df_m15)
 
         # Step 2: 检查新入场信号 (H1 + M5)
         entries = []
         if df_h1 is not None:
             entries += self._check_entries(df_h1, 'H1', sentiment_ctx)
-        if df_m5 is not None:
-            entries += self._check_entries(df_m5, 'M5', sentiment_ctx)
+        if df_m15 is not None:
+            entries += self._check_entries(df_m15, 'M15', sentiment_ctx)
 
         total = len(exits) + len(entries)
         log.info(f"\n{'='*60}")
@@ -473,7 +493,7 @@ class GoldTrader:
         df_h1 = self.get_hourly_data()
         if df_h1 is not None:
             exits += self._check_exits(df_h1)
-        df_m5 = self.get_m5_data()
-        if df_m5 is not None:
-            exits += self._check_exits(df_m5)
+        df_m15 = self.get_m15_data()
+        if df_m15 is not None:
+            exits += self._check_exits(df_m15)
         return {"exits": exits}
