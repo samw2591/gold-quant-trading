@@ -554,6 +554,14 @@ class GoldTrader:
                 log.info(f"    ❄️ {reason} — 但{strategy}在冷却期中 (还剩{remaining:.0f}分钟)")
                 continue
 
+            # 同策略重复持仓检测: 同一策略已有持仓时不再开新仓
+            active_strategies = set()
+            for tk, track in self.tracking.items():
+                active_strategies.add(track.get('strategy', ''))
+            if strategy in active_strategies:
+                log.info(f"    🚫 {reason} — 但{strategy}已有持仓，不重复开仓")
+                continue
+
             # 方向冲突检测: 已有持仓时不开反向仓
             direction = sig['signal']  # 'BUY' 或 'SELL'
             if current_dir and direction != current_dir:
