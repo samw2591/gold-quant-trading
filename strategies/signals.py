@@ -86,7 +86,7 @@ ADX_TREND_THRESHOLD = 24    # 回测最优: Sharpe 0.60 (25→0.52, 23→0.45)
 ATR_SL_MULTIPLIER = 2.5     # v3: 改为2.5×ATR (backtrader项目实测值)
 ATR_SL_MIN = 10
 ATR_SL_MAX = 50
-ATR_TP_MULTIPLIER = 6.5     # v3: 止盈6.5×ATR (backtrader项目实测值)
+ATR_TP_MULTIPLIER = 3.0     # v5: 止盈3.0×ATR (6.5×太远, MFE P90才$17, 几乎永远不触发)
 
 
 def _calc_atr_stop(df: pd.DataFrame) -> float:
