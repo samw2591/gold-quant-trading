@@ -56,8 +56,8 @@ def notify_stop_review(daily_pnl: float):
     send_telegram(
         f"🚨🚨🚨 <b>系统已停止</b> 🚨🚨🚨\n\n"
         f"日内亏损: ${daily_pnl:.2f}\n"
-        f"超过限制: ${config.DAILY_MAX_LOSS}\n\n"
-        f"⚠️ 请复盘后手动重启"
+        f"已达日限亏{config.DAILY_MAX_LOSSES}笔\n\n"
+        f"⚠️ 明日自动恢复"
     )
 
 
@@ -79,7 +79,7 @@ def notify_system_start():
         f"🥇 <b>黄金量化系统启动</b>\n\n"
         f"品种: {config.SYMBOL}\n"
         f"风险/笔: ${config.RISK_PER_TRADE}\n"
-        f"日限亏: ${config.DAILY_MAX_LOSS}\n"
+        f"日限亏: {config.DAILY_MAX_LOSSES}笔\n"
         f"总限亏: ${config.MAX_TOTAL_LOSS}"
     )
 
