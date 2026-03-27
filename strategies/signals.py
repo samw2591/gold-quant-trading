@@ -489,7 +489,8 @@ def check_m15_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
         return None
 
     sl = _calc_atr_stop(df) if not pd.isna(df.iloc[-1]['ATR']) else 15
-    sl = min(sl, 20)
+    # v6: 去掉SL $20硬上限, 改用与Keltner一致的ATR动态止损 [10,50]
+    # 回测: Sharpe 0.67→1.02, Trump2.0期 0.24→1.06
 
     if rsi2 < 15 and close > sma50:
         return {
