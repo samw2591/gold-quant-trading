@@ -136,8 +136,9 @@ def main():
     
     # ── 心跳检测状态 ──
     consecutive_disconnect = 0       # 连续掉线次数
-    DISCONNECT_ALERT_THRESHOLD = 3   # 连续3次掉线 → 报警
+    DISCONNECT_ALERT_THRESHOLD = 6   # 连续6次掉线(~3分钟) → 报警
     last_heartbeat_alert = None      # 上次报警时间 (避免刷屏)
+    STARTUP_GRACE_SCANS = 6          # 启动后前6次扫描(~3分钟)不检测心跳，给EA启动时间
 
     while True:
         try:
@@ -181,8 +182,10 @@ def main():
 
             scan_count += 1
 
-            # ── 心跳检测: EA是否在线 ──
-            if trader.bridge.is_connected():
+            # ── 心跳检测: EA是否在线 (启动宽限期内跳过) ──
+            if scan_count <= STARTUP_GRACE_SCANS:
+                pass  # 启动宽限期，不检测
+            elif trader.bridge.is_connected():
                 if consecutive_disconnect > 0:
                     log.info(f"❤️ EA已恢复连接 (此前断开{consecutive_disconnect}次)")
                 consecutive_disconnect = 0
