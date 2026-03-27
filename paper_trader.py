@@ -361,7 +361,7 @@ class PaperTrader:
 
         # 处理平仓
         for pos, result in to_close:
-            self._record_close(result)
+            self._record_close(result, pos)
             self.positions.remove(pos)
 
         if to_close:
@@ -374,10 +374,20 @@ class PaperTrader:
                 continue
 
             # 检查该策略持仓上限
-            max_pos = strat_config.get('max_positions', 1)
-            active = sum(1 for p in self.positions if p.strategy == name)
-            if active >= max_pos:
-                continue
+            # 对于有 scale_in 配置的策略, _scan_signals 只负责开首仓(最多1笔)
+            # 加仓由 _update_positions 中的 scale-in 逻辑处理
+            scale_in_cfg = strat_config.get('scale_in', {})
+            if scale_in_cfg.get('enabled', False):
+                # 只计算首仓数量(非加仓单), 最多允许1笔首仓
+                first_pos_count = sum(1 for p in self.positions 
+                                     if p.strategy == name and not p.is_scale_in)
+                if first_pos_count >= 1:
+                    continue
+            else:
+                max_pos = strat_config.get('max_positions', 1)
+                active = sum(1 for p in self.positions if p.strategy == name)
+                if active >= max_pos:
+                    continue
 
             # 调用策略信号函数
             signal_func = strat_config.get('signal_func')
@@ -425,9 +435,11 @@ class PaperTrader:
             log.info(f"  📝 [模拟] {sig['signal']} {name} @ {entry_price:.2f} "
                      f"SL={sl:.1f} TP={tp:.1f} | {sig.get('reason', '')}")
 
-    def _record_close(self, result: Dict):
+    def _record_close(self, result: Dict, pos: Optional['PaperPosition'] = None):
         """记录平仓"""
         result['mode'] = 'paper'
+        if pos is not None:
+            result['is_scale_in'] = pos.is_scale_in
         self.trades.append(result)
 
         # 更新统计
