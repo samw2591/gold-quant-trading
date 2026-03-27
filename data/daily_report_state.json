@@ -1,14 +1,11 @@
 {
-  "report_type": "evening",
-  "time": "2026-03-27T00:04:00+08:00",
-  "price_at_report": 4455.3,
-  "direction_bias": "中性",
-  "target_high": 4525,
+  "report_type": "morning",
+  "time": "2026-03-27T10:00:00+08:00",
+  "price_at_report": 4435,
+  "direction_bias": "偏空",
+  "target_high": 4500,
   "target_low": 4390,
-  "confidence": "低",
-  "key_reasoning": "昨日强反弹后，今日回吐至4450附近；美元偏强与美债收益率高位压制上行，但地缘风险仍可能带来上冲。短线更可能进入震荡区间(约4390-4525)等待数据与消息推动选择方向。",
-  "risk_events": "美国初请失业金(SGT 20:30)及美债收益率波动；中东局势突发消息；周末前仓位调整流动性变薄",
-  "today_pnl": "数据暂缺",
-  "today_trades": 0,
-  "today_win_rate": "数据暂缺"
+  "confidence": "中",
+  "key_reasoning": "10Y国债4.42%创8个月新高+DXY连涨3天至99.9, 双重压制; H4下降趋势未变",
+  "risk_events": "密歇根消费者信心(SGT 22:00), 伊朗局势, 周五流动性变薄"
 }
