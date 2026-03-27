@@ -218,6 +218,9 @@ class GoldTrader:
         # 2. 检测已消失的持仓 (被MT4止损/手动平仓)
         tracked_tickets = list(self.tracking.keys())
         for ticket_key in tracked_tickets:
+            # 跳过pending条目，它们不是真实ticket
+            if ticket_key.startswith('pending_'):
+                continue
             if ticket_key not in mt4_tickets:
                 track = self.tracking[ticket_key]
                 strategy = track.get('strategy', 'unknown')
@@ -262,7 +265,41 @@ class GoldTrader:
                 del self.tracking[ticket_key]
                 self._save_tracking()
         
-        # 2. 检测未tracking的新仓位 (开仓后ticket未同步)
+        # 2. 清理pending条目: 真实ticket已到位时，删除临时的pending记录
+        pending_keys = [k for k in self.tracking if k.startswith('pending_')]
+        for pk in pending_keys:
+            p_strategy = self.tracking[pk].get('strategy', '')
+            # 检查MT4是否已有该策略的真实持仓
+            matched = False
+            for pos in mt4_positions:
+                tk = str(pos['ticket'])
+                if tk in self.tracking and self.tracking[tk].get('strategy') == p_strategy:
+                    matched = True
+                    break
+                # 或者新单还没被记录，通过comment匹配
+                comment = pos.get('comment', '').lower()
+                if (p_strategy == 'keltner' and 'kelt' in comment) or \
+                   (p_strategy == 'orb' and 'orb' in comment) or \
+                   (p_strategy == 'm15_rsi' and ('rsi' in comment or 'm15' in comment)):
+                    matched = True
+                    break
+            if matched:
+                del self.tracking[pk]
+                self._save_tracking()
+                log.debug(f"  清理pending: {pk} (已匹配真实持仓)")
+            else:
+                # 超过10分钟的pending记录，认为开仓失败，清理
+                entry_str = self.tracking[pk].get('entry_date', '')
+                try:
+                    entry_time = datetime.fromisoformat(entry_str)
+                    if (datetime.now() - entry_time).total_seconds() > 600:
+                        del self.tracking[pk]
+                        self._save_tracking()
+                        log.warning(f"  清理过期pending: {pk} (超过10分钟未匹配)")
+                except:
+                    pass
+        
+        # 3. 检测未tracking的新仓位 (开仓后ticket未同步)
         for pos in mt4_positions:
             ticket_key = str(pos['ticket'])
             if ticket_key not in self.tracking:
@@ -690,6 +727,20 @@ class GoldTrader:
                 entries.append(trade)
                 self.trade_log.append(trade)
                 self._save_trade_log()
+                
+                # 立即写入tracking，防止同次扫描或下次扫描时重复开仓
+                # 用临时key，下次_sync_positions_tracking时会用真实ticket替换
+                temp_key = f"pending_{strategy}_{datetime.now().strftime('%H%M%S')}"
+                self.tracking[temp_key] = {
+                    'strategy': strategy,
+                    'direction': direction,
+                    'entry_price': close,
+                    'entry_date': datetime.now().isoformat(),
+                    'lots': actual_lots,
+                    'sl': sl_pips,
+                    'pending': True,  # 标记为待确认
+                }
+                self._save_tracking()
 
                 log.info(f"    ✅ 已下单: {actual_lots}手 止损${sl_pips:.1f} 止盈${tp_pips:.1f}")
                 notifier.notify_open(strategy, direction, actual_lots, close, sl_pips, reason)
