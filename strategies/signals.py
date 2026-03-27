@@ -618,11 +618,17 @@ class ORBStrategy:
                 return None
 
             range_width = self.range_high - self.range_low
-            if range_width < 8:  # 区间太窄，SL太小必止损 (8×0.75=SL$6, ATR$35下还是很小)
+            atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1]['ATR']) else 0
+            if range_width < 8:  # 区间太窄，SL太小必止损
                 return None
             if range_width > 60:  # 区间太宽，风险太大
                 log.info(f"  [🇺🇸 ORB] 区间宽度${range_width:.2f}太大，跳过")
                 self.window_open = False
+                return None
+            # v6: Range/ATR过滤 — 区间>2.0×ATR说明开盘已剧烈波动，假突破概率高
+            # 回测: Sharpe 1.52→2.45, 胜率 48.2%→51.6%, Trump2.0期 Sharpe 2.50→3.13
+            if atr > 0 and range_width > 2.0 * atr:
+                log.info(f"  [🇺🇸 ORB] Range/ATR={range_width/atr:.1f}>2.0，假突破风险高，跳过")
                 return None
 
             sl = round(range_width * _cfg.ORB_SL_MULTIPLIER, 2)
