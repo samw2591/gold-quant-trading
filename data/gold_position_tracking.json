@@ -1,12 +1,12 @@
 {
-  "16354070": {
-    "strategy": "keltner",
+  "16360294": {
+    "strategy": "m15_rsi",
     "direction": "SELL",
-    "entry_price": 4427.82,
-    "entry_date": "2026.03.26 17:11:27",
-    "lots": 0.01,
-    "sl": 4480.37,
-    "last_profit": -18.13,
-    "last_price": 4445.95
+    "entry_price": 4428.71,
+    "entry_date": "2026.03.27 20:33:40",
+    "lots": 0.03,
+    "sl": 4449.22,
+    "last_profit": -35.73,
+    "last_price": 4440.62
   }
 }
