@@ -1,1 +1,12 @@
-{}
+{
+  "16360294": {
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "entry_price": 4428.71,
+    "entry_date": "2026.03.27 20:33:40",
+    "lots": 0.03,
+    "sl": 4449.22,
+    "last_profit": -35.73,
+    "last_price": 4440.62
+  }
+}

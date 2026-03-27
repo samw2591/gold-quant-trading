@@ -466,5 +466,70 @@
     "profit": 11.77,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
     "time": "2026-03-27T19:34:20.984923"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "lots": 0.03,
+    "price": 4424.92,
+    "sl_pips": 20,
+    "tp_pips": 40,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=92.9 > 85, \u8d85\u4e70\u56de\u843d",
+    "sentiment_score": 0.4403,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-27T20:13:31.191468"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16360185,
+    "strategy": "m15_rsi",
+    "lots": 0.03,
+    "open_price": 4425.06,
+    "close_price": 4421.61,
+    "profit": 10.35,
+    "pnl_pct": -0.08,
+    "reason": "M15 RSI\u7a7a\u5934\u51fa\u573a: RSI(2)=41.5 < 45",
+    "hold_hours": 0.0,
+    "time": "2026-03-27T20:20:33.022124"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "lots": 0.03,
+    "price": 4427.33,
+    "sl_pips": 20,
+    "tp_pips": 40,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=95.7 > 85, \u8d85\u4e70\u56de\u843d",
+    "sentiment_score": 0.4261,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-27T20:28:37.044991"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16360274,
+    "strategy": "m15_rsi",
+    "lots": 0.03,
+    "open_price": 4427.18,
+    "close_price": 4427.3,
+    "profit": -0.36,
+    "pnl_pct": 0.0,
+    "reason": "M15 RSI\u7a7a\u5934\u51fa\u573a: RSI(2)=38.7 < 45",
+    "hold_hours": 0.0,
+    "time": "2026-03-27T20:31:37.946228"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "lots": 0.03,
+    "price": 4428.17,
+    "sl_pips": 20,
+    "tp_pips": 40,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=97.2 > 85, \u8d85\u4e70\u56de\u843d",
+    "sentiment_score": 0.4259,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-27T20:33:41.220258"
   }
 ]
