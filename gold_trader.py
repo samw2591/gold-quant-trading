@@ -426,12 +426,13 @@ class GoldTrader:
                 entry_date = datetime.fromisoformat(entry_date_str)
             except:
                 entry_date = now
-            hold_days = (now - entry_date).days
+            hold_hours = (now - entry_date).total_seconds() / 3600
+            hold_display = f"{hold_hours:.0f}h" if hold_hours < 48 else f"{hold_hours/24:.1f}天"
 
             pnl_pct = (current_price - open_price) / open_price * 100 if open_price > 0 else 0
             emoji = "🟢" if profit >= 0 else "🔴"
             log.info(f"    {emoji} #{ticket} {strategy}: {lots}手 @ {open_price:.2f} "
-                     f"→ {current_price:.2f} ({pnl_pct:+.2f}%) ${profit:+.2f} {hold_days}天")
+                     f"→ {current_price:.2f} ({pnl_pct:+.2f}%) ${profit:+.2f} {hold_display}")
 
             # 出场判断
             reason = None
@@ -442,10 +443,10 @@ class GoldTrader:
             if exit_sig:
                 reason = exit_sig
 
-            # 2. 时间止损
+            # 2. 时间止损 (max_hold_bars = H1 K线数 = 小时数)
             max_hold = config.STRATEGIES.get(strategy, {}).get('max_hold_bars', 15)
-            if not reason and hold_days >= max_hold:
-                reason = f"⏰ 时间止损: {hold_days}天 >= {max_hold}天"
+            if not reason and hold_hours >= max_hold:
+                reason = f"⏰ 时间止损: 持仓{hold_hours:.0f}小时 >= 上限{max_hold}小时"
 
             if reason:
                 log.info(f"      → {reason}")
@@ -456,7 +457,7 @@ class GoldTrader:
                     'strategy': strategy, 'lots': lots,
                     'open_price': open_price, 'close_price': current_price,
                     'profit': profit, 'pnl_pct': round(pnl_pct, 2),
-                    'reason': reason, 'hold_days': hold_days,
+                    'reason': reason, 'hold_hours': round(hold_hours, 1),
                     'time': now.isoformat(),
                 }
                 exits.append(trade)
