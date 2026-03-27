@@ -958,5 +958,35 @@
     "sl": 20,
     "tp": 0,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
+  },
+  {
+    "time": "2026-03-28T01:25:22.301330",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4495.02,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=6.8 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
+  },
+  {
+    "time": "2026-03-28T01:30:22.725684",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4491.9,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=5.5 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
+  },
+  {
+    "time": "2026-03-28T01:40:23.613945",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4489.44,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=4.7 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
   }
 ]
