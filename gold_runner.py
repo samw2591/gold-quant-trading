@@ -133,6 +133,11 @@ def main():
     daily_start_pnl = trader.total_pnl.get('total_pnl', 0)
     daily_trades = 0
     last_data_sync_hour = -1  # 数据同步跟踪
+    
+    # ── 心跳检测状态 ──
+    consecutive_disconnect = 0       # 连续掉线次数
+    DISCONNECT_ALERT_THRESHOLD = 3   # 连续3次掉线 → 报警
+    last_heartbeat_alert = None      # 上次报警时间 (避免刷屏)
 
     while True:
         try:
@@ -175,6 +180,39 @@ def main():
                 continue
 
             scan_count += 1
+
+            # ── 心跳检测: EA是否在线 ──
+            if trader.bridge.is_connected():
+                if consecutive_disconnect > 0:
+                    log.info(f"❤️ EA已恢复连接 (此前断开{consecutive_disconnect}次)")
+                consecutive_disconnect = 0
+            else:
+                consecutive_disconnect += 1
+                log.warning(f"📡 EA心跳丢失 (连续{consecutive_disconnect}次)")
+                
+                if consecutive_disconnect >= DISCONNECT_ALERT_THRESHOLD:
+                    # 每30分钟最多报警一次，避免刷屏
+                    should_alert = True
+                    if last_heartbeat_alert:
+                        elapsed = (now - last_heartbeat_alert).total_seconds()
+                        if elapsed < 1800:  # 30分钟
+                            should_alert = False
+                    
+                    if should_alert:
+                        last_heartbeat_alert = now
+                        positions = trader.get_strategy_positions()
+                        pos_count = len(positions) if positions else 0
+                        alert_msg = (
+                            f"🚨 <b>MT4 EA可能宕机</b>\n\n"
+                            f"连续{consecutive_disconnect}次心跳检测失败\n"
+                            f"当前持仓: {pos_count}笔\n\n"
+                            f"❗ 请检查:\n"
+                            f"1. MT4是否运行\n"
+                            f"2. EA是否加载\n"
+                            f"3. 网络是否正常"
+                        )
+                        notifier.notify_error(alert_msg)
+                        log.warning(f"🚨 已发送宕机警报 (Telegram)")
 
             # 每次扫描都检查持仓出场
             if scan_count % 10 == 1:  # 每10次(约10分钟)打印一次状态
