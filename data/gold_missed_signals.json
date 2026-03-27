@@ -748,5 +748,75 @@
     "sl": 50,
     "tp": 116.17,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-03-27T15:04:12.430679",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4452.34,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=7.2 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:09:12.875928",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4453.59,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=8.1 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:14:13.320525",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4453.54,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=8.1 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:19:13.757645",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4451.96,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=6.2 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:29:14.648204",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4453.31,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=7.8 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:44:15.978127",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4448.53,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=3.6 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
+  },
+  {
+    "time": "2026-03-27T15:54:13.637608",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4446.26,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=2.1 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 20,
+    "tp": 0,
+    "filter_reason": "\u65b9\u5411\u51b2\u7a81(\u6301\u4ed3SELL, \u4fe1\u53f7BUY)"
   }
 ]

@@ -17,5 +17,43 @@
     "mfe": 0.51,
     "mae": 6.51,
     "mode": "paper"
+  },
+  {
+    "strategy": "P2_london_ny",
+    "direction": "BUY",
+    "entry_price": 4459.58,
+    "exit_price": 4451.75,
+    "sl": 35,
+    "tp": 89.56,
+    "lots": 0.01,
+    "pnl": -7.83,
+    "pnl_points": -7.83,
+    "exit_reason": "timeout",
+    "reason": "P2 LN\u52a8\u91cf\u505a\u591a: EMA9>4438, MACD>0, ADX=23",
+    "entry_time": "2026-03-27T15:01:42.200138",
+    "exit_time": "2026-03-27T15:05:42.558082",
+    "bars_held": 8,
+    "mfe": 0.42,
+    "mae": 9.24,
+    "mode": "paper"
+  },
+  {
+    "strategy": "P1_stoch_extreme",
+    "direction": "SELL",
+    "entry_price": 4448.15,
+    "exit_price": 4454.11,
+    "sl": 40,
+    "tp": 91.92,
+    "lots": 0.01,
+    "pnl": -5.96,
+    "pnl_points": -5.96,
+    "exit_reason": "timeout",
+    "reason": "P1 Stoch\u505a\u7a7a: K=78\u4ece\u8d85\u4e70\u56de\u843d, \u4ef7<4488",
+    "entry_time": "2026-03-27T15:08:42.811134",
+    "exit_time": "2026-03-27T15:14:43.369967",
+    "bars_held": 12,
+    "mfe": 0.44,
+    "mae": 11.85,
+    "mode": "paper"
   }
 ]

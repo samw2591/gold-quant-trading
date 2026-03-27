@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "strategy": "P1_stoch_extreme",
+    "direction": "SELL",
+    "entry_price": 4446.26,
+    "sl": 40,
+    "tp": 92.37,
+    "lots": 0.01,
+    "reason": "P1 Stoch\u505a\u7a7a: K=77\u4ece\u8d85\u4e70\u56de\u843d, \u4ef7<4487",
+    "entry_time": "2026-03-27T15:54:13.587820",
+    "bars_held": 0,
+    "max_favorable": 0.0,
+    "max_adverse": 0.0
+  }
+]
