@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import config
 from gold_trader import GoldTrader
+from paper_trader import PaperTrader, setup_paper_strategies
 
 # ============================================================
 # 时区
@@ -99,6 +100,10 @@ def main():
     log.info(f"   策略: H1 Keltner(状态机)+MACD+ORB(NY开盘突破) + M15 RSI")
 
     trader = GoldTrader()
+    
+    # 模拟盘初始化
+    paper = PaperTrader()
+    setup_paper_strategies(paper)
     
     # 启动时先同步MT4持仓状态，避免重启后重复开仓
     try:
@@ -180,6 +185,14 @@ def main():
                 trader.check_exits_only()
             except Exception as e:
                 log.error(f"出场检查出错: {e}")
+
+            # 模拟盘扫描 (和实盘共享行情数据)
+            try:
+                df_h1 = trader.get_hourly_data()
+                df_m15 = trader.get_m15_data()
+                paper.scan(df_h1, df_m15)
+            except Exception as e:
+                log.debug(f"模拟盘扫描出错: {e}")
 
             # 每5分钟做一次完整信号扫描 (M15策略需要, 每10次循环×30秒≈5分钟)
             if scan_count == 1 or scan_count % 10 == 0:
