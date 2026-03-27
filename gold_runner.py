@@ -51,8 +51,8 @@ def sync_data_to_github():
         # 先拉取远程更新，避免冲突
         subprocess.run(['git', 'pull', 'origin', 'main', '--no-rebase'],
                        cwd=repo_dir, capture_output=True, timeout=30)
-        # 推送data目录下的JSON文件
-        subprocess.run(['git', 'add', 'data/*.json'], cwd=repo_dir, 
+        # 推送data目录下的所有JSON文件 (包括data/paper/子目录)
+        subprocess.run(['git', 'add', 'data/'], cwd=repo_dir, 
                        capture_output=True, timeout=10)
         result = subprocess.run(
             ['git', 'commit', '-m', f'data sync {datetime.now().strftime("%Y-%m-%d %H:%M")}'],
