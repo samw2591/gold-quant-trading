@@ -1,11 +1,11 @@
 {
   "report_type": "morning",
-  "time": "2026-03-27T10:00:00+08:00",
-  "price_at_report": 4435,
+  "time": "2026-03-27T10:05:00+08:00",
+  "price_at_report": 4427.37,
   "direction_bias": "偏空",
-  "target_high": 4500,
-  "target_low": 4390,
+  "target_high": 4475,
+  "target_low": 4360,
   "confidence": "中",
-  "key_reasoning": "10Y国债4.42%创8个月新高+DXY连涨3天至99.9, 双重压制; H4下降趋势未变",
-  "risk_events": "密歇根消费者信心(SGT 22:00), 伊朗局势, 周五流动性变薄"
+  "key_reasoning": "宏观端：美元指数仍在99.9附近、10Y美债收益率仍处4.3%+高位，抬高持有黄金机会成本并压制反弹；微观端：昨夜跌势后仅弱反抽，优先按反弹做空/顺势空头思路对待。",
+  "risk_events": "密歇根消费者信心终值(今晚22:00 SGT/10:00 ET)；周五流动性偏薄；地缘风险(中东)随时触发急拉。"
 }
