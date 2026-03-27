@@ -47,7 +47,10 @@ def sync_data_to_github():
     """同步交易数据到GitHub (供云端日报cron读取)"""
     try:
         repo_dir = str(Path(__file__).parent)
-        # 只推送data目录下的JSON文件
+        # 先拉取远程更新，避免冲突
+        subprocess.run(['git', 'pull', 'origin', 'main', '--no-rebase'],
+                       cwd=repo_dir, capture_output=True, timeout=30)
+        # 推送data目录下的JSON文件
         subprocess.run(['git', 'add', 'data/*.json'], cwd=repo_dir, 
                        capture_output=True, timeout=10)
         result = subprocess.run(
@@ -61,7 +64,7 @@ def sync_data_to_github():
             if push_result.returncode == 0:
                 log.info("📤 交易数据已同步到GitHub")
             else:
-                log.debug(f"git push失败: {push_result.stderr.decode()[:100]}")
+                log.warning(f"git push失败: {push_result.stderr.decode()[:200]}")
         else:
             # 没有变化，不需要推送
             pass
