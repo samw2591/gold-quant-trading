@@ -648,5 +648,18 @@
     "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=56.0 > 55",
     "hold_hours": 0.0,
     "time": "2026-03-28T01:51:24.880960"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4517.76,
+    "sl_pips": 50,
+    "tp_pips": 92.2,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4517.76 > \u4e0a\u8f684514.38 (ADX=24.0)",
+    "sentiment_score": 0.4721,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-28T03:00:38.080975"
   }
 ]
