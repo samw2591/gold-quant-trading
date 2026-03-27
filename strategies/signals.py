@@ -617,7 +617,7 @@ class ORBStrategy:
                 return None
 
             range_width = self.range_high - self.range_low
-            if range_width < 3:  # 区间太窄，不可靠
+            if range_width < 8:  # 区间太窄，SL太小必止损 (8×0.75=SL$6, ATR$35下还是很小)
                 return None
             if range_width > 60:  # 区间太宽，风险太大
                 log.info(f"  [🇺🇸 ORB] 区间宽度${range_width:.2f}太大，跳过")
