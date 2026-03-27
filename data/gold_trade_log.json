@@ -544,5 +544,83 @@
     "reason": "M15 RSI\u7a7a\u5934\u51fa\u573a: RSI(2)=37.4 < 45",
     "hold_hours": 0.0,
     "time": "2026-03-27T21:03:52.842853"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4514.05,
+    "sl_pips": 50,
+    "tp_pips": 100,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=13.0 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.4599,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-28T00:34:04.504293"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16361927,
+    "strategy": "m15_rsi",
+    "lots": 0.01,
+    "open_price": 4516.53,
+    "close_price": 4518.76,
+    "profit": 2.23,
+    "pnl_pct": 0.05,
+    "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=77.6 > 55",
+    "hold_hours": 0.0,
+    "time": "2026-03-28T00:34:35.054058"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4512.33,
+    "sl_pips": 50,
+    "tp_pips": 100,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=11.9 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.4641,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-28T00:39:09.103189"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16361981,
+    "strategy": "m15_rsi",
+    "lots": 0.01,
+    "open_price": 4513.83,
+    "close_price": 4511.98,
+    "profit": -1.85,
+    "pnl_pct": -0.04,
+    "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=71.2 > 55",
+    "hold_hours": 0.0,
+    "time": "2026-03-28T00:39:39.936621"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4511.27,
+    "sl_pips": 50,
+    "tp_pips": 100,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=11.3 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.4663,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-28T00:44:14.113862"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16362010,
+    "strategy": "m15_rsi",
+    "lots": 0.01,
+    "open_price": 4511.1,
+    "close_price": 4511.25,
+    "profit": 0.15,
+    "pnl_pct": 0.0,
+    "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=67.1 > 55",
+    "hold_hours": 0.0,
+    "time": "2026-03-28T00:44:44.674735"
   }
 ]
