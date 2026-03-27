@@ -455,5 +455,16 @@
     "sentiment_score": 0.443,
     "lot_multiplier": 1.0,
     "time": "2026-03-27T14:09:04.115963"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16354070,
+    "strategy": "keltner",
+    "direction": "SELL",
+    "entry_price": 4427.82,
+    "lots": 0.01,
+    "profit": 11.77,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-03-27T19:34:20.984923"
   }
 ]

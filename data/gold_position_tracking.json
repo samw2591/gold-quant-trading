@@ -1,12 +1,1 @@
-{
-  "16354070": {
-    "strategy": "keltner",
-    "direction": "SELL",
-    "entry_price": 4427.82,
-    "entry_date": "2026.03.26 17:11:27",
-    "lots": 0.01,
-    "sl": 4480.37,
-    "last_profit": 10.8,
-    "last_price": 4417.02
-  }
-}
+{}
