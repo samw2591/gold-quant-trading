@@ -1,1 +1,12 @@
-{}
+{
+  "16362450": {
+    "strategy": "keltner",
+    "direction": "BUY",
+    "entry_price": 4516.68,
+    "entry_date": "2026.03.28 03:00:37",
+    "lots": 0.01,
+    "sl": 4465.96,
+    "last_profit": -2.27,
+    "last_price": 4514.41
+  }
+}
