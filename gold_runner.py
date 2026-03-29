@@ -187,7 +187,9 @@ def main():
                         try:
                             success = trader.bridge.close_order(ticket)
                             profit = pos.get('profit', 0)
-                            log.info(f"  {'\u2705' if success else '\u274c'} #{ticket} 平仓 {'\u6210\u529f' if success else '\u5931\u8d25'} (当\u524d\u6d6e\u76c8${profit:.2f})")
+                            emoji = '✅' if success else '❌'
+                            status_text = '成功' if success else '失败'
+                            log.info(f"  {emoji} #{ticket} 平仓 {status_text} (当前浮盈${profit:.2f})")
                             if success:
                                 notifier.notify_close(ticket, 'weekend_close', profit, '周五收盘前强制平仓')
                         except Exception as e:
