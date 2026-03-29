@@ -512,8 +512,8 @@ class GoldTrader:
                         else:
                             extreme = min(extreme, current_price) if extreme > 0 else current_price
                             new_trail = round(extreme + trail_distance, 2)
-                            old_trail = track.get('trailing_stop_price', float('inf'))
-                            trail_price = min(new_trail, old_trail) if old_trail != float('inf') else new_trail
+                            old_trail = track.get('trailing_stop_price', 0)
+                            trail_price = min(new_trail, old_trail) if old_trail > 0 else new_trail
 
                         self.tracking[track_key]['trailing_stop_price'] = trail_price
                         self._save_tracking()
