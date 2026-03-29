@@ -1,0 +1,77 @@
+[
+  {
+    "action": "OPEN",
+    "ticket": 90000001,
+    "direction": "SELL",
+    "price": 4422.7001953125,
+    "lots": 0.02,
+    "sl": 24.39,
+    "tp": 29.27,
+    "atr": 9.76,
+    "adx": 27.7,
+    "is_pyramid": false,
+    "time": "2026-03-26 16:15:00+00:00"
+  },
+  {
+    "action": "OPEN",
+    "ticket": 90000002,
+    "direction": "SELL",
+    "price": 4381.7998046875,
+    "lots": 0.01,
+    "sl": 37.14,
+    "tp": 44.57,
+    "atr": 14.86,
+    "adx": 43.2,
+    "is_pyramid": true,
+    "time": "2026-03-26 16:45:00+00:00"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 90000001,
+    "direction": "SELL",
+    "open_price": 4422.7001953125,
+    "close_price": 4386.89990234375,
+    "lots": 0.02,
+    "profit": 71.6,
+    "is_pyramid": false,
+    "reason": "Trailing Stop 触发",
+    "time": "2026-03-26 17:00:00+00:00"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 90000002,
+    "direction": "SELL",
+    "open_price": 4381.7998046875,
+    "close_price": 4418.9398046875,
+    "lots": 0.01,
+    "profit": -37.14,
+    "is_pyramid": true,
+    "reason": "MT4 硬止损触发",
+    "time": "2026-03-27 02:00:00+00:00"
+  },
+  {
+    "action": "OPEN",
+    "ticket": 90000003,
+    "direction": "SELL",
+    "price": 4438.5,
+    "lots": 0.03,
+    "sl": 16.5,
+    "tp": 19.8,
+    "atr": 6.6,
+    "adx": 24.8,
+    "is_pyramid": false,
+    "time": "2026-03-27 11:05:00+00:00"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 90000003,
+    "direction": "SELL",
+    "open_price": 4438.5,
+    "close_price": 4449.89990234375,
+    "lots": 0.03,
+    "profit": -34.2,
+    "is_pyramid": false,
+    "reason": "回放结束强制平仓",
+    "time": "2026-03-27 12:00:00+00:00"
+  }
+]
