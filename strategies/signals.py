@@ -632,6 +632,8 @@ class ORBStrategy:
                 return None
 
             sl = round(range_width * _cfg.ORB_SL_MULTIPLIER, 2)
+            min_sl = round(atr * _cfg.ORB_SL_MIN_ATR_MULTIPLIER, 2) if atr > 0 else ATR_SL_MIN
+            sl = max(sl, min_sl)
             tp = round(range_width * _cfg.ORB_TP_MULTIPLIER, 2)
 
             # 突破上沿 → 做多

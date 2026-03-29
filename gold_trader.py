@@ -207,12 +207,19 @@ class GoldTrader:
         mt4_positions = self.get_strategy_positions()
         mt4_tickets = {str(p['ticket']): p for p in mt4_positions}
         
-        # 1. 更新现有持仓的实时盈亏 (存入tracking，平仓时用)
+        # 1. 更新现有持仓的实时盈亏 + 极值价格 (存入tracking，平仓/trailing stop时用)
         for pos in mt4_positions:
             tk = str(pos['ticket'])
             if tk in self.tracking:
+                current = pos.get('current_price', 0)
                 self.tracking[tk]['last_profit'] = pos.get('profit', 0)
-                self.tracking[tk]['last_price'] = pos.get('current_price', 0)
+                self.tracking[tk]['last_price'] = current
+                direction = self.tracking[tk].get('direction', 'BUY')
+                old_extreme = self.tracking[tk].get('extreme_price', current)
+                if direction == 'BUY':
+                    self.tracking[tk]['extreme_price'] = max(old_extreme, current)
+                else:
+                    self.tracking[tk]['extreme_price'] = min(old_extreme, current) if old_extreme > 0 else current
         self._save_tracking()
         
         # 2. 检测已消失的持仓 (被MT4止损/手动平仓)
@@ -328,6 +335,9 @@ class GoldTrader:
                     'entry_date': pos.get('open_time', datetime.now().isoformat()),
                     'lots': pos.get('lots', 0),
                     'sl': pos.get('sl', 0),
+                    'trailing_stop_price': 0,
+                    'extreme_price': pos.get('open_price', 0),
+                    'is_pyramid': False,
                 }
                 self._save_tracking()
                 log.info(f"  📝 同步新仓位: #{ticket_key} {strategy} {direction} @ {pos.get('open_price', 0)}")
@@ -480,7 +490,45 @@ class GoldTrader:
             if exit_sig:
                 reason = exit_sig
 
-            # 2. 时间止损 (max_hold_bars = H1 K线数 = 小时数)
+            # 2. Keltner Trailing Stop (追踪止盈)
+            if not reason and strategy == 'keltner' and config.TRAILING_STOP_ENABLED:
+                atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
+                if atr > 0 and open_price > 0:
+                    if direction == 'BUY':
+                        float_profit = current_price - open_price
+                    else:
+                        float_profit = open_price - current_price
+
+                    activate_threshold = atr * config.TRAILING_ACTIVATE_ATR
+                    trail_distance = atr * config.TRAILING_DISTANCE_ATR
+
+                    if float_profit >= activate_threshold:
+                        extreme = track.get('extreme_price', current_price)
+                        if direction == 'BUY':
+                            extreme = max(extreme, current_price)
+                            new_trail = round(extreme - trail_distance, 2)
+                            old_trail = track.get('trailing_stop_price', 0)
+                            trail_price = max(new_trail, old_trail)
+                        else:
+                            extreme = min(extreme, current_price) if extreme > 0 else current_price
+                            new_trail = round(extreme + trail_distance, 2)
+                            old_trail = track.get('trailing_stop_price', float('inf'))
+                            trail_price = min(new_trail, old_trail) if old_trail != float('inf') else new_trail
+
+                        self.tracking[track_key]['trailing_stop_price'] = trail_price
+                        self._save_tracking()
+
+                        triggered = (direction == 'BUY' and current_price <= trail_price) or \
+                                    (direction == 'SELL' and current_price >= trail_price)
+                        if triggered:
+                            reason = (f"📈 Trailing Stop: 浮盈${float_profit:.2f} "
+                                      f"(激活阈值${activate_threshold:.2f}), "
+                                      f"价格{current_price:.2f}触及追踪止盈{trail_price:.2f}")
+                        else:
+                            log.info(f"      📈 Trailing激活: 浮盈${float_profit:.2f} "
+                                     f"追踪价{trail_price:.2f} (距离${trail_distance:.2f})")
+
+            # 3. 时间止损 (max_hold_bars = H1 K线数 = 小时数)
             max_hold = config.STRATEGIES.get(strategy, {}).get('max_hold_bars', 15)
             if not reason and hold_hours >= max_hold:
                 reason = f"⏰ 时间止损: 持仓{hold_hours:.0f}小时 >= 上限{max_hold}小时"
@@ -603,6 +651,53 @@ class GoldTrader:
         pos_type = positions[0].get('type', 0)
         return 'SELL' if pos_type == 1 else 'BUY'
 
+    def _can_add_position(self, strategy: str, signal_direction: str, df: pd.DataFrame) -> bool:
+        """检查是否允许同策略顺势加仓 (仅限Keltner强趋势)"""
+        if not config.ADD_POSITION_ENABLED:
+            return False
+
+        adx = float(df.iloc[-1]['ADX']) if not pd.isna(df.iloc[-1].get('ADX', float('nan'))) else 0
+        atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
+        if adx < config.ADD_POSITION_MIN_ADX or atr <= 0:
+            return False
+
+        same_strategy_count = 0
+        existing_direction = None
+        min_profit = float('inf')
+
+        for tk, track in self.tracking.items():
+            if track.get('strategy') == strategy:
+                same_strategy_count += 1
+                existing_direction = track.get('direction')
+                profit = track.get('last_profit', 0)
+                min_profit = min(min_profit, profit)
+
+        if same_strategy_count >= config.KELTNER_MAX_SAME_STRATEGY:
+            return False
+        if existing_direction and signal_direction != existing_direction:
+            return False
+
+        profit_threshold = atr * config.ADD_POSITION_MIN_PROFIT_ATR
+        lots = 0.01
+        for tk, track in self.tracking.items():
+            if track.get('strategy') == strategy:
+                lots = track.get('lots', 0.01)
+                break
+        float_profit_dollars = min_profit
+        float_profit_points = float_profit_dollars / (lots * config.POINT_VALUE_PER_LOT) if lots > 0 else 0
+
+        if float_profit_points < profit_threshold:
+            return False
+
+        total_positions = len(self.get_strategy_positions())
+        if total_positions >= config.MAX_POSITIONS:
+            return False
+
+        log.info(f"      ✅ 加仓条件满足: ADX={adx:.1f}≥{config.ADD_POSITION_MIN_ADX}, "
+                 f"浮盈${min_profit:.2f}(≥{profit_threshold:.1f}点×手数), "
+                 f"同策略{same_strategy_count}/{config.KELTNER_MAX_SAME_STRATEGY}")
+        return True
+
     def _check_entries(self, df: pd.DataFrame, timeframe: str = 'H1',
                         sentiment_ctx: Optional[Dict] = None) -> List[Dict]:
         """检查新入场信号"""
@@ -657,13 +752,18 @@ class GoldTrader:
                 continue
 
             # 同策略重复持仓检测: 同一策略已有持仓时不再开新仓
+            # 例外: Keltner 在 ADX>=28 且已有持仓浮盈充足时允许顺势加仓
             active_strategies = set()
             for tk, track in self.tracking.items():
                 active_strategies.add(track.get('strategy', ''))
             if strategy in active_strategies:
-                log.info(f"    🚫 {reason} — 但{strategy}已有持仓，不重复开仓")
-                self._log_missed_signal(sig, f"同策略已持仓({strategy})")
-                continue
+                direction = sig['signal']
+                if strategy == 'keltner' and self._can_add_position(strategy, direction, df):
+                    log.info(f"    🔥 {reason} — ADX强趋势+浮盈充足, 允许加仓")
+                else:
+                    log.info(f"    🚫 {reason} — 但{strategy}已有持仓，不重复开仓")
+                    self._log_missed_signal(sig, f"同策略已持仓({strategy})")
+                    continue
 
             # 方向冲突检测: 已有持仓时不开反向仓
             direction = sig['signal']  # 'BUY' 或 'SELL'
@@ -738,7 +838,10 @@ class GoldTrader:
                     'entry_date': datetime.now().isoformat(),
                     'lots': actual_lots,
                     'sl': sl_pips,
-                    'pending': True,  # 标记为待确认
+                    'pending': True,
+                    'trailing_stop_price': 0,
+                    'extreme_price': close,
+                    'is_pyramid': strategy in active_strategies,
                 }
                 self._save_tracking()
 

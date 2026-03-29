@@ -1,0 +1,25 @@
+# XAU/USD 量化交易系统 - AI 开发者规范 (Harness)
+
+## 1. 核心价值观与绝对底线 (Guardrails)
+作为本项目的 AI 开发助手，你在修改或生成任何交易逻辑代码时，必须绝对遵守以下底线：
+- **风控第一**：永远不允许生成没有 `SL (止损)` 的订单。
+- **动态适应**：所有止损 (SL) 和止盈 (TP) 必须基于 `ATR (真实波动幅度)` 或 `Keltner/Bollinger` 等动态指标计算，严禁在代码中写死固定的美元点数（除非作为极端的安全下限）。
+- **ORB 止损下限**：ORB 策略的止损绝对不能小于 `1.5 * 当前ATR`。
+- **状态隔离**：信号生成层（如 `strategy_keltner.py`）只负责输出信号字典，绝对不允许直接调用 MT4/API 执行下单。下单必须交由 `order_manager.py` 统一处理。
+
+## 2. 代码架构地图 (Architecture Map)
+当你需要上下文时，请参考以下结构：
+- `/data/`: 存放历史 K 线数据 (CSV) 和系统运行状态日志 (JSON)。绝对不要修改这里面的历史数据。
+- `gold_trade_log.json`: 记录了所有的历史开平仓详情。
+- `gold_missed_signals.json`: 记录了被风控拦截的信号。
+- `requirements.txt`: 包含 `yfinance`, `transformers`, `feedparser` 等基础依赖。
+
+## 3. 黄金 (XAU/USD) 业务领域知识 (Domain Knowledge)
+- 黄金的最小报价单位通常是 0.01。
+- 强趋势定义：当 `ADX >= 28` 时，视为极强单边趋势。
+- 策略特点：Keltner 负责捕捉趋势，M15 RSI 负责捕捉极端超卖的反弹。
+
+## 4. 你的标准工作流 (Feedback Loop)
+在修改完任何交易逻辑或风控参数后：
+1. 请自行检查是否破坏了现有的 JSON 日志结构。
+2. 确保新的逻辑能够正确写入 `filter_reason`。
