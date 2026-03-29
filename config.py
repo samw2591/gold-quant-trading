@@ -56,7 +56,13 @@ TRAILING_DISTANCE_ATR = 1.0       # 追踪距离 = 1.0×ATR
 ADD_POSITION_ENABLED = True       # 是否允许Keltner强趋势加仓
 ADD_POSITION_MIN_ADX = 28         # 加仓要求: ADX >= 28 (极强趋势)
 ADD_POSITION_MIN_PROFIT_ATR = 1.0 # 加仓要求: 已有持仓浮盈 > 1.0×ATR
+ADD_POSITION_MIN_HOLD_MINUTES = 30  # 加仓要求: 距上一笔同方向入场至少30分钟
+ADD_POSITION_MIN_DISTANCE_ATR = 0.5 # 加仓要求: 价格距上一笔入场价至少0.5×ATR
 KELTNER_MAX_SAME_STRATEGY = 2     # Keltner同策略最大持仓数
+
+# ── 趋势耗尽熔断 ──
+KELTNER_EXHAUSTION_RSI_LOW = 25   # SELL熔断: RSI14 < 25 时拒绝追空
+KELTNER_EXHAUSTION_RSI_HIGH = 75  # BUY熔断: RSI14 > 75 时拒绝追多
 
 # ============================================================
 # 策略参数

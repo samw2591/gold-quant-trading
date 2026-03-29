@@ -2,7 +2,7 @@
 历史行情回放测试器
 ==================
 回放 3/26 12:00 ~ 3/27 12:00 UTC 的 M5 K 线数据,
-验证 Keltner Trailing Stop + 顺势加仓逻辑.
+验证 Keltner Trailing Stop + 顺势加仓 + 趋势耗尽熔断逻辑.
 
 独立运行, 不连接 MT4, 日志写入 data/test_trade_log.json.
 """
@@ -107,6 +107,32 @@ class SimTrader:
                         min(old_extreme, current_price) if old_extreme > 0 else current_price
                     )
 
+    def check_hard_sl(self, bar_high: float, bar_low: float, bar_time: pd.Timestamp) -> List[int]:
+        """检查 MT4 硬止损是否被触及 (使用 K 线 High/Low)."""
+        to_close = []
+        for pos in self.positions:
+            entry = pos["open_price"]
+            sl = pos["sl"]
+            if pos["direction"] == "SELL":
+                sl_price = entry + sl
+                if bar_high >= sl_price:
+                    loss = round(-sl * pos["lots"] * config.POINT_VALUE_PER_LOT, 2)
+                    pos["current_price"] = sl_price
+                    pos["profit"] = loss
+                    print(f"  !!! 硬止损触发 #{pos['ticket']}  @ {bar_time}")
+                    print(f"      入场 {entry:.2f}  SL价 {sl_price:.2f}  K线高点 {bar_high:.2f}")
+                    to_close.append(pos["ticket"])
+            else:
+                sl_price = entry - sl
+                if bar_low <= sl_price:
+                    loss = round(-sl * pos["lots"] * config.POINT_VALUE_PER_LOT, 2)
+                    pos["current_price"] = sl_price
+                    pos["profit"] = loss
+                    print(f"  !!! 硬止损触发 #{pos['ticket']}  @ {bar_time}")
+                    print(f"      入场 {entry:.2f}  SL价 {sl_price:.2f}  K线低点 {bar_low:.2f}")
+                    to_close.append(pos["ticket"])
+        return to_close
+
     def check_trailing_stop(self, atr: float, bar_time: pd.Timestamp) -> List[int]:
         """检查 Trailing Stop, 返回需要平仓的 ticket 列表."""
         if not config.TRAILING_STOP_ENABLED or atr <= 0:
@@ -198,8 +224,9 @@ class SimTrader:
         self.positions = [p for p in self.positions if p["ticket"] != ticket]
         self.tracking.pop(tk, None)
 
-    def can_add_position(self, signal_direction: str, df_window: pd.DataFrame) -> bool:
-        """复用实盘 _can_add_position 的判断逻辑."""
+    def can_add_position(self, signal_direction: str, df_window: pd.DataFrame,
+                         bar_time: pd.Timestamp) -> bool:
+        """复用实盘 _can_add_position 的判断逻辑 (含冷却+空间验证)."""
         if not config.ADD_POSITION_ENABLED:
             return False
         if not self.positions:
@@ -219,6 +246,40 @@ class SimTrader:
         if signal_direction != existing_dir:
             return False
 
+        # 时间冷却
+        latest_entry_time = None
+        latest_entry_price = None
+        for tk, track in self.tracking.items():
+            try:
+                entry_t = datetime.fromisoformat(str(track.get("entry_date", "")))
+                if latest_entry_time is None or entry_t > latest_entry_time:
+                    latest_entry_time = entry_t
+                    latest_entry_price = track.get("entry_price", 0)
+            except (ValueError, TypeError):
+                pass
+
+        if latest_entry_time:
+            bar_dt = bar_time.to_pydatetime().replace(tzinfo=None)
+            elapsed_min = (bar_dt - latest_entry_time.replace(tzinfo=None)).total_seconds() / 60
+            if elapsed_min < config.ADD_POSITION_MIN_HOLD_MINUTES:
+                print(f"      [冷却] 加仓被拒: 上笔入场仅{elapsed_min:.0f}分钟前 "
+                      f"(需>={config.ADD_POSITION_MIN_HOLD_MINUTES}分钟)")
+                return False
+
+        # 空间验证
+        if latest_entry_price and latest_entry_price > 0:
+            current_price = float(latest["Close"])
+            min_distance = atr * config.ADD_POSITION_MIN_DISTANCE_ATR
+            if signal_direction == "SELL":
+                distance = latest_entry_price - current_price
+            else:
+                distance = current_price - latest_entry_price
+            if distance < min_distance:
+                print(f"      [空间] 加仓被拒: 价格间距${distance:.2f} "
+                      f"< 阈值${min_distance:.2f} (0.5xATR)")
+                return False
+
+        # 浮盈检查
         profit_threshold = atr * config.ADD_POSITION_MIN_PROFIT_ATR
         min_profit = min(p["profit"] for p in self.positions)
         lots = self.positions[0]["lots"]
@@ -256,9 +317,10 @@ def load_m5_data() -> pd.DataFrame:
 
 def main():
     print("=" * 70)
-    print("  黄金量化 — 历史行情回放测试")
+    print("  黄金量化 — 历史行情回放测试 v2")
     print(f"  回放区间: {REPLAY_START} ~ {REPLAY_END}")
     print(f"  目标行情: 4445 -> 4353 暴跌 (Keltner SELL)")
+    print(f"  新增: 硬止损模拟 | 加仓冷却30min+空间0.5xATR | RSI14趋势耗尽熔断")
     print("=" * 70)
 
     df = load_m5_data()
@@ -273,6 +335,7 @@ def main():
 
     min_window = 105
     bar_count = 0
+    exhaustion_blocked = 0
 
     for bar_time in replay_indices:
         bar_idx = df.index.get_loc(bar_time)
@@ -282,12 +345,21 @@ def main():
         df_window = df.iloc[:bar_idx + 1]
         latest = df_window.iloc[-1]
         close = float(latest["Close"])
+        high = float(latest["High"])
+        low = float(latest["Low"])
         atr = float(latest["ATR"]) if not pd.isna(latest.get("ATR", float("nan"))) else 0
         adx = float(latest["ADX"]) if not pd.isna(latest.get("ADX", float("nan"))) else 0
+        rsi14 = float(latest["RSI14"]) if not pd.isna(latest.get("RSI14", float("nan"))) else 50
 
         bar_count += 1
 
         trader.update_positions(close)
+
+        # --- 硬止损检查 (MT4 SL 模拟, 用 K 线 High/Low) ---
+        if trader.positions:
+            sl_closes = trader.check_hard_sl(high, low, bar_time)
+            for ticket in sl_closes:
+                trader.close_position(ticket, bar_time, "MT4 硬止损触发")
 
         # --- Trailing Stop 检查 ---
         if trader.positions:
@@ -300,6 +372,13 @@ def main():
         # --- Keltner 信号检测 ---
         sig = check_keltner_signal(df_window)
         if sig and sig["signal"] == "SELL":
+            # RSI14 趋势耗尽熔断
+            if rsi14 < config.KELTNER_EXHAUSTION_RSI_LOW:
+                print(f"  [熔断] {bar_time}  Keltner SELL 被拦截: "
+                      f"RSI14={rsi14:.1f} < {config.KELTNER_EXHAUSTION_RSI_LOW} (超卖, 拒绝追空)")
+                exhaustion_blocked += 1
+                continue
+
             if trader.keltner_count == 0:
                 lots = calc_auto_lot_size(0, sig["sl"])
                 lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, lots))
@@ -309,7 +388,7 @@ def main():
                     atr=atr, adx=adx, bar_time=bar_time,
                     is_pyramid=False,
                 )
-            elif trader.can_add_position("SELL", df_window):
+            elif trader.can_add_position("SELL", df_window, bar_time):
                 lots = calc_auto_lot_size(0, sig["sl"])
                 lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, lots))
                 trader.open_position(
@@ -318,6 +397,13 @@ def main():
                     atr=atr, adx=adx, bar_time=bar_time,
                     is_pyramid=True,
                 )
+
+        elif sig and sig["signal"] == "BUY":
+            if rsi14 > config.KELTNER_EXHAUSTION_RSI_HIGH:
+                print(f"  [熔断] {bar_time}  Keltner BUY 被拦截: "
+                      f"RSI14={rsi14:.1f} > {config.KELTNER_EXHAUSTION_RSI_HIGH} (超买, 拒绝追多)")
+                exhaustion_blocked += 1
+                continue
 
     # --- 回放结束, 强制平掉剩余持仓 ---
     if trader.positions:
@@ -329,9 +415,10 @@ def main():
 
     # --- 汇总 ---
     print(f"\n{'='*70}")
-    print(f"  回放完成")
+    print(f"  回放完成 (v2)")
     print(f"  处理 K 线: {bar_count} 根")
     print(f"  总交易笔数: {len(trader.trade_log)}")
+    print(f"  趋势耗尽熔断拦截: {exhaustion_blocked} 次")
     print(f"  总盈亏: ${trader.total_pnl:+.2f}")
     print(f"{'='*70}")
 

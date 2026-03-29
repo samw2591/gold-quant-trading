@@ -7,7 +7,8 @@
     "lots": 0.01,
     "sl": 4465.96,
     "last_profit": -18.05,
-    "last_price": 4498.63
+    "last_price": 4498.63,
+    "extreme_price": 4498.63
   },
   "16362599": {
     "strategy": "m15_rsi",
@@ -17,6 +18,7 @@
     "lots": 0.01,
     "sl": 4468.13,
     "last_profit": -4.74,
-    "last_price": 4498.63
+    "last_price": 4498.63,
+    "extreme_price": 4498.63
   }
 }

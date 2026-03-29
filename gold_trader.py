@@ -664,6 +664,8 @@ class GoldTrader:
         same_strategy_count = 0
         existing_direction = None
         min_profit = float('inf')
+        latest_entry_time = None
+        latest_entry_price = None
 
         for tk, track in self.tracking.items():
             if track.get('strategy') == strategy:
@@ -671,11 +673,39 @@ class GoldTrader:
                 existing_direction = track.get('direction')
                 profit = track.get('last_profit', 0)
                 min_profit = min(min_profit, profit)
+                try:
+                    entry_t = datetime.fromisoformat(track.get('entry_date', ''))
+                    if latest_entry_time is None or entry_t > latest_entry_time:
+                        latest_entry_time = entry_t
+                        latest_entry_price = track.get('entry_price', 0)
+                except (ValueError, TypeError):
+                    pass
 
         if same_strategy_count >= config.KELTNER_MAX_SAME_STRATEGY:
             return False
         if existing_direction and signal_direction != existing_direction:
             return False
+
+        # 时间冷却: 距上一笔同策略入场至少 N 分钟
+        if latest_entry_time:
+            elapsed_min = (datetime.now() - latest_entry_time).total_seconds() / 60
+            if elapsed_min < config.ADD_POSITION_MIN_HOLD_MINUTES:
+                log.info(f"      ⏳ 加仓冷却中: 上一笔入场仅{elapsed_min:.0f}分钟前 "
+                         f"(需≥{config.ADD_POSITION_MIN_HOLD_MINUTES}分钟)")
+                return False
+
+        # 空间验证: 价格距上一笔入场价至少 0.5×ATR
+        if latest_entry_price and latest_entry_price > 0:
+            current_price = float(df.iloc[-1]['Close'])
+            min_distance = atr * config.ADD_POSITION_MIN_DISTANCE_ATR
+            if signal_direction == 'SELL':
+                distance = latest_entry_price - current_price
+            else:
+                distance = current_price - latest_entry_price
+            if distance < min_distance:
+                log.info(f"      📏 加仓空间不足: 价格间距${distance:.2f} "
+                         f"< 阈值${min_distance:.2f} (0.5×ATR)")
+                return False
 
         profit_threshold = atr * config.ADD_POSITION_MIN_PROFIT_ATR
         lots = 0.01
@@ -750,6 +780,19 @@ class GoldTrader:
                 log.info(f"    ❄️ {reason} — 但{strategy}在冷却期中 (还剩{remaining:.0f}分钟)")
                 self._log_missed_signal(sig, f"冷却期(还剩{remaining:.0f}分钟)")
                 continue
+
+            # 趋势耗尽熔断: RSI14极端时拦截Keltner追涨/追跌
+            if strategy == 'keltner':
+                rsi14 = float(df.iloc[-1]['RSI14']) if not pd.isna(df.iloc[-1].get('RSI14', float('nan'))) else 50
+                direction = sig['signal']
+                if direction == 'SELL' and rsi14 < config.KELTNER_EXHAUSTION_RSI_LOW:
+                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} < {config.KELTNER_EXHAUSTION_RSI_LOW} (超卖, 拒绝追空)")
+                    self._log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}<{config.KELTNER_EXHAUSTION_RSI_LOW}, 超卖拒绝追空)")
+                    continue
+                if direction == 'BUY' and rsi14 > config.KELTNER_EXHAUSTION_RSI_HIGH:
+                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} > {config.KELTNER_EXHAUSTION_RSI_HIGH} (超买, 拒绝追多)")
+                    self._log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}>{config.KELTNER_EXHAUSTION_RSI_HIGH}, 超买拒绝追多)")
+                    continue
 
             # 同策略重复持仓检测: 同一策略已有持仓时不再开新仓
             # 例外: Keltner 在 ADX>=28 且已有持仓浮盈充足时允许顺势加仓
