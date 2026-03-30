@@ -4,13 +4,13 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.4543,
-    "confidence": 0.9086,
+    "score": 0.4521,
+    "confidence": 0.9042,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790180\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.45)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price pares back losses after Trump post. Why it\u2019s still down. - MSN | Why is gold price down over 14% this month, and will gold, silver and other precious metals prices remain - The Economic Times | Antam Gold Price Plummets by Rp 30,000 - Gotrade"
+    "news_summary": "\u5206\u6790189\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.45)\u3002\u4ee3\u8868\u6027\u6807\u9898: Why is gold price down over 14% this month, and will gold, silver and other precious metals prices remain - economictimes.com | Antam Gold Price Plummets by Rp 30,000 - Gotrade | Gold Market, Major Scenario Shift!? Has the buying opportunity for gold finally arrived? Surge in fear index and large-scale withdrawal of institutional investors... When will the true 'major bottom' of US stocks occur? - Moomoo"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T07:59:08.975552",
+    "timestamp": "2026-03-30T08:59:18.451945",
     "brent_oil_price": 112.57,
     "brent_oil_prev_close": 108.01,
     "brent_oil_change_pct": 4.22,
