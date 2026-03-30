@@ -586,8 +586,10 @@ class GoldTrader:
                 self.trade_log.append(trade)
                 self._save_trade_log()
 
-                # 更新总盈亏
+                # 更新总盈亏 + 发送平仓通知
                 if success:
+                    notifier.notify_close(ticket, strategy, profit, reason)
+
                     self.total_pnl['total_pnl'] = round(
                         self.total_pnl.get('total_pnl', 0) + profit, 2
                     )
