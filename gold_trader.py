@@ -368,6 +368,18 @@ class GoldTrader:
         # 获取舆情分析结果
         sentiment_ctx = self._get_sentiment_context()
 
+        # 舆情状态落盘（merge 写入，不覆盖技术面字段）
+        if sentiment_ctx:
+            state = self._load_json(self.daily_state_file, {})
+            state["macro_sentiment"] = {
+                "label": sentiment_ctx["sentiment"]["label"],
+                "score": sentiment_ctx["sentiment"]["score"],
+                "confidence": sentiment_ctx["sentiment"]["confidence"],
+                "direction_bias": sentiment_ctx["trade_modifier"]["direction_bias"],
+                "news_summary": sentiment_ctx.get("news_summary", ""),
+            }
+            self._save_json(self.daily_state_file, state)
+
         # 经济日历暂停检查
         if sentiment_ctx and not sentiment_ctx['trade_modifier']['allow_trading']:
             pause_reason = sentiment_ctx['calendar'].get('pause_reason', '未知原因')
