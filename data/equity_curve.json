@@ -1,0 +1,25 @@
+[
+  {
+    "date": "2026-03-30",
+    "equity": 2264.66,
+    "total_pnl": 264.66,
+    "daily_pnl": -39.58,
+    "daily_trades": 8,
+    "daily_wins": 4,
+    "daily_losses": 2,
+    "strategies": {
+      "keltner": {
+        "trades": 1,
+        "pnl": -42.04
+      },
+      "m15_rsi": {
+        "trades": 6,
+        "pnl": -42.63
+      },
+      "orb": {
+        "trades": 1,
+        "pnl": 31.19
+      }
+    }
+  }
+]
