@@ -4,19 +4,19 @@
   "loss_count": 1,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.472,
-    "confidence": 0.944,
+    "score": 0.4916,
+    "confidence": 0.9832,
     "keyword_score": 1.0,
-    "finbert_score": -0.1066,
-    "vader_score": 0.062,
+    "finbert_score": -0.0426,
+    "vader_score": 0.043,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790177\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.47)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 3, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Turns, Oil Rises On Iran War Fallout, Trump Threat - Investor's Business Daily"
+    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.49)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 3, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Forecast: XAU/USD gains bullish traction in a risk-averse environment - FXStreet"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T20:51:32.701821",
-    "brent_oil_price": 108.78,
+    "timestamp": "2026-03-30T21:51:59.014564",
+    "brent_oil_price": 108.79,
     "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -3.37,
+    "brent_oil_change_pct": -3.36,
     "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
     "us10y_yield_change_pct": -2.21
