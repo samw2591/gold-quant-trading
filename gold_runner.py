@@ -161,7 +161,15 @@ def main():
                     log.info(f"  🛡️ 止损余量: ${config.MAX_TOTAL_LOSS + current_pnl:.2f}")
                     log.info(f"{'='*60}")
                     try:
-                        notifier.notify_daily_report(current_pnl, day_pnl, total_trades)
+                        import json
+                        eq_file = config.DATA_DIR / "equity_curve.json"
+                        eq_record = None
+                        if eq_file.exists():
+                            with open(eq_file, "r", encoding="utf-8") as f:
+                                eq_data = json.load(f)
+                            if eq_data and isinstance(eq_data, list):
+                                eq_record = eq_data[-1]
+                        notifier.notify_daily_report(current_pnl, day_pnl, total_trades, eq_record)
                     except:
                         pass
                 

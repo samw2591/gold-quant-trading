@@ -61,16 +61,39 @@ def notify_stop_review(daily_pnl: float):
     )
 
 
-def notify_daily_report(total_pnl: float, daily_pnl: float, trade_count: int):
-    """每日绩效报告"""
+def notify_daily_report(total_pnl: float, daily_pnl: float, trade_count: int,
+                        equity_record: dict = None):
+    """每日绩效报告（含净值曲线 + 分策略明细）"""
     emoji = "🟢" if daily_pnl >= 0 else "🔴"
-    send_telegram(
-        f"📊 <b>每日绩效报告</b>\n\n"
-        f"{emoji} 当日盈亏: ${daily_pnl:+.2f}\n"
-        f"💰 累计盈亏: ${total_pnl:+.2f}\n"
-        f"📊 总交易笔数: {trade_count}\n"
-        f"🛡️ 止损余量: ${config.MAX_TOTAL_LOSS + total_pnl:.2f}"
-    )
+    lines = [
+        f"📊 <b>每日绩效报告</b>",
+        "",
+        f"{emoji} 当日盈亏: ${daily_pnl:+.2f}",
+        f"💰 累计盈亏: ${total_pnl:+.2f}",
+        f"📊 总交易笔数: {trade_count}",
+        f"🛡️ 止损余量: ${config.MAX_TOTAL_LOSS + total_pnl:.2f}",
+    ]
+
+    if equity_record:
+        equity = equity_record.get("equity", 0)
+        d_trades = equity_record.get("daily_trades", 0)
+        d_wins = equity_record.get("daily_wins", 0)
+        d_losses = equity_record.get("daily_losses", 0)
+        win_rate = f"{d_wins / d_trades * 100:.0f}%" if d_trades > 0 else "N/A"
+
+        lines.append("")
+        lines.append(f"💎 账户净值: ${equity:,.2f}")
+        lines.append(f"📈 当日: {d_trades}笔 (胜{d_wins}/负{d_losses}) 胜率{win_rate}")
+
+        strats = equity_record.get("strategies", {})
+        if strats:
+            lines.append("")
+            lines.append("<b>分策略明细:</b>")
+            for name, s in strats.items():
+                s_emoji = "✅" if s["pnl"] >= 0 else "❌"
+                lines.append(f"  {s_emoji} {name}: {s['trades']}笔 ${s['pnl']:+.2f}")
+
+    send_telegram("\n".join(lines))
 
 
 def notify_system_start():
