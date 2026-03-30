@@ -388,10 +388,14 @@ class GoldTrader:
         # 舆情状态落盘（merge 写入，不覆盖技术面字段）
         if sentiment_ctx:
             state = self._load_json(self.daily_state_file, {})
+            s = sentiment_ctx["sentiment"]
             state["macro_sentiment"] = {
-                "label": sentiment_ctx["sentiment"]["label"],
-                "score": sentiment_ctx["sentiment"]["score"],
-                "confidence": sentiment_ctx["sentiment"]["confidence"],
+                "label": s["label"],
+                "score": s["score"],
+                "confidence": s["confidence"],
+                "keyword_score": s.get("keyword_score", 0.0),
+                "finbert_score": s.get("finbert_score"),
+                "vader_score": s.get("vader_score", 0.0),
                 "direction_bias": sentiment_ctx["trade_modifier"]["direction_bias"],
                 "news_summary": sentiment_ctx.get("news_summary", ""),
             }

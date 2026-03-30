@@ -140,11 +140,15 @@ class SentimentEngine:
             sentiment, calendar_pause, risk_level
         )
 
+        details = sentiment.get("details", {})
         result = {
             "sentiment": {
                 "score": sentiment["score"],
                 "label": sentiment["label"],
                 "confidence": sentiment["confidence"],
+                "keyword_score": details.get("keyword_score", 0.0),
+                "finbert_score": details.get("finbert_score"),
+                "vader_score": details.get("vader_score", 0.0),
             },
             "calendar": calendar_info,
             "news_summary": news_summary,
