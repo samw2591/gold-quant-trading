@@ -3,10 +3,19 @@
   "pnl": -70.77,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.4001,
-    "confidence": 0.8002,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.40)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price pares back losses after Trump post. Why it\u2019s still down. - MSN | Gold price in Philippines: Rates on March 30 - FXStreet | Antam Gold Price Plummets by Rp 30,000 - Gotrade"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+  },
+  "macro_cross_assets": {
+    "timestamp": "2026-03-30T06:54:18.701574",
+    "brent_oil_price": 112.57,
+    "brent_oil_prev_close": 108.01,
+    "brent_oil_change_pct": 4.22,
+    "us10y_yield_price": 4.44,
+    "us10y_yield_prev_close": 4.42,
+    "us10y_yield_change_pct": 0.54
   }
 }
