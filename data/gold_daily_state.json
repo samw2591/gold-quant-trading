@@ -1,16 +1,16 @@
 {
-  "date": "2026-03-30",
-  "pnl": -39.58,
-  "loss_count": 2,
+  "date": "2026-03-31",
+  "pnl": 0.0,
+  "loss_count": 0,
   "macro_sentiment": {
-    "label": "NEUTRAL",
-    "score": 0.0,
-    "confidence": 0.0,
-    "keyword_score": 0.0,
-    "finbert_score": null,
-    "vader_score": 0.0,
-    "direction_bias": null,
-    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+    "label": "BULLISH",
+    "score": 0.4956,
+    "confidence": 0.9912,
+    "keyword_score": 1.0,
+    "finbert_score": -0.0542,
+    "vader_score": 0.0974,
+    "direction_bias": "BUY",
+    "news_summary": "\u5206\u6790214\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.50)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, March 30: Gold holds strong, opening above $4,500 - finance.yahoo.com | Gold price per ounce on March 30, 2026 - USA Today | Current price of gold as of March 30, 2026 - fortune.com"
   },
   "macro_cross_assets": {
     "timestamp": "2026-03-30T15:58:53.711957",
