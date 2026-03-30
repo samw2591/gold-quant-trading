@@ -3,14 +3,14 @@
   "pnl": -39.58,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.4959,
-    "confidence": 0.9918,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790190\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.50)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, March 30: Gold holds strong, opening above $4,500 - Yahoo Finance | Gold price per ounce on March 30, 2026 - USA Today | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T13:51:14.700470",
+    "timestamp": "2026-03-30T14:29:09.632027",
     "brent_oil_price": 112.57,
     "brent_oil_prev_close": 108.01,
     "brent_oil_change_pct": 4.22,
