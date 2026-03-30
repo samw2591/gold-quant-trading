@@ -1218,5 +1218,45 @@
     "sl": 36.5,
     "tp": 0,
     "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u5269167\u5206\u949f)"
+  },
+  {
+    "time": "2026-03-30T09:20:43.962332",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4458.49,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=86.9 > 85, \u8d85\u4e70\u56de\u843d",
+    "sl": 48.58,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526946\u5206\u949f)"
+  },
+  {
+    "time": "2026-03-30T09:35:48.696529",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4472.81,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=90.1 > 85, \u8d85\u4e70\u56de\u843d",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526931\u5206\u949f)"
+  },
+  {
+    "time": "2026-03-30T09:40:56.518532",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4465.12,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=87.0 > 85, \u8d85\u4e70\u56de\u843d",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526926\u5206\u949f)"
+  },
+  {
+    "time": "2026-03-30T09:45:57.984386",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4472.01,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=89.8 > 85, \u8d85\u4e70\u56de\u843d",
+    "sl": 50,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526921\u5206\u949f)"
   }
 ]
