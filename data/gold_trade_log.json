@@ -787,5 +787,18 @@
     "sentiment_score": 0.4015,
     "lot_multiplier": 1.0,
     "time": "2026-03-30T10:41:28.930054"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16376956,
+    "strategy": "m15_rsi",
+    "lots": 0.01,
+    "open_price": 4474.36,
+    "close_price": 4481.48,
+    "profit": -7.12,
+    "pnl_pct": 0.16,
+    "reason": "M15 RSI\u7a7a\u5934\u51fa\u573a: RSI(2)=44.4 < 45",
+    "hold_hours": 0.0,
+    "time": "2026-03-30T10:57:20.917542"
   }
 ]
