@@ -106,6 +106,41 @@ class GoldTrader:
         with open(path, 'w') as f:
             json.dump(data, f, indent=2, default=str)
 
+    def _append_sentiment_history(self, daily_state: dict):
+        """Append today's sentiment snapshot to history file (one record per day)."""
+        history_file = config.DATA_DIR / "sentiment_history.json"
+        history = self._load_json(history_file, [])
+        today = daily_state.get("date", str(datetime.now().date()))
+        ms = daily_state.get("macro_sentiment", {})
+        ca = daily_state.get("macro_cross_assets", {})
+
+        record = {
+            "date": today,
+            "label": ms.get("label"),
+            "score": ms.get("score"),
+            "confidence": ms.get("confidence"),
+            "keyword_score": ms.get("keyword_score"),
+            "finbert_score": ms.get("finbert_score"),
+            "vader_score": ms.get("vader_score"),
+            "direction_bias": ms.get("direction_bias"),
+            "brent_oil_price": ca.get("brent_oil_price"),
+            "brent_oil_change_pct": ca.get("brent_oil_change_pct"),
+            "us10y_yield_price": ca.get("us10y_yield_price"),
+            "us10y_yield_change_pct": ca.get("us10y_yield_change_pct"),
+        }
+
+        # Replace existing record for today, or append new
+        replaced = False
+        for i, r in enumerate(history):
+            if r.get("date") == today:
+                history[i] = record
+                replaced = True
+                break
+        if not replaced:
+            history.append(record)
+
+        self._save_json(history_file, history)
+
     def _save_tracking(self):
         self._save_json(self.tracking_file, self.tracking)
 
@@ -408,6 +443,9 @@ class GoldTrader:
                 except Exception as e:
                     log.debug(f"跨资产数据获取失败 (不影响交易): {e}")
             self._save_json(self.daily_state_file, state)
+
+            # 追加到历史文件（按日期去重，每天只保留最新一条）
+            self._append_sentiment_history(state)
 
         # 经济日历暂停检查
         if sentiment_ctx and not sentiment_ctx['trade_modifier']['allow_trading']:
