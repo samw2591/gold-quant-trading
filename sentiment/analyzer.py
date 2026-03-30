@@ -101,6 +101,32 @@ GOLD_KEYWORDS = {
 # Trump amplifier
 TRUMP_AMPLIFIER = 1.3
 
+# Subject-aware detection: headlines mentioning gold directly vs macro-only
+GOLD_DIRECT_KEYWORDS = {"gold", "xau", "bullion", "precious metal", "gold price"}
+
+# High-impact keywords get 3x weight in FinBERT/VADER scoring
+HIGH_IMPACT_KEYWORDS = {
+    "rate cut", "rate hike", "central bank", "fomc", "fed",
+    "gold surge", "gold crash", "gold record", "safe haven",
+    "war", "ceasefire", "peace deal",
+}
+
+
+def _is_gold_direct(headline: str) -> bool:
+    """True if headline explicitly mentions gold/XAU (FinBERT score used as-is).
+    False for macro-only news (FinBERT/VADER scores should be inverted for gold context)."""
+    h = headline.lower()
+    return any(kw in h for kw in GOLD_DIRECT_KEYWORDS)
+
+
+def _headline_weight(headline: str) -> int:
+    """Return scoring weight: 3 for high-impact headlines, 1 otherwise."""
+    h = headline.lower()
+    for kw in HIGH_IMPACT_KEYWORDS:
+        if kw in h:
+            return 3
+    return 1
+
 # ---------------------------------------------------------------------------
 # VADER setup (lazy init)
 # ---------------------------------------------------------------------------
@@ -257,32 +283,45 @@ class SentimentAnalyzer:
         vader = _get_vader()
         if vader is None:
             return 0.0
-        total = 0.0
+        weighted_total = 0.0
+        total_weight = 0
         for h in headlines:
-            total += vader.polarity_scores(h)["compound"]
-        return total / len(headlines) if headlines else 0.0
+            score = vader.polarity_scores(h)["compound"]
+            if not _is_gold_direct(h):
+                score *= -1
+            w = _headline_weight(h)
+            weighted_total += score * w
+            total_weight += w
+        return weighted_total / total_weight if total_weight > 0 else 0.0
 
     def _finbert_analyze(self, headlines: List[str]) -> Optional[float]:
         pipe = _get_finbert()
         if pipe is None:
             return None
         try:
-            # 只分析前50条，避免太慢
             batch = headlines[:50]
             results = pipe(batch, batch_size=16)
         except Exception as exc:
             logger.warning(f"[情绪分析] FinBERT推理失败: {exc}")
             return None
 
-        total = 0.0
-        for r in results:
+        weighted_total = 0.0
+        total_weight = 0
+        for headline, r in zip(batch, results):
             label = r["label"].lower()
             prob = r["score"]
             if label == "positive":
-                total += prob
+                score = prob
             elif label == "negative":
-                total -= prob
-        return total / len(batch) if batch else 0.0
+                score = -prob
+            else:
+                score = 0.0
+            if not _is_gold_direct(headline):
+                score *= -1
+            w = _headline_weight(headline)
+            weighted_total += score * w
+            total_weight += w
+        return weighted_total / total_weight if total_weight > 0 else 0.0
 
     def _empty_result(self) -> Dict:
         return {

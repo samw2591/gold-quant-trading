@@ -33,6 +33,14 @@ except Exception as _import_err:
     SENTIMENT_AVAILABLE = False
     logging.getLogger(__name__).warning(f"舆情模块导入失败: {_import_err}")
 
+# 跨资产宏观监控 (安全导入，失败不影响交易)
+try:
+    from sentiment.macro_monitor import MacroMonitor
+    MACRO_MONITOR_AVAILABLE = True
+except Exception as _import_err:
+    MACRO_MONITOR_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"宏观监控模块导入失败: {_import_err}")
+
 # 策略默认止损止盈 (美元)
 STRATEGY_PARAMS = {
     'keltner': {'sl': 20, 'tp': 35, 'max_bars': 15},
@@ -75,6 +83,15 @@ class GoldTrader:
                 log.warning(f"舆情模块初始化失败 (不影响交易): {e}")
         else:
             log.info("舆情模块未安装，纯技术面交易")
+
+        # 初始化跨资产宏观监控 (观察模式，不影响交易)
+        self.macro_monitor = None
+        if MACRO_MONITOR_AVAILABLE:
+            try:
+                self.macro_monitor = MacroMonitor(cache_ttl_seconds=600)
+                log.info("📊 跨资产宏观监控已加载 (观察模式)")
+            except Exception as e:
+                log.warning(f"宏观监控初始化失败 (不影响交易): {e}")
 
     def _load_json(self, path, default):
         if path.exists():
@@ -367,6 +384,26 @@ class GoldTrader:
 
         # 获取舆情分析结果
         sentiment_ctx = self._get_sentiment_context()
+
+        # 舆情状态落盘（merge 写入，不覆盖技术面字段）
+        if sentiment_ctx:
+            state = self._load_json(self.daily_state_file, {})
+            state["macro_sentiment"] = {
+                "label": sentiment_ctx["sentiment"]["label"],
+                "score": sentiment_ctx["sentiment"]["score"],
+                "confidence": sentiment_ctx["sentiment"]["confidence"],
+                "direction_bias": sentiment_ctx["trade_modifier"]["direction_bias"],
+                "news_summary": sentiment_ctx.get("news_summary", ""),
+            }
+            # 跨资产宏观数据落盘 (观察模式)
+            if self.macro_monitor:
+                try:
+                    cross_assets = self.macro_monitor.get_cross_asset_snapshot()
+                    if cross_assets:
+                        state["macro_cross_assets"] = cross_assets
+                except Exception as e:
+                    log.debug(f"跨资产数据获取失败 (不影响交易): {e}")
+            self._save_json(self.daily_state_file, state)
 
         # 经济日历暂停检查
         if sentiment_ctx and not sentiment_ctx['trade_modifier']['allow_trading']:

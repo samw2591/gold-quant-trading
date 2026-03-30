@@ -93,5 +93,43 @@
     "mfe": 6.35,
     "mae": 1.39,
     "mode": "paper"
+  },
+  {
+    "strategy": "P2_london_ny",
+    "direction": "BUY",
+    "entry_price": 4530.25,
+    "exit_price": 4524.1,
+    "sl": 35,
+    "tp": 96.26,
+    "lots": 0.01,
+    "pnl": -6.15,
+    "pnl_points": -6.15,
+    "exit_reason": "timeout",
+    "reason": "P2 LN\u52a8\u91cf\u505a\u591a: EMA9>4486, MACD>0, ADX=20",
+    "entry_time": "2026-03-30T15:01:29.465101",
+    "exit_time": "2026-03-30T15:05:29.829355",
+    "bars_held": 8,
+    "mfe": 1.45,
+    "mae": 6.54,
+    "mode": "paper"
+  },
+  {
+    "strategy": "P2_london_ny",
+    "direction": "BUY",
+    "entry_price": 4527.38,
+    "exit_price": 4529.79,
+    "sl": 35,
+    "tp": 94.17,
+    "lots": 0.01,
+    "pnl": 2.41,
+    "pnl_points": 2.41,
+    "exit_reason": "timeout",
+    "reason": "P2 LN\u52a8\u91cf\u505a\u591a: EMA9>4489, MACD>0, ADX=21",
+    "entry_time": "2026-03-30T16:01:43.292494",
+    "exit_time": "2026-03-30T16:05:43.582981",
+    "bars_held": 8,
+    "mfe": 3.25,
+    "mae": 1.56,
+    "mode": "paper"
   }
 ]

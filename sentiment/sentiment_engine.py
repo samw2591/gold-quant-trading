@@ -224,18 +224,14 @@ class SentimentEngine:
         """Decide trading adjustments based on sentiment + calendar.
 
         Decision logic:
-          1. Calendar says pause → allow_trading=False
-          2. Extreme BULLISH (>0.5) → direction_bias=BUY, lot_multiplier=1.2
-          3. Extreme BEARISH (<-0.5) → direction_bias=SELL, lot_multiplier=1.2
-          4. Otherwise → neutral
-          5. HIGH calendar risk → lot_multiplier *= 0.5
+          1. Calendar says pause -> allow_trading=False
+          2. Use analyzer's BULLISH/BEARISH label (threshold 0.15) with confidence >= 0.3
+          3. HIGH calendar risk -> lot_multiplier *= 0.5
         """
-        # Default
         allow_trading = True
         direction_bias: Optional[str] = None
         lot_multiplier = 1.0
 
-        # 1. Calendar pause overrides everything
         if calendar_pause:
             return {
                 "allow_trading": False,
@@ -243,16 +239,15 @@ class SentimentEngine:
                 "lot_multiplier": 0.0,
             }
 
-        # 2-3. Sentiment-based direction bias
-        score = sentiment["score"]
-        if score > 0.5:
+        label = sentiment.get("label", "NEUTRAL")
+        confidence = sentiment.get("confidence", 0.0)
+        if label == "BULLISH" and confidence >= 0.3:
             direction_bias = "BUY"
             lot_multiplier = 1.2
-        elif score < -0.5:
+        elif label == "BEARISH" and confidence >= 0.3:
             direction_bias = "SELL"
             lot_multiplier = 1.2
 
-        # 5. Calendar risk scaling
         if risk_level == "HIGH":
             lot_multiplier *= 0.5
         elif risk_level == "EXTREME":
