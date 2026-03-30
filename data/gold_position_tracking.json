@@ -9,20 +9,7 @@
     "trailing_stop_price": 0,
     "extreme_price": 4578.34,
     "is_pyramid": false,
-    "last_profit": -38.92,
-    "last_price": 4519.88
-  },
-  "16379799": {
-    "strategy": "m15_rsi",
-    "direction": "BUY",
-    "entry_price": 4554.97,
-    "entry_date": "2026.03.30 21:36:10",
-    "lots": 0.01,
-    "sl": 4511.56,
-    "trailing_stop_price": 0,
-    "extreme_price": 4559.16,
-    "is_pyramid": false,
-    "last_profit": -35.09,
-    "last_price": 4519.88
+    "last_profit": -16.69,
+    "last_price": 4542.11
   }
 }
