@@ -4,21 +4,21 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.5052,
-    "confidence": 1.0,
+    "score": 0.4682,
+    "confidence": 0.9364,
     "keyword_score": 1.0,
-    "finbert_score": -0.033,
-    "vader_score": 0.1115,
+    "finbert_score": -0.1288,
+    "vader_score": 0.0884,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790197\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.51)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of March 30, 2026 - Fortune | Gold price today, Monday, March 30: Gold holds strong, opening above $4,500 - Yahoo Finance | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance"
+    "news_summary": "\u5206\u6790211\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.47)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of March 30, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Turns, Oil Rises On Iran War Fallout, Trump Threat - Investor's Business Daily"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T16:59:55.068413",
-    "brent_oil_price": 107.36,
+    "timestamp": "2026-03-30T18:00:18.677092",
+    "brent_oil_price": 107.63,
     "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -4.63,
-    "us10y_yield_price": 4.33,
+    "brent_oil_change_pct": -4.39,
+    "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
-    "us10y_yield_change_pct": -2.52
+    "us10y_yield_change_pct": -2.21
   }
 }
