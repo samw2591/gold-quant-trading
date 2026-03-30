@@ -3,14 +3,17 @@
   "pnl": -39.58,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.4953,
-    "confidence": 0.9906,
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790112\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.50)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | How High Can Gold Go? Robert Kiyosaki\u2019s XAU/USD Price Prediction Targets $35K - Finance Magnates | Gold (XAUUSD) Up or Down on March 31? Trading Odds & Predictions (Mar. 31, 2026) - Polymarket"
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T14:53:53.976117",
+    "timestamp": "2026-03-30T15:34:46.543139",
     "brent_oil_price": 112.57,
     "brent_oil_prev_close": 108.01,
     "brent_oil_change_pct": 4.22,
