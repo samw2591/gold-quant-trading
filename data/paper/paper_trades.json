@@ -131,5 +131,24 @@
     "mfe": 3.25,
     "mae": 1.56,
     "mode": "paper"
+  },
+  {
+    "strategy": "P1_stoch_extreme",
+    "direction": "BUY",
+    "entry_price": 4511.48,
+    "exit_price": 4504.82,
+    "sl": 40,
+    "tp": 86.04,
+    "lots": 0.01,
+    "pnl": -6.66,
+    "pnl_points": -6.66,
+    "exit_reason": "timeout",
+    "reason": "P1 Stoch\u505a\u591a: K=21\u4ece\u8d85\u5356\u56de\u5347, \u4ef7>4491",
+    "entry_time": "2026-03-31T03:36:02.693056",
+    "exit_time": "2026-03-31T03:42:04.827687",
+    "bars_held": 12,
+    "mfe": 1.38,
+    "mae": 18.57,
+    "mode": "paper"
   }
 ]
