@@ -850,5 +850,18 @@
     "profit": 31.19,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
     "time": "2026-03-30T19:45:30.735721"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4558.2,
+    "sl_pips": 50,
+    "tp_pips": 91.02,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4558.20 > \u4e0a\u8f684554.76 (ADX=24.8)",
+    "sentiment_score": 0.4837,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-30T20:05:42.536872"
   }
 ]
