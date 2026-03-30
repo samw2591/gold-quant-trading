@@ -4,13 +4,13 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.5121,
-    "confidence": 1.0,
+    "score": 0.4959,
+    "confidence": 0.9918,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790205\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.51)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, March 30: Gold holds strong, opening above $4,500 - finance.yahoo.com | Gold and silver slide: Has the Iran war reversed safe-haven demand? - Euronews.com | Why is gold price down over 14% this month, and will gold, silver and other precious metals prices remain - The Economic Times"
+    "news_summary": "\u5206\u6790190\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.50)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, March 30: Gold holds strong, opening above $4,500 - Yahoo Finance | Gold price per ounce on March 30, 2026 - USA Today | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T12:50:54.316456",
+    "timestamp": "2026-03-30T13:51:14.700470",
     "brent_oil_price": 112.57,
     "brent_oil_prev_close": 108.01,
     "brent_oil_change_pct": 4.22,

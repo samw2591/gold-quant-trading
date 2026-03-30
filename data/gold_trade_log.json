@@ -863,5 +863,18 @@
     "sentiment_score": 0.4837,
     "lot_multiplier": 1.0,
     "time": "2026-03-30T20:05:42.536872"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4550.52,
+    "sl_pips": 40.35,
+    "tp_pips": 80.7,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=14.5 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.5072,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-30T21:36:10.727414"
   }
 ]
