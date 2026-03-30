@@ -3,10 +3,10 @@
   "pnl": -70.77,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "NEUTRAL",
-    "score": 0.0,
-    "confidence": 0.0,
-    "direction_bias": null,
-    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+    "label": "BULLISH",
+    "score": 0.4115,
+    "confidence": 0.823,
+    "direction_bias": "BUY",
+    "news_summary": "\u5206\u6790135\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.41)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price pares back losses after Trump post. Why it\u2019s still down. - MSN | Antam Gold Price Plummets by Rp 30,000 - Gotrade | Silver Price Today | Silver Spot Price Charts - SD Bullion"
   }
 }
