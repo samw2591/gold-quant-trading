@@ -16,15 +16,15 @@
   {
     "date": "2026-03-31",
     "label": "BULLISH",
-    "score": 0.4682,
-    "confidence": 0.9364,
+    "score": 0.4606,
+    "confidence": 0.9212,
     "keyword_score": 1.0,
-    "finbert_score": -0.1288,
-    "vader_score": 0.0884,
+    "finbert_score": -0.1489,
+    "vader_score": 0.0844,
     "direction_bias": "BUY",
-    "brent_oil_price": 107.63,
-    "brent_oil_change_pct": -4.39,
-    "us10y_yield_price": 4.34,
-    "us10y_yield_change_pct": -2.21
+    "brent_oil_price": 107.78,
+    "brent_oil_change_pct": -4.26,
+    "us10y_yield_price": 4.35,
+    "us10y_yield_change_pct": -2.07
   }
 ]

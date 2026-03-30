@@ -889,5 +889,16 @@
     "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=55.9 > 55",
     "hold_hours": 0.0,
     "time": "2026-03-30T22:38:20.455660"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16379466,
+    "strategy": "keltner",
+    "direction": "BUY",
+    "entry_price": 4558.8,
+    "lots": 0.01,
+    "profit": -46.33,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-03-31T02:54:44.052749"
   }
 ]

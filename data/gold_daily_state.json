@@ -1,24 +1,24 @@
 {
   "date": "2026-03-31",
-  "pnl": 0.0,
-  "loss_count": 0,
+  "pnl": -46.33,
+  "loss_count": 1,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.4682,
-    "confidence": 0.9364,
+    "score": 0.4606,
+    "confidence": 0.9212,
     "keyword_score": 1.0,
-    "finbert_score": -0.1288,
-    "vader_score": 0.0884,
+    "finbert_score": -0.1489,
+    "vader_score": 0.0844,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790211\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.47)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of March 30, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Turns, Oil Rises On Iran War Fallout, Trump Threat - Investor's Business Daily"
+    "news_summary": "\u5206\u6790204\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.46)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Current price of gold as of March 30, 2026 - Fortune | Gold Price Turns, Oil Rises On Iran War Fallout, Trump Threat - Investor's Business Daily"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T18:00:18.677092",
-    "brent_oil_price": 107.63,
+    "timestamp": "2026-03-30T18:50:40.293744",
+    "brent_oil_price": 107.78,
     "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -4.39,
-    "us10y_yield_price": 4.34,
+    "brent_oil_change_pct": -4.26,
+    "us10y_yield_price": 4.35,
     "us10y_yield_prev_close": 4.44,
-    "us10y_yield_change_pct": -2.21
+    "us10y_yield_change_pct": -2.07
   }
 }
