@@ -141,6 +141,57 @@ class GoldTrader:
 
         self._save_json(history_file, history)
 
+    def _append_equity_record(self):
+        """Append today's equity + per-strategy stats to history (one record per day)."""
+        equity_file = config.DATA_DIR / "equity_curve.json"
+        history = self._load_json(equity_file, [])
+        today = str(datetime.now().date())
+
+        total_pnl = self.total_pnl.get("total_pnl", 0)
+        equity = round(config.CAPITAL + total_pnl, 2)
+
+        # Scan trade_log for today's closed trades, grouped by strategy
+        strat_stats: Dict[str, Dict] = {}
+        daily_wins = 0
+        daily_trade_count = 0
+        for entry in self.trade_log:
+            if entry.get("action") not in ("CLOSE", "CLOSE_DETECTED"):
+                continue
+            t = entry.get("time", "")
+            if not t.startswith(today):
+                continue
+            daily_trade_count += 1
+            profit = entry.get("profit", 0)
+            if profit > 0:
+                daily_wins += 1
+            strat = entry.get("strategy", "unknown")
+            if strat not in strat_stats:
+                strat_stats[strat] = {"trades": 0, "pnl": 0.0}
+            strat_stats[strat]["trades"] += 1
+            strat_stats[strat]["pnl"] = round(strat_stats[strat]["pnl"] + profit, 2)
+
+        record = {
+            "date": today,
+            "equity": equity,
+            "total_pnl": total_pnl,
+            "daily_pnl": self.daily_pnl,
+            "daily_trades": daily_trade_count,
+            "daily_wins": daily_wins,
+            "daily_losses": self.daily_loss_count,
+            "strategies": strat_stats,
+        }
+
+        replaced = False
+        for i, r in enumerate(history):
+            if r.get("date") == today:
+                history[i] = record
+                replaced = True
+                break
+        if not replaced:
+            history.append(record)
+
+        self._save_json(equity_file, history)
+
     def _save_tracking(self):
         self._save_json(self.tracking_file, self.tracking)
 
@@ -519,6 +570,9 @@ class GoldTrader:
                 if remaining > 0:
                     log.info(f"  ❄️ {strat} 冷却中 (还剩{remaining:.0f}分钟)")
         log.info(f"{'='*60}")
+
+        # 每日净值曲线 + 分策略绩效追加记录
+        self._append_equity_record()
 
         return {"exits": exits, "entries": entries}
 
