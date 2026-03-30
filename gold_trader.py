@@ -619,9 +619,13 @@ class GoldTrader:
             direction = track.get('direction', 'BUY')
 
             # 1. 策略出场信号
-            exit_sig = check_exit_signal(df, strategy, direction)
-            if exit_sig:
-                reason = exit_sig
+            # M15 RSI: 最小持仓15分钟(1根K线), 防止RSI(2)在K线内闪烁导致秒进秒出
+            if strategy in ('m15_rsi', 'm5_rsi') and hold_hours < 0.25:
+                pass
+            else:
+                exit_sig = check_exit_signal(df, strategy, direction)
+                if exit_sig:
+                    reason = exit_sig
 
             # 2. Keltner Trailing Stop (追踪止盈)
             if not reason and strategy == 'keltner' and config.TRAILING_STOP_ENABLED:
