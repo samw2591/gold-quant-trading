@@ -813,5 +813,42 @@
     "sentiment_score": 0.3991,
     "lot_multiplier": 1.0,
     "time": "2026-03-30T14:10:19.781918"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.02,
+    "price": 4527.19,
+    "sl_pips": 24.09,
+    "tp_pips": 48.18,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=12.4 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.4827,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-30T19:05:19.274031"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16379016,
+    "strategy": "m15_rsi",
+    "lots": 0.02,
+    "open_price": 4528.45,
+    "close_price": 4531.8,
+    "profit": 6.7,
+    "pnl_pct": 0.07,
+    "reason": "M15 RSI\u591a\u5934\u51fa\u573a: RSI(2)=65.4 > 55",
+    "hold_hours": 0.0,
+    "time": "2026-03-30T19:06:50.105478"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16377960,
+    "strategy": "orb",
+    "direction": "BUY",
+    "entry_price": 4530.08,
+    "lots": 0.01,
+    "profit": 31.19,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-03-30T19:45:30.735721"
   }
 ]

@@ -1,15 +1,1 @@
-{
-  "16377960": {
-    "strategy": "orb",
-    "direction": "BUY",
-    "entry_price": 4530.08,
-    "entry_date": "2026.03.30 14:10:19",
-    "lots": 0.01,
-    "sl": 4477.93,
-    "trailing_stop_price": 0,
-    "extreme_price": 4550.16,
-    "is_pyramid": false,
-    "last_profit": 2.72,
-    "last_price": 4532.8
-  }
-}
+{}
