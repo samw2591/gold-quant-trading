@@ -4,9 +4,9 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.424,
-    "confidence": 0.848,
+    "score": 0.4001,
+    "confidence": 0.8002,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790151\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.42)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price pares back losses after Trump post. Why it\u2019s still down. - MSN | Antam Gold Price Plummets by Rp 30,000 - Gotrade | Gold price in India: Rates on March 30 - FXStreet"
+    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.40)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price pares back losses after Trump post. Why it\u2019s still down. - MSN | Gold price in Philippines: Rates on March 30 - FXStreet | Antam Gold Price Plummets by Rp 30,000 - Gotrade"
   }
 }
