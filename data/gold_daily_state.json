@@ -1,5 +1,12 @@
 {
   "date": "2026-03-30",
   "pnl": -70.77,
-  "loss_count": 2
+  "loss_count": 2,
+  "macro_sentiment": {
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+  }
 }
