@@ -1,14 +1,16 @@
 {
-  "report_type": "evening",
-  "time": "2026-03-27T22:00:00+08:00",
-  "price_at_report": 4429.0,
+  "report_type": "morning",
+  "time": "2026-03-30T08:00:00+08:00",
+  "price_at_report": 4500.0,
   "direction_bias": "中性",
-  "target_high": 4500,
-  "target_low": 4350,
-  "confidence": "中",
-  "key_reasoning": "日线反弹但仍属大跌后的修复段，强美元/高收益率背景下反弹更可能在上方阻力位受压回落。",
-  "risk_events": "密歇根消费者信心终值(今晚22:00 SGT)及其通胀预期分项；周末前流动性走低；地缘风险突发。",
-  "today_pnl": "-39.05",
-  "today_trades": 5,
-  "strategy_health": {"keltner": "🟡", "orb": "🟡", "m15_rsi": "🟡"}
+  "target_high": 4560,
+  "target_low": 4440,
+  "confidence": "低",
+  "key_reasoning": "缺少当日实时价与宏观更新，结合上周交易记录显示进入高波动区间，策略以区间思维与事件前防守为主。",
+  "risk_events": "数据暂缺：建议关注今晚美股开盘前后及任何与伊朗/中东能源相关的突发消息；若有美国重要数据（就业/通胀/ISM等）以日历为准。",
+  "macro_matrix": {
+    "dxy": "涨(数据可能滞后)",
+    "yield_10y": "约4.24%(数据可能滞后)",
+    "geopolitical": "中东冲突与能源运输风险仍可能驱动避险(需实时核对)"
+  }
 }
