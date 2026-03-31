@@ -1,6 +1,6 @@
 {
   "date": "2026-03-31",
-  "pnl": -102.83,
+  "pnl": -87.63,
   "loss_count": 2,
   "macro_sentiment": {
     "label": "NEUTRAL",
@@ -13,7 +13,7 @@
     "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T10:56:52.794790",
+    "timestamp": "2026-03-31T11:49:44.824641",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,
