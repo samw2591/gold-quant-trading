@@ -3,17 +3,17 @@
   "pnl": -102.83,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.3177,
-    "confidence": 0.4765,
-    "keyword_score": 1.0,
-    "finbert_score": 0.0345,
-    "vader_score": 0.0021,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790194\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.32)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - forex.com | Why is gold price heading for biggest monthly drop in over 17 years, and will gold, silver and other preci - The Economic Times"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T09:55:56.959809",
+    "timestamp": "2026-03-31T10:56:52.794790",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,
