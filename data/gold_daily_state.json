@@ -4,19 +4,19 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2954,
-    "confidence": 0.4431,
+    "score": 0.3319,
+    "confidence": 0.4978,
     "keyword_score": 1.0,
-    "finbert_score": -0.038,
-    "vader_score": 0.0719,
+    "finbert_score": 0.0241,
+    "vader_score": 0.099,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790190\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.30)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - fortune.com | 3 gold price questions investors should ask this April - CBS News | Gold Price Forecast 2026: JP Morgan vs. ANZ on $5,800 Outlook - News and Statistics - IndexBox"
+    "news_summary": "\u5206\u6790171\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.33)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | 3 gold price questions investors should ask this April - CBS News | Gold Price Forecast 2026: JP Morgan vs. ANZ on $5,800 Outlook - News and Statistics - IndexBox"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T21:57:17.138174",
-    "brent_oil_price": 103.28,
+    "timestamp": "2026-03-31T22:57:42.771757",
+    "brent_oil_price": 104.58,
     "brent_oil_prev_close": 112.78,
-    "brent_oil_change_pct": -8.42,
+    "brent_oil_change_pct": -7.27,
     "us10y_yield_price": 4.31,
     "us10y_yield_prev_close": 4.34,
     "us10y_yield_change_pct": -0.71
