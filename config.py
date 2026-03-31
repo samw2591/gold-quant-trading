@@ -29,7 +29,7 @@ STOP_LOSS_PIPS = 20       # 默认止损距离 ($20 = 0.03手亏$60)
 MAGIC_NUMBER = 20260325   # EA魔术号 (区分手动单和策略单)
 SLIPPAGE = 5              # 最大滑点 (点)
 DAILY_MAX_LOSS = 9999     # 单日最大亏损金额 (已改用笔数控制，此项保留作极端保护)
-DAILY_MAX_LOSSES = 3      # 单日最大亏损笔数 (达到后停止交易，回测Sharpe 0.84→2.84)
+DAILY_MAX_LOSSES = 5      # 单日最大亏损笔数
 COOLDOWN_BARS = 3         # 止损后冷却期 (3根H1 K线 = 3小时)
 
 # ── ATR自动调仓 ──
