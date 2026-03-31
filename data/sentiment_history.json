@@ -30,14 +30,14 @@
   {
     "date": "2026-04-01",
     "label": "BULLISH",
-    "score": 0.2774,
-    "confidence": 0.4161,
+    "score": 0.2954,
+    "confidence": 0.4431,
     "keyword_score": 1.0,
-    "finbert_score": -0.046,
-    "vader_score": 0.0021,
+    "finbert_score": -0.038,
+    "vader_score": 0.0719,
     "direction_bias": "BUY",
-    "brent_oil_price": 103.25,
-    "brent_oil_change_pct": -8.45,
+    "brent_oil_price": 103.28,
+    "brent_oil_change_pct": -8.42,
     "us10y_yield_price": 4.31,
     "us10y_yield_change_pct": -0.71
   }
