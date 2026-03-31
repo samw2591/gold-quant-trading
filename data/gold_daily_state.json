@@ -1,19 +1,19 @@
 {
-  "date": "2026-03-31",
-  "pnl": -87.63,
-  "loss_count": 2,
+  "date": "2026-04-01",
+  "pnl": 0.0,
+  "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2653,
-    "confidence": 0.3979,
+    "score": 0.2564,
+    "confidence": 0.3846,
     "keyword_score": 1.0,
-    "finbert_score": -0.0572,
-    "vader_score": -0.0305,
+    "finbert_score": -0.0867,
+    "vader_score": -0.001,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790189\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.27)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold: Month Day, Year - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price today, Tuesday, March 31: Gold price strengthens after report that Trump is considering war exit - Yahoo Finance"
+    "news_summary": "\u5206\u6790185\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.26)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold: Month Day, Year - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price today, Tuesday, March 31: Gold price strengthens after report that Trump is considering war exit - Yahoo Finance"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T14:56:13.221873",
+    "timestamp": "2026-03-31T15:56:38.055112",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,

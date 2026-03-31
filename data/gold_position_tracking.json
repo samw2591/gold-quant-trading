@@ -9,8 +9,8 @@
     "trailing_stop_price": 0,
     "extreme_price": 4628.0,
     "is_pyramid": false,
-    "last_profit": 30.09,
-    "last_price": 4599.77
+    "last_profit": 39.62,
+    "last_price": 4609.3
   },
   "16386006": {
     "strategy": "keltner",
@@ -22,7 +22,7 @@
     "trailing_stop_price": 0,
     "extreme_price": 4628.0,
     "is_pyramid": false,
-    "last_profit": -15.28,
-    "last_price": 4599.77
+    "last_profit": -5.75,
+    "last_price": 4609.3
   }
 }
