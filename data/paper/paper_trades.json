@@ -188,5 +188,24 @@
     "mfe": 4.79,
     "mae": 0.15,
     "mode": "paper"
+  },
+  {
+    "strategy": "P2_london_ny",
+    "direction": "BUY",
+    "entry_price": 4562.37,
+    "exit_price": 4563.92,
+    "sl": 35,
+    "tp": 91.66,
+    "lots": 0.01,
+    "pnl": 1.55,
+    "pnl_points": 1.55,
+    "exit_reason": "timeout",
+    "reason": "P2 LN\u52a8\u91cf\u505a\u591a: EMA9>4540, MACD>0, ADX=23",
+    "entry_time": "2026-03-31T14:01:24.370467",
+    "exit_time": "2026-03-31T14:05:25.969684",
+    "bars_held": 8,
+    "mfe": 3.42,
+    "mae": 3.58,
+    "mode": "paper"
   }
 ]

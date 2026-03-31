@@ -3,17 +3,17 @@
   "pnl": -102.83,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.2653,
-    "confidence": 0.3979,
+    "label": "NEUTRAL",
+    "score": 0.249,
+    "confidence": 0.3735,
     "keyword_score": 1.0,
-    "finbert_score": -0.0924,
-    "vader_score": 0.0576,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.27)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Prices Rise Amid Middle East Turmoil - Gotrade | Gold price in Saudi Arabia: Rates on March 31 - FXStreet"
+    "finbert_score": -0.1314,
+    "vader_score": 0.0737,
+    "direction_bias": null,
+    "news_summary": "\u5206\u6790162\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.25)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - City Index | Gold price in Saudi Arabia: Rates on March 31 - FXStreet"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T05:54:13.896259",
+    "timestamp": "2026-03-31T06:54:43.102876",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,
