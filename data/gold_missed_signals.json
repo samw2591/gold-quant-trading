@@ -2048,5 +2048,75 @@
     "sl": 50,
     "tp": 86.03,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:25:21.908348",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4651.34,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4651.34 > \u4e0a\u8f684624.89 (ADX=28.8)",
+    "sl": 50,
+    "tp": 86.5,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:30:23.352703",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4649.18,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4649.18 > \u4e0a\u8f684624.69 (ADX=28.8)",
+    "sl": 50,
+    "tp": 86.5,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:35:25.519071",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4658.96,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4658.96 > \u4e0a\u8f684625.75 (ADX=28.8)",
+    "sl": 50,
+    "tp": 86.76,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:40:26.932847",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4653.96,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4653.96 > \u4e0a\u8f684625.45 (ADX=28.8)",
+    "sl": 50,
+    "tp": 87.12,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:45:30.099388",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4659.96,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4659.96 > \u4e0a\u8f684626.33 (ADX=28.9)",
+    "sl": 50,
+    "tp": 87.74,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:50:31.406294",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4661.67,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4661.67 > \u4e0a\u8f684626.74 (ADX=28.9)",
+    "sl": 50,
+    "tp": 88.23,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T01:55:34.372246",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4660.99,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4660.99 > \u4e0a\u8f684626.79 (ADX=28.9)",
+    "sl": 50,
+    "tp": 88.47,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
   }
 ]

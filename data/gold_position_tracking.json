@@ -6,10 +6,10 @@
     "entry_date": "2026.03.31 22:00:48",
     "lots": 0.01,
     "sl": 4565.44,
-    "trailing_stop_price": 0,
-    "extreme_price": 4653.76,
+    "trailing_stop_price": 4657.76,
+    "extreme_price": 4666.83,
     "is_pyramid": false,
-    "last_profit": 28.14,
-    "last_price": 4643.19
+    "last_profit": 39.94,
+    "last_price": 4654.99
   }
 }
