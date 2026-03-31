@@ -4,16 +4,16 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2695,
-    "confidence": 0.4042,
+    "score": 0.2545,
+    "confidence": 0.3818,
     "keyword_score": 1.0,
-    "finbert_score": -0.0654,
-    "vader_score": 0.0109,
+    "finbert_score": -0.097,
+    "vader_score": 0.015,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790200\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.27)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Tuesday, March 31: Gold price strengthens after report that Trump is considering war exit - Yahoo Finance | Why is gold price heading for biggest monthly drop in over 17 years, and will gold, silver and other preci - economictimes.com | What is the price of gold on March 31, 2026? - usatoday.com"
+    "news_summary": "\u5206\u6790200\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.25)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Tuesday, March 31: Gold price strengthens after report that Trump is considering war exit - Yahoo Finance | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Why is gold price heading for biggest monthly drop in over 17 years, and will gold, silver and other preci - The Economic Times"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T12:54:58.974808",
+    "timestamp": "2026-03-31T13:55:36.501042",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,
