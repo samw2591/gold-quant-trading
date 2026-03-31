@@ -1658,5 +1658,15 @@
     "sl": 48.2,
     "tp": 0,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
+  },
+  {
+    "time": "2026-03-31T13:13:57.221589",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4550.23,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=7.6 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 31.84,
+    "tp": 0,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
   }
 ]
