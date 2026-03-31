@@ -7,9 +7,22 @@
     "lots": 0.01,
     "sl": 4530.76,
     "trailing_stop_price": 0,
-    "extreme_price": 4607.59,
+    "extreme_price": 4628.0,
     "is_pyramid": false,
-    "last_profit": 37.18,
-    "last_price": 4606.86
+    "last_profit": 30.09,
+    "last_price": 4599.77
+  },
+  "16386006": {
+    "strategy": "keltner",
+    "direction": "BUY",
+    "entry_price": 4615.05,
+    "entry_date": "2026.03.31 22:00:48",
+    "lots": 0.01,
+    "sl": 4565.44,
+    "trailing_stop_price": 0,
+    "extreme_price": 4628.0,
+    "is_pyramid": false,
+    "last_profit": -15.28,
+    "last_price": 4599.77
   }
 }

@@ -961,5 +961,18 @@
     "sentiment_score": 0.2705,
     "lot_multiplier": 1.0,
     "time": "2026-03-31T21:05:14.791567"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4612.8,
+    "sl_pips": 50,
+    "tp_pips": 105.54,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4612.80 > \u4e0a\u8f684611.29 (ADX=24.0)",
+    "sentiment_score": 0.2478,
+    "lot_multiplier": 1.0,
+    "time": "2026-03-31T22:00:48.712105"
   }
 ]
