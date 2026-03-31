@@ -2228,5 +2228,125 @@
     "sl": 50,
     "tp": 89.59,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:01:07.997913",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4673.06,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4673.06 > \u4e0a\u8f684639.75 (ADX=32.0)",
+    "sl": 50,
+    "tp": 83.58,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:06:09.638675",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4668.68,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4668.68 > \u4e0a\u8f684639.65 (ADX=32.1)",
+    "sl": 50,
+    "tp": 84.21,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:11:11.177105",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4671.31,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4671.31 > \u4e0a\u8f684640.50 (ADX=32.1)",
+    "sl": 50,
+    "tp": 85.41,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:16:12.840639",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4673.2,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4673.20 > \u4e0a\u8f684640.68 (ADX=32.1)",
+    "sl": 50,
+    "tp": 85.41,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:21:14.219419",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4677.1,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4677.10 > \u4e0a\u8f684641.21 (ADX=32.1)",
+    "sl": 50,
+    "tp": 85.73,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:26:15.937840",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4674.81,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4674.81 > \u4e0a\u8f684641.36 (ADX=32.2)",
+    "sl": 50,
+    "tp": 86.46,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:31:17.420260",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4676.27,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4676.27 > \u4e0a\u8f684641.50 (ADX=32.2)",
+    "sl": 50,
+    "tp": 86.46,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:36:19.060446",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4678.28,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4678.28 > \u4e0a\u8f684641.69 (ADX=32.2)",
+    "sl": 50,
+    "tp": 86.46,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:41:20.560984",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4682.28,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4682.28 > \u4e0a\u8f684642.31 (ADX=32.2)",
+    "sl": 50,
+    "tp": 86.94,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:46:22.173457",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4681.4,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4681.40 > \u4e0a\u8f684642.22 (ADX=32.2)",
+    "sl": 50,
+    "tp": 86.94,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:51:23.595240",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4683.27,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4683.27 > \u4e0a\u8f684642.63 (ADX=32.2)",
+    "sl": 50,
+    "tp": 87.39,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T03:56:25.248534",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4682.07,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4682.07 > \u4e0a\u8f684642.52 (ADX=32.2)",
+    "sl": 50,
+    "tp": 87.41,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
   }
 ]

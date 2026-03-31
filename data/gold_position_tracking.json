@@ -7,9 +7,9 @@
     "lots": 0.01,
     "sl": 4605.94,
     "trailing_stop_price": 0,
-    "extreme_price": 4670.72,
+    "extreme_price": 4685.08,
     "is_pyramid": false,
-    "last_profit": 10.35,
-    "last_price": 4667.12
+    "last_profit": 27.35,
+    "last_price": 4684.12
   }
 }
