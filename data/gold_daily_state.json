@@ -3,20 +3,20 @@
   "pnl": -102.83,
   "loss_count": 2,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.5289,
-    "confidence": 1.0,
-    "keyword_score": 1.0,
-    "finbert_score": 0.0614,
-    "vader_score": 0.0492,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790141\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.53)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Wells Fargo resets gold price target for the rest of 2026 - MSN | Silver Price Today | Silver Spot Price Charts - SD Bullion"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T01:53:47.795496",
-    "brent_oil_price": 105.45,
-    "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -6.32,
+    "timestamp": "2026-03-31T02:11:11.655817",
+    "brent_oil_price": 105.61,
+    "brent_oil_prev_close": NaN,
+    "brent_oil_change_pct": NaN,
     "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
     "us10y_yield_change_pct": -2.21
