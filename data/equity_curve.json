@@ -24,16 +24,20 @@
   },
   {
     "date": "2026-03-31",
-    "equity": 2218.33,
-    "total_pnl": 218.33,
-    "daily_pnl": -46.33,
-    "daily_trades": 1,
+    "equity": 2161.83,
+    "total_pnl": 161.83,
+    "daily_pnl": -102.83,
+    "daily_trades": 2,
     "daily_wins": 0,
-    "daily_losses": 1,
+    "daily_losses": 2,
     "strategies": {
       "keltner": {
         "trades": 1,
         "pnl": -46.33
+      },
+      "m15_rsi": {
+        "trades": 1,
+        "pnl": -56.5
       }
     }
   }

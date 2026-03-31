@@ -913,5 +913,16 @@
     "sentiment_score": 0.488,
     "lot_multiplier": 1.0,
     "time": "2026-03-31T03:56:10.655175"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16381382,
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "entry_price": 4514.46,
+    "lots": 0.02,
+    "profit": -56.5,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-03-31T08:48:21.620240"
   }
 ]

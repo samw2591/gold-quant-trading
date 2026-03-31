@@ -1,22 +1,22 @@
 {
   "date": "2026-03-31",
-  "pnl": -46.33,
-  "loss_count": 1,
+  "pnl": -102.83,
+  "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.5198,
+    "score": 0.5182,
     "confidence": 1.0,
     "keyword_score": 1.0,
-    "finbert_score": 0.0411,
-    "vader_score": 0.0361,
+    "finbert_score": 0.0534,
+    "vader_score": -0.0033,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790130\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.52)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold price finds footing near $4,500 as Iran war enters fifth week - mining.com | Gold Prices Surge as Plummeting US Yields Spark Renewed Bullion Frenzy - MEXC"
+    "news_summary": "\u5206\u6790119\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.52)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Silver Price Today | Silver Spot Price Charts - SD Bullion | Gold price finds footing near $4,500 as Iran war enters fifth week - Mining.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-30T23:52:54.716013",
-    "brent_oil_price": 109.93,
+    "timestamp": "2026-03-31T00:53:23.352910",
+    "brent_oil_price": 109.7,
     "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -2.35,
+    "brent_oil_change_pct": -2.55,
     "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
     "us10y_yield_change_pct": -2.21
