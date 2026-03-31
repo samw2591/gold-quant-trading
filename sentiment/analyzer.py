@@ -1,17 +1,20 @@
 """
-Gold-specific sentiment analysis module v2.
+Gold-specific sentiment analysis module v3.
 
-Key change from v1:
-  VADER scores are INVERTED for gold context — "war", "crisis" etc are
-  negative in general sentiment but POSITIVE for gold.  Instead of relying
-  on VADER's raw compound score, we now use a gold-tuned keyword scoring
-  system as the PRIMARY signal, with VADER/FinBERT as secondary inputs.
+v3 changes (2026-03-31):
+  - Rebalanced keyword dictionary: added 33 bearish keywords (42 bull / 59 bear)
+    to fix permanent BULLISH bias (was 100% positive in simulation).
+  - Weight shift: FinBERT promoted to PRIMARY (50%), keywords demoted to 30%.
+    FinBERT is a trained financial model with inherent balance; keywords are
+    domain-specific but structurally biased by dictionary composition.
+  - BULLISH/BEARISH threshold raised from 0.15 to 0.25 to reduce false positives.
+  - Fallback (no FinBERT): keyword 40% + VADER 60% (was 70/30).
 
 Scoring architecture:
-  1. Gold keyword score (weight 0.50) — domain-specific, most reliable
-  2. FinBERT score      (weight 0.35) — financial context aware
-  3. VADER score        (weight 0.15) — general sentiment baseline
-  Falls back to keyword(0.7) + VADER(0.3) if FinBERT unavailable.
+  1. FinBERT score      (weight 0.50) — financial context aware, PRIMARY
+  2. Gold keyword score  (weight 0.30) — domain-specific supplement
+  3. VADER score         (weight 0.20) — general sentiment baseline
+  Falls back to keyword(0.40) + VADER(0.60) if FinBERT unavailable.
 """
 
 import logging
@@ -25,7 +28,7 @@ logger = logging.getLogger(__name__)
 # Each keyword has a score: positive = bullish for gold, negative = bearish
 # ---------------------------------------------------------------------------
 GOLD_KEYWORDS = {
-    # ── 强烈利好黄金 (避险/宽松/通胀) ──
+    # ── 利多黄金 (避险/宽松/通胀) ──  42个
     "war":              +0.30,
     "military":         +0.20,
     "iran":             +0.25,
@@ -33,7 +36,7 @@ GOLD_KEYWORDS = {
     "attack":           +0.15,
     "conflict":         +0.20,
     "tension":          +0.20,
-    "escalat":          +0.25,   # escalation, escalate, escalating
+    "escalat":          +0.25,
     "geopolitic":       +0.20,
     "sanctions":        +0.20,
     "crisis":           +0.25,
@@ -68,8 +71,8 @@ GOLD_KEYWORDS = {
     "dollar decline":   +0.15,
     "yield fall":       +0.10,
     "yield drop":       +0.10,
-    
-    # ── 利空黄金 (冒险/紧缩/强美元) ──
+
+    # ── 利空黄金 (紧缩/强美元/风险偏好) ──  59个 (v3: 补充平衡)
     "rate hike":        -0.25,
     "hawkish":          -0.20,
     "strong dollar":    -0.20,
@@ -80,7 +83,7 @@ GOLD_KEYWORDS = {
     "peace talk":       -0.15,
     "ceasefire":        -0.20,
     "de-escalat":       -0.20,
-    "negotiat":         -0.10,   # 谈判可能利空黄金
+    "negotiat":         -0.10,
     "risk on":          -0.15,
     "risk appetite":    -0.15,
     "stock rally":      -0.10,
@@ -96,6 +99,45 @@ GOLD_KEYWORDS = {
     "gold plunge":      -0.20,
     "yield rise":       -0.10,
     "yield surge":      -0.10,
+    # v3 新增: 利率/紧缩
+    "higher for longer": -0.20,
+    "rate hold":        -0.10,
+    "taper":            -0.15,
+    "quantitative tighten": -0.20,
+    "balance sheet":    -0.10,
+    "inflation expectation": -0.10,
+    # v3 新增: 美元走强
+    "dollar index":     -0.10,
+    "dxy":              -0.10,
+    "dollar demand":    -0.15,
+    "dollar bid":       -0.15,
+    # v3 新增: 风险偏好/股市走强
+    "stock record":     -0.10,
+    "stock high":       -0.10,
+    "equity gain":      -0.10,
+    "market rally":     -0.10,
+    "risk rally":       -0.15,
+    "crypto rally":     -0.10,
+    # v3 新增: 黄金抛售/资金流出
+    "gold outflow":     -0.15,
+    "etf outflow":      -0.15,
+    "gold liquidat":    -0.15,
+    "profit taking":    -0.15,
+    "gold pressur":     -0.10,
+    "gold weaken":      -0.15,
+    "gold retreat":     -0.15,
+    "gold tumble":      -0.20,
+    "gold shed":        -0.10,
+    "gold ease":        -0.10,
+    "gold pull back":   -0.15,
+    "gold correct":     -0.10,
+    # v3 新增: 收益率上升/债券抛售
+    "yield climb":      -0.10,
+    "yield jump":       -0.15,
+    "bond selloff":     -0.15,
+    "bond sell":        -0.10,
+    "treasury sell":    -0.15,
+    "real yield":       -0.10,
 }
 
 # Trump amplifier
@@ -197,12 +239,12 @@ class SentimentAnalyzer:
         vader_score = self._vader_analyze(headlines)
         finbert_score = self._finbert_analyze(headlines)
 
-        # Combine: keyword is PRIMARY
+        # v3: FinBERT is PRIMARY (trained model, balanced), keyword is supplement
         if finbert_score is not None:
-            combined = kw_score * 0.50 + finbert_score * 0.35 + vader_score * 0.15
-            mode = "keyword+finbert+vader"
+            combined = finbert_score * 0.50 + kw_score * 0.30 + vader_score * 0.20
+            mode = "finbert+keyword+vader"
         else:
-            combined = kw_score * 0.70 + vader_score * 0.30
+            combined = kw_score * 0.40 + vader_score * 0.60
             mode = "keyword+vader"
 
         combined = max(-1.0, min(1.0, combined))
@@ -226,15 +268,15 @@ class SentimentAnalyzer:
         details = self.analyze_headlines(headlines)
         score = details["combined_score"]
 
-        # 阈值降低: 0.15 即可判方向 (原来是0.3太高)
-        if score > 0.15:
+        # v3: 提高阈值 0.25, 减少假阳性
+        if score > 0.25:
             label = "BULLISH"
-        elif score < -0.15:
+        elif score < -0.25:
             label = "BEARISH"
         else:
             label = "NEUTRAL"
 
-        confidence = min(1.0, abs(score) * 2)  # 放大置信度
+        confidence = min(1.0, abs(score) * 1.5)  # v3: 缓和置信度放大
 
         return {
             "score": score,
