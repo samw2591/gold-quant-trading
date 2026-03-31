@@ -13,10 +13,10 @@
     "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T02:11:11.655817",
-    "brent_oil_price": 105.61,
-    "brent_oil_prev_close": NaN,
-    "brent_oil_change_pct": NaN,
+    "timestamp": "2026-03-31T02:58:04.787899",
+    "brent_oil_price": 106.22,
+    "brent_oil_prev_close": 112.57,
+    "brent_oil_change_pct": -5.64,
     "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
     "us10y_yield_change_pct": -2.21
