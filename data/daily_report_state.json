@@ -1,18 +1,12 @@
 {
-  "report_type": "evening",
-  "time": "2026-03-30T22:00:00+08:00",
-  "price_at_report": 4524.7,
-  "direction_bias": "中性偏多",
-  "target_high": 4585,
+  "report_type": "morning",
+  "time": "2026-03-31T10:12:00+08:00",
+  "price_at_report": 4512.7,
+  "direction_bias": "偏空",
+  "target_high": 4560,
   "target_low": 4440,
   "confidence": "中",
-  "key_reasoning": "10Y收益率回落带来修复窗口，但趋势尚未重建，仍以高波动箱体对待。",
-  "risk_events": "关注美联储官员讲话与美国制造业/库存等数据（以日历为准），以及任何地缘突发导致的避险与通胀预期波动。",
-  "today_pnl": "-70.77",
-  "today_trades": 2,
-  "strategy_health": {
-    "keltner": "🔴",
-    "orb": "🟡",
-    "m15_rsi": "🔴"
-  }
+  "key_reasoning": "黄金从5600历史高点下挫近20%至4500区间，油价暴涨50%压制降息预期，DXY企稳100上方，技术面短期受压；但中东地缘风险+关税避险需求构成支撑底，偏空操作等待反弹卖点。",
+  "risk_events": "今日21:00 SGT JOLTS职位空缺(2月)；本周五PCE通胀数据；中东局势随时可能反转；特朗普关税新动态持续扰动。",
+  "macro_matrix": {"dxy": "100.22 偏强", "yield_10y": "4.35% 下行", "geopolitical": "中东战争+霍尔木兹封锁，油价WTI$100+"}
 }
