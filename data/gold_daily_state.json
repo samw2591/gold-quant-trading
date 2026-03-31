@@ -3,20 +3,20 @@
   "pnl": 76.53,
   "loss_count": 0,
   "macro_sentiment": {
-    "label": "NEUTRAL",
-    "score": 0.2405,
-    "confidence": 0.3608,
+    "label": "BULLISH",
+    "score": 0.2774,
+    "confidence": 0.4161,
     "keyword_score": 1.0,
-    "finbert_score": -0.1218,
-    "vader_score": 0.0071,
-    "direction_bias": null,
-    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.24)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | 3 gold price questions investors should ask this April - CBS News"
+    "finbert_score": -0.046,
+    "vader_score": 0.0021,
+    "direction_bias": "BUY",
+    "news_summary": "\u5206\u6790161\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.28)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | 3 gold price questions investors should ask this April - CBS News"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T19:56:24.989583",
-    "brent_oil_price": 104.46,
+    "timestamp": "2026-03-31T20:56:51.512385",
+    "brent_oil_price": 103.25,
     "brent_oil_prev_close": 112.78,
-    "brent_oil_change_pct": -7.38,
+    "brent_oil_change_pct": -8.45,
     "us10y_yield_price": 4.31,
     "us10y_yield_prev_close": 4.34,
     "us10y_yield_change_pct": -0.71

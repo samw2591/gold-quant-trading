@@ -2348,5 +2348,135 @@
     "sl": 50,
     "tp": 87.41,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:01:30.671227",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4682.61,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4682.61 > \u4e0a\u8f684649.74 (ADX=33.9)",
+    "sl": 50,
+    "tp": 85.82,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:06:33.104954",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4682.53,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4682.53 > \u4e0a\u8f684650.02 (ADX=33.9)",
+    "sl": 50,
+    "tp": 86.39,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:11:34.755406",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4678.54,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4678.54 > \u4e0a\u8f684649.89 (ADX=33.9)",
+    "sl": 50,
+    "tp": 86.89,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:16:37.346177",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4681.22,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4681.22 > \u4e0a\u8f684650.21 (ADX=33.9)",
+    "sl": 50,
+    "tp": 87.01,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:21:38.771317",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4677.46,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4677.46 > \u4e0a\u8f684649.87 (ADX=33.9)",
+    "sl": 50,
+    "tp": 87.05,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:26:40.311140",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4670.92,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4670.92 > \u4e0a\u8f684649.85 (ADX=33.9)",
+    "sl": 50,
+    "tp": 88.26,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:31:41.742967",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4670.19,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4670.19 > \u4e0a\u8f684649.94 (ADX=33.9)",
+    "sl": 50,
+    "tp": 88.59,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:36:43.330173",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4669.82,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4669.82 > \u4e0a\u8f684649.91 (ADX=33.9)",
+    "sl": 50,
+    "tp": 88.59,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:41:44.836665",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4672.57,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4672.57 > \u4e0a\u8f684650.39 (ADX=33.9)",
+    "sl": 50,
+    "tp": 89.02,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:46:46.628726",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4669.48,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4669.48 > \u4e0a\u8f684650.13 (ADX=33.9)",
+    "sl": 50,
+    "tp": 89.1,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:51:48.033817",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4666.25,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4666.25 > \u4e0a\u8f684649.92 (ADX=33.9)",
+    "sl": 50,
+    "tp": 89.28,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T04:56:51.762040",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4667.27,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4667.27 > \u4e0a\u8f684650.12 (ADX=33.9)",
+    "sl": 50,
+    "tp": 89.5,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
+  },
+  {
+    "time": "2026-04-01T04:56:51.773322",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4667.27,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=9.4 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 27.84,
+    "tp": 0,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
   }
 ]
