@@ -4,19 +4,19 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2978,
-    "confidence": 0.4467,
+    "score": 0.2501,
+    "confidence": 0.3751,
     "keyword_score": 1.0,
-    "finbert_score": -0.0392,
-    "vader_score": 0.087,
+    "finbert_score": -0.1448,
+    "vader_score": 0.1126,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790144\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.30)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Prices Rise Amid Middle East Turmoil - Gotrade | Wells Fargo resets gold price target for the rest of 2026 - MSN"
+    "news_summary": "\u5206\u6790153\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.25)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold Prices Rise Amid Middle East Turmoil - Gotrade | Gold price in Pakistan: Rates on March 31 - fxstreet.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T03:53:05.726260",
-    "brent_oil_price": 107.03,
+    "timestamp": "2026-03-31T04:53:40.877421",
+    "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
-    "brent_oil_change_pct": -4.92,
+    "brent_oil_change_pct": 0.19,
     "us10y_yield_price": 4.34,
     "us10y_yield_prev_close": 4.44,
     "us10y_yield_change_pct": -2.21
