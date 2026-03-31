@@ -4,16 +4,16 @@
   "loss_count": 2,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.278,
-    "confidence": 0.417,
+    "score": 0.2992,
+    "confidence": 0.4488,
     "keyword_score": 1.0,
-    "finbert_score": -0.0656,
-    "vader_score": 0.0539,
+    "finbert_score": -0.0179,
+    "vader_score": 0.0406,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790174\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.28)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - City Index | Gold price in Saudi Arabia: Rates on March 31 - FXStreet"
+    "news_summary": "\u5206\u6790190\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.30)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - FOREX.com | Silver Price Today | Silver Spot Price Charts - sdbullion.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T07:55:03.227717",
+    "timestamp": "2026-03-31T08:55:28.992745",
     "brent_oil_price": 112.78,
     "brent_oil_prev_close": 112.57,
     "brent_oil_change_pct": 0.19,
