@@ -4868,5 +4868,25 @@
     "sl": 50,
     "tp": 90.26,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-02T04:41:04.475470",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4757.47,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=12.5 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 30.41,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526955\u5206\u949f)"
+  },
+  {
+    "time": "2026-04-02T04:56:06.076601",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "price": 4758.62,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=12.4 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sl": 30.68,
+    "tp": 0,
+    "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u526940\u5206\u949f)"
   }
 ]
