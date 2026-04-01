@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3413,
-    "confidence": 0.512,
+    "score": 0.3207,
+    "confidence": 0.481,
     "keyword_score": 1.0,
-    "finbert_score": 0.033,
-    "vader_score": 0.1238,
+    "finbert_score": 0.0019,
+    "vader_score": 0.0986,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790197\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.34)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - Fortune | Gold Price Decline in 2026: Market Volatility and Support Levels - News and Statistics - IndexBox | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - City Index UK"
+    "news_summary": "\u5206\u6790219\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.32)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold Price Decline in 2026: Market Volatility and Support Levels - News and Statistics - IndexBox | Reasons to be bullish on gold - ft.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T08:57:26.347585",
+    "timestamp": "2026-04-01T09:57:49.705930",
     "brent_oil_price": 118.35,
     "brent_oil_prev_close": 112.78,
     "brent_oil_change_pct": 4.94,
