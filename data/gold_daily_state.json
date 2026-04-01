@@ -4,19 +4,19 @@
   "loss_count": 1,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.4062,
-    "confidence": 0.6093,
+    "score": 0.3489,
+    "confidence": 0.5233,
     "keyword_score": 1.0,
-    "finbert_score": 0.1666,
-    "vader_score": 0.1144,
+    "finbert_score": 0.0622,
+    "vader_score": 0.0892,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790171\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.41)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Pullback Sparks Debate as War Narrative Dominates Markets - Money Metals Exchange - Commentaries - Advisor Perspectives | Gold Price Short-term Outlook: XAU/USD Surges 17% into Make-or-Break Resistance - FOREX.com"
+    "news_summary": "\u5206\u6790167\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.35)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Short-term Outlook: XAU/USD Surges 17% into Make-or-Break Resistance - FOREX.com | Gold price holding its ground as ADP shows 62k jobs created in March - kitco.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T20:56:05.940332",
-    "brent_oil_price": 100.27,
+    "timestamp": "2026-04-01T21:56:20.651886",
+    "brent_oil_price": 100.3,
     "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -15.28,
+    "brent_oil_change_pct": -15.25,
     "us10y_yield_price": 4.32,
     "us10y_yield_prev_close": 4.31,
     "us10y_yield_change_pct": 0.19
