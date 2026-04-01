@@ -1,22 +1,22 @@
 {
   "date": "2026-04-02",
-  "pnl": 46.36,
-  "loss_count": 0,
+  "pnl": -9.28,
+  "loss_count": 1,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.4321,
-    "confidence": 0.6482,
+    "score": 0.4002,
+    "confidence": 0.6003,
     "keyword_score": 1.0,
-    "finbert_score": 0.2168,
-    "vader_score": 0.1182,
+    "finbert_score": 0.1357,
+    "vader_score": 0.1617,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790185\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.43)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price holding its ground as ADP shows 62k jobs created in March - KITCO | Gold Price Today on April 01, 2026 - USA Today"
+    "news_summary": "\u5206\u6790182\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.40)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price holding its ground as ADP shows 62k jobs created in March - KITCO | 'Something big is happening in metals markets': Gold slides into bear market - MSN"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T17:55:28.357306",
-    "brent_oil_price": 100.6,
+    "timestamp": "2026-04-01T18:55:40.499233",
+    "brent_oil_price": 101.1,
     "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -15.0,
+    "brent_oil_change_pct": -14.58,
     "us10y_yield_price": 4.32,
     "us10y_yield_prev_close": 4.31,
     "us10y_yield_change_pct": 0.14
