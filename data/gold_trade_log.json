@@ -1061,5 +1061,18 @@
     "profit": 106.24,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
     "time": "2026-04-01T08:28:55.397514"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4681.02,
+    "sl_pips": 40.94,
+    "tp_pips": 81.88,
+    "reason": "M15 RSI\u505a\u591a: RSI(2)=13.2 < 15, \u8d85\u5356\u53cd\u5f39",
+    "sentiment_score": 0.3802,
+    "lot_multiplier": 1.0,
+    "time": "2026-04-01T10:44:21.821440"
   }
 ]
