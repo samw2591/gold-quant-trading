@@ -1074,5 +1074,31 @@
     "sentiment_score": 0.3802,
     "lot_multiplier": 1.0,
     "time": "2026-04-01T10:44:21.821440"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16391753,
+    "strategy": "keltner",
+    "lots": 0.01,
+    "open_price": 4696.48,
+    "close_price": 4738.02,
+    "profit": 41.54,
+    "pnl_pct": 0.88,
+    "reason": "\ud83d\udcc8 Trailing Stop: \u6d6e\u76c8$41.54 (\u6fc0\u6d3b\u9608\u503c$35.24), \u4ef7\u683c4738.02\u89e6\u53ca\u8ffd\u8e2a\u6b62\u76c84738.83",
+    "hold_hours": 0.0,
+    "time": "2026-04-01T15:41:22.240784"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4730.85,
+    "sl_pips": 50,
+    "tp_pips": 82.85,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4730.85 > \u4e0a\u8f684706.51 (ADX=43.3)",
+    "sentiment_score": 0.3814,
+    "lot_multiplier": 1.0,
+    "time": "2026-04-01T15:41:56.477796"
   }
 ]

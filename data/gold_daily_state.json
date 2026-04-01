@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3556,
-    "confidence": 0.5334,
+    "score": 0.3593,
+    "confidence": 0.539,
     "keyword_score": 1.0,
-    "finbert_score": 0.0508,
-    "vader_score": 0.1513,
+    "finbert_score": 0.055,
+    "vader_score": 0.1588,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790178\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.36)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | War and the Gold Supercycle - GoldBroker.com"
+    "news_summary": "\u5206\u6790180\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.36)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of February 4, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Outlook: Dead Cat Bounce Risk as Bearish Signals Build - City Index UK"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T06:56:32.103345",
+    "timestamp": "2026-04-01T07:57:01.468511",
     "brent_oil_price": 118.35,
     "brent_oil_prev_close": 112.78,
     "brent_oil_change_pct": 4.94,
