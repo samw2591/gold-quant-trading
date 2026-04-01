@@ -6,11 +6,11 @@
     "entry_date": "2026.04.01 08:13:18",
     "lots": 0.01,
     "sl": 4645.1,
-    "trailing_stop_price": 0,
-    "extreme_price": 4721.63,
+    "trailing_stop_price": 4726.1,
+    "extreme_price": 4732.14,
     "is_pyramid": false,
-    "last_profit": -12.38,
-    "last_price": 4684.1
+    "last_profit": 34.0,
+    "last_price": 4730.48
   },
   "16392766": {
     "strategy": "m15_rsi",
@@ -20,9 +20,9 @@
     "lots": 0.01,
     "sl": 4640.45,
     "trailing_stop_price": 0,
-    "extreme_price": 4703.2,
+    "extreme_price": 4732.14,
     "is_pyramid": false,
-    "last_profit": 1.51,
-    "last_price": 4684.1
+    "last_profit": 47.89,
+    "last_price": 4730.48
   }
 }
