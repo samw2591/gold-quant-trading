@@ -4,21 +4,21 @@
   "loss_count": 1,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.4002,
-    "confidence": 0.6003,
+    "score": 0.428,
+    "confidence": 0.642,
     "keyword_score": 1.0,
-    "finbert_score": 0.1357,
-    "vader_score": 0.1617,
+    "finbert_score": 0.1984,
+    "vader_score": 0.1442,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790182\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.40)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price holding its ground as ADP shows 62k jobs created in March - KITCO | 'Something big is happening in metals markets': Gold slides into bear market - MSN"
+    "news_summary": "\u5206\u6790173\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.43)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price holding its ground as ADP shows 62k jobs created in March - KITCO | Waco jewelers and local shoppers adapt to a changing market as gold prices drop 17% in the past month - KXXV"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T18:55:40.499233",
-    "brent_oil_price": 101.1,
+    "timestamp": "2026-04-01T19:55:54.697105",
+    "brent_oil_price": 100.62,
     "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -14.58,
+    "brent_oil_change_pct": -14.98,
     "us10y_yield_price": 4.32,
     "us10y_yield_prev_close": 4.31,
-    "us10y_yield_change_pct": 0.14
+    "us10y_yield_change_pct": 0.19
   }
 }

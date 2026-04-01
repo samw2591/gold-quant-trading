@@ -4858,5 +4858,15 @@
     "sl": 29.24,
     "tp": 0,
     "filter_reason": "\u51b7\u5374\u671f(\u8fd8\u5269160\u5206\u949f)"
+  },
+  {
+    "time": "2026-04-02T03:40:53.167057",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4775.96,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4775.96 > \u4e0a\u8f684774.70 (ADX=49.5)",
+    "sl": 50,
+    "tp": 90.26,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
   }
 ]
