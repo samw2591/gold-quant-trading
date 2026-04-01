@@ -4408,5 +4408,25 @@
     "sl": 50,
     "tp": 84.54,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T23:15:24.313660",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4765.9,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4765.90 > \u4e0a\u8f684749.02 (ADX=49.8)",
+    "sl": 50,
+    "tp": 84.54,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-01T23:18:46.245976",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "price": 4766.96,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4766.96 > \u4e0a\u8f684749.12 (ADX=49.8)",
+    "sl": 50,
+    "tp": 84.54,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
   }
 ]
