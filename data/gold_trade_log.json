@@ -1024,5 +1024,42 @@
     "sentiment_score": 0.311,
     "lot_multiplier": 1.0,
     "time": "2026-04-01T04:51:49.576818"
+  },
+  {
+    "action": "CLOSE",
+    "ticket": 16387512,
+    "strategy": "keltner",
+    "lots": 0.01,
+    "open_price": 4656.77,
+    "close_price": 4695.51,
+    "profit": 38.74,
+    "pnl_pct": 0.83,
+    "reason": "\ud83d\udcc8 Trailing Stop: \u6d6e\u76c8$38.74 (\u6fc0\u6d3b\u9608\u503c$34.53), \u4ef7\u683c4695.51\u89e6\u53ca\u8ffd\u8e2a\u6b62\u76c84697.05",
+    "hold_hours": 0.0,
+    "time": "2026-04-01T08:11:44.657714"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "BUY",
+    "lots": 0.01,
+    "price": 4695.62,
+    "sl_pips": 50,
+    "tp_pips": 92.43,
+    "reason": "Keltner\u505a\u591a: \u4ef7\u683c4695.62 > \u4e0a\u8f684673.95 (ADX=38.8)",
+    "sentiment_score": 0.3659,
+    "lot_multiplier": 1.0,
+    "time": "2026-04-01T08:13:19.046559"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16387997,
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "entry_price": 4666.12,
+    "lots": 0.02,
+    "profit": 106.24,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-01T08:28:55.397514"
   }
 ]

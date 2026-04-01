@@ -1,22 +1,22 @@
 {
   "date": "2026-04-01",
-  "pnl": 76.53,
+  "pnl": 182.77,
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3526,
-    "confidence": 0.5289,
+    "score": 0.4232,
+    "confidence": 0.6348,
     "keyword_score": 1.0,
-    "finbert_score": 0.0576,
-    "vader_score": 0.119,
+    "finbert_score": 0.1839,
+    "vader_score": 0.1562,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790156\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.35)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold prices push back above $4,600 as JOLTS shows drop in US job openings - KITCO | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | 3 gold price questions investors should ask this April - CBS News"
+    "news_summary": "\u5206\u6790160\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.42)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold prices push back above $4,600 as JOLTS shows drop in US job openings - KITCO | 3 gold price questions investors should ask this April - CBS News"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-03-31T23:58:05.777208",
-    "brent_oil_price": 104.25,
+    "timestamp": "2026-04-01T00:58:35.227712",
+    "brent_oil_price": 104.53,
     "brent_oil_prev_close": 112.78,
-    "brent_oil_change_pct": -7.56,
+    "brent_oil_change_pct": -7.32,
     "us10y_yield_price": 4.31,
     "us10y_yield_prev_close": 4.34,
     "us10y_yield_change_pct": -0.71
