@@ -3,17 +3,17 @@
   "pnl": 262.28,
   "loss_count": 0,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.3232,
-    "confidence": 0.4848,
-    "keyword_score": 1.0,
-    "finbert_score": 0.0112,
-    "vader_score": 0.0881,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790206\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.32)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold Price Today on April 01, 2026 - usatoday.com | Current price of gold as of April 1, 2026 - Fortune | Will gold price touch $5,000 and silver reach $90 soon? Gold and silver price movement, analysts insights, - The Economic Times"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T14:55:48.140691",
+    "timestamp": "2026-04-01T15:10:48.137757",
     "brent_oil_price": 118.35,
     "brent_oil_prev_close": 112.78,
     "brent_oil_change_pct": 4.94,
