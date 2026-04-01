@@ -4,19 +4,19 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3538,
-    "confidence": 0.5307,
+    "score": 0.3649,
+    "confidence": 0.5474,
     "keyword_score": 1.0,
-    "finbert_score": 0.0528,
-    "vader_score": 0.1369,
+    "finbert_score": 0.0901,
+    "vader_score": 0.0995,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790161\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.35)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold prices push back above $4,600 as JOLTS shows drop in US job openings - KITCO | Gold Price Rebounds Toward $4,650 as Soothing Geopolitical Fears Revive Safe-Haven Demand - CryptoRank"
+    "news_summary": "\u5206\u6790155\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.36)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Forecast: XAU/USD recaptures key 100-day SMA resistance, what\u2019s next? - FXStreet | Silver rate today: White metal drops 1% on profit booking, even as Gold price extends gains as Middle East tensions ease - Mint"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-01T02:59:27.131177",
-    "brent_oil_price": 105.36,
+    "timestamp": "2026-04-01T03:59:53.511489",
+    "brent_oil_price": 105.16,
     "brent_oil_prev_close": 112.78,
-    "brent_oil_change_pct": -6.58,
+    "brent_oil_change_pct": -6.76,
     "us10y_yield_price": 4.31,
     "us10y_yield_prev_close": 4.34,
     "us10y_yield_change_pct": -0.71
