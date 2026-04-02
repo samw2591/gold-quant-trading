@@ -4,16 +4,16 @@
   "loss_count": 3,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": 0.1766,
-    "confidence": 0.2649,
-    "keyword_score": 1.0,
-    "finbert_score": -0.26,
-    "vader_score": 0.0332,
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790172\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.18)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold prices retreat as Trump threatens further attacks on Iran - Reuters | Gold prices fall to $4,670.2, silver slips as Fed rate cut \u2060bets remain low - economymiddleeast.com | Trump Speech Triggers Sharp Short-Term Gold Volatility, Erasing Over $100 Intraday - TradingKey"
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-02T05:46:16.580088",
+    "timestamp": "2026-04-02T06:44:37.615614",
     "brent_oil_price": 101.16,
     "brent_oil_prev_close": 118.35,
     "brent_oil_change_pct": -14.52,
