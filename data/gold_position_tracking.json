@@ -7,10 +7,10 @@
     "lots": 0.01,
     "sl": 4725.32,
     "trailing_stop_price": 0,
-    "extreme_price": 4792.37,
+    "extreme_price": 4798.42,
     "is_pyramid": false,
-    "last_profit": -0.36,
-    "last_price": 4775.87
+    "last_profit": 4.6,
+    "last_price": 4780.83
   },
   "16398234": {
     "strategy": "m15_rsi",
@@ -20,9 +20,9 @@
     "lots": 0.02,
     "sl": 4728.34,
     "trailing_stop_price": 0,
-    "extreme_price": 4780.57,
+    "extreme_price": 4798.42,
     "is_pyramid": false,
-    "last_profit": 33.38,
-    "last_price": 4775.87
+    "last_profit": 43.3,
+    "last_price": 4780.83
   }
 }
