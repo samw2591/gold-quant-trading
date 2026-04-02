@@ -1226,5 +1226,46 @@
       "atr_percentile": 0.98
     },
     "time": "2026-04-02T13:50:54.722101"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "lots": 0.01,
+    "price": 4611.38,
+    "sl_pips": 50,
+    "tp_pips": 100,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=86.1 > 85, \u8d85\u4e70\u56de\u843d (EMA100=4705)",
+    "sentiment_score": 0.1619,
+    "lot_multiplier": 1.0,
+    "factors": {
+      "RSI14": 32.3634,
+      "RSI2": 86.1402,
+      "ADX": 54.6477,
+      "ATR": 21.2779,
+      "MACD_hist": -3.3258,
+      "EMA9": 4614.5525,
+      "EMA21": 4648.3883,
+      "EMA100": 4705.1246,
+      "KC_upper": 4677.8601,
+      "KC_lower": 4614.0265,
+      "Volume": 1952.0,
+      "Vol_MA20": 3739.75,
+      "kc_breakout_strength": -3.1244,
+      "volume_ratio": 0.522,
+      "atr_percentile": 0.74
+    },
+    "time": "2026-04-02T15:09:26.926111"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16401516,
+    "strategy": "keltner",
+    "direction": "SELL",
+    "entry_price": 4596.04,
+    "lots": 0.01,
+    "profit": -48.85,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-02T15:49:05.966600"
   }
 ]

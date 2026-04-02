@@ -1,15 +1,15 @@
 {
-  "16401516": {
-    "strategy": "keltner",
+  "16402744": {
+    "strategy": "m15_rsi",
     "direction": "SELL",
-    "entry_price": 4596.04,
-    "entry_date": "2026.04.02 13:50:54",
+    "entry_price": 4610.89,
+    "entry_date": "2026.04.02 15:09:26",
     "lots": 0.01,
-    "sl": 4647.35,
+    "sl": 4661.78,
     "trailing_stop_price": 0,
-    "extreme_price": 4556.08,
+    "extreme_price": 4610.53,
     "is_pyramid": false,
-    "last_profit": -2.77,
-    "last_price": 4598.81
+    "last_profit": -33.14,
+    "last_price": 4644.03
   }
 }
