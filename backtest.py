@@ -103,11 +103,15 @@ class TradeRecord:
 # 回测引擎
 # ═══════════════════════════════════════════════════════════════
 
+LOT_SCALE_BY_LOSSES = {0: 1.0, 1: 0.7, 2: 0.5, 3: 0.3, 4: 0.1}
+
+
 class BacktestEngine:
     WINDOW_SIZE = 150  # rolling window rows passed to signal functions
 
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, adaptive_lots: bool = False):
         self.df = df
+        self.adaptive_lots = adaptive_lots
         self.positions: List[Position] = []
         self.trades: List[TradeRecord] = []
         self.equity_curve: List[float] = []
@@ -284,6 +288,11 @@ class BacktestEngine:
                 continue
 
             lots = calc_auto_lot_size(0, sl)
+
+            if self.adaptive_lots:
+                scale = LOT_SCALE_BY_LOSSES.get(self.daily_loss_count, 0.1)
+                lots = round(lots * scale, 2)
+                lots = max(config.MIN_LOT_SIZE, lots)
 
             pos = Position(
                 strategy=strategy,
@@ -466,6 +475,8 @@ def main():
     parser.add_argument('csv_path', help='历史数据 CSV 路径')
     parser.add_argument('--start', default=None, help='起始日期 (YYYY-MM-DD)')
     parser.add_argument('--end', default=None, help='结束日期 (YYYY-MM-DD)')
+    parser.add_argument('--adaptive', action='store_true', help='启用日内渐进式仓位缩减')
+    parser.add_argument('--compare', action='store_true', help='对比原始 vs 自适应仓位')
     args = parser.parse_args()
 
     print("加载数据...")
@@ -475,9 +486,25 @@ def main():
     print("计算指标...")
     df = prepare_indicators(df)
 
-    engine = BacktestEngine(df)
-    trades = engine.run()
-    print_report(trades, engine.equity_curve)
+    if args.compare:
+        print("\n" + "=" * 60)
+        print("  [A] 原始策略 (固定仓位)")
+        print("=" * 60)
+        engine_a = BacktestEngine(df, adaptive_lots=False)
+        trades_a = engine_a.run()
+        print_report(trades_a, engine_a.equity_curve)
+
+        print("\n" + "=" * 60)
+        print("  [B] 自适应仓位 (亏损后渐进缩减)")
+        print(f"  缩减系数: {LOT_SCALE_BY_LOSSES}")
+        print("=" * 60)
+        engine_b = BacktestEngine(df, adaptive_lots=True)
+        trades_b = engine_b.run()
+        print_report(trades_b, engine_b.equity_curve)
+    else:
+        engine = BacktestEngine(df, adaptive_lots=args.adaptive)
+        trades = engine.run()
+        print_report(trades, engine.equity_curve)
 
 
 if __name__ == '__main__':

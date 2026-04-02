@@ -439,10 +439,13 @@ class GoldTrader:
                 log.info(f"    🛡️ 安全止盈: ${tp_pips:.1f} (2×止损, MT4硬保护)")
 
             base_lots = calc_auto_lot_size(0, sl_pips)
-            actual_lots = round(base_lots * lot_multiplier, 2)
+            loss_scale = self.risk.get_lot_scale()
+            actual_lots = round(base_lots * lot_multiplier * loss_scale, 2)
             actual_lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, actual_lots))
             if actual_lots != config.LOT_SIZE:
                 log.info(f"    📊 自动调仓: 止损${sl_pips:.1f} → {actual_lots}手 (风险${sl_pips*actual_lots*config.POINT_VALUE_PER_LOT:.0f})")
+            if loss_scale < 1.0:
+                log.info(f"    📉 日内亏损自适应: {self.risk.daily_loss_count}笔亏损 → 仓位×{loss_scale:.1f}")
             if lot_multiplier != 1.0:
                 log.info(f"    🌐 舆情仓位调整: ×{lot_multiplier:.1f}")
 
