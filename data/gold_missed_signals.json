@@ -1,15 +1,5 @@
 [
   {
-    "time": "2026-03-27T02:04:49.257897",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4382.56,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4382.56 < \u4e0b\u8f684390.37 (ADX=30.0)",
-    "sl": 50,
-    "tp": 114.99,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
     "time": "2026-03-27T02:09:49.953117",
     "strategy": "keltner",
     "direction": "SELL",
@@ -4998,5 +4988,15 @@
     "sl": 39.98,
     "tp": 0,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(m15_rsi)"
+  },
+  {
+    "time": "2026-04-02T19:47:47.281429",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "price": 4598.58,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4598.58 < \u4e0b\u8f684600.30 (ADX=40.0)",
+    "sl": 50,
+    "tp": 135.2,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
   }
 ]
