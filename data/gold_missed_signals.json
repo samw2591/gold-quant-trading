@@ -1,35 +1,5 @@
 [
   {
-    "time": "2026-03-27T02:09:49.953117",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4385.64,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4385.64 < \u4e0b\u8f684390.23 (ADX=30.0)",
-    "sl": 50,
-    "tp": 115.84,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
-    "time": "2026-03-27T02:14:50.676675",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4388.21,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4388.21 < \u4e0b\u8f684390.48 (ADX=30.0)",
-    "sl": 50,
-    "tp": 115.84,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
-    "time": "2026-03-27T02:19:51.345076",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4380.9,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4380.90 < \u4e0b\u8f684389.65 (ADX=30.0)",
-    "sl": 50,
-    "tp": 116.12,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
     "time": "2026-03-27T02:24:51.976555",
     "strategy": "keltner",
     "direction": "SELL",
@@ -4997,6 +4967,36 @@
     "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4598.58 < \u4e0b\u8f684600.30 (ADX=40.0)",
     "sl": 50,
     "tp": 135.2,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
+  },
+  {
+    "time": "2026-04-02T20:02:56.567150",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "price": 4595.62,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4595.62 < \u4e0b\u8f684596.10 (ADX=39.9)",
+    "sl": 50,
+    "tp": 129.71,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
+  },
+  {
+    "time": "2026-04-02T20:23:04.499004",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4625.22,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=86.3 > 85, \u8d85\u4e70\u56de\u843d (EMA100=4677)",
+    "sl": 40.57,
+    "tp": 0,
+    "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
+  },
+  {
+    "time": "2026-04-02T20:28:06.583991",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "price": 4624.96,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=86.1 > 85, \u8d85\u4e70\u56de\u843d (EMA100=4677)",
+    "sl": 41.12,
+    "tp": 0,
     "filter_reason": "\u6301\u4ed3\u5df2\u6ee1(2/2)"
   }
 ]
