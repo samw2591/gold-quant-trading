@@ -1,35 +1,5 @@
 [
   {
-    "time": "2026-03-27T00:34:36.598034",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4384.49,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4384.49 < \u4e0b\u8f684405.55 (ADX=28.2)",
-    "sl": 50,
-    "tp": 112.93,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
-    "time": "2026-03-27T00:39:37.282075",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4374.19,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4374.19 < \u4e0b\u8f684403.56 (ADX=28.4)",
-    "sl": 50,
-    "tp": 114.94,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
-    "time": "2026-03-27T00:44:38.086494",
-    "strategy": "keltner",
-    "direction": "SELL",
-    "price": 4377.49,
-    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4377.49 < \u4e0b\u8f684403.88 (ADX=28.4)",
-    "sl": 50,
-    "tp": 114.94,
-    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
-  },
-  {
     "time": "2026-03-27T00:49:38.782769",
     "strategy": "keltner",
     "direction": "SELL",
@@ -4997,6 +4967,36 @@
     "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4584.82 < \u4e0b\u8f684638.03 (ADX=42.6)",
     "sl": 50,
     "tp": 120.31,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-02T14:49:14.607672",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "price": 4594.81,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4594.81 < \u4e0b\u8f684638.88 (ADX=42.6)",
+    "sl": 50,
+    "tp": 120.5,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-02T14:54:15.824667",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "price": 4608.33,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4608.33 < \u4e0b\u8f684639.22 (ADX=42.6)",
+    "sl": 50,
+    "tp": 122.41,
+    "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
+  },
+  {
+    "time": "2026-04-02T14:59:17.629544",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "price": 4597.1,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4597.10 < \u4e0b\u8f684638.15 (ADX=42.6)",
+    "sl": 50,
+    "tp": 122.41,
     "filter_reason": "\u540c\u7b56\u7565\u5df2\u6301\u4ed3(keltner)"
   }
 ]
