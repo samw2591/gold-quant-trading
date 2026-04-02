@@ -1,1 +1,15 @@
-{}
+{
+  "16401516": {
+    "strategy": "keltner",
+    "direction": "SELL",
+    "entry_price": 4596.04,
+    "entry_date": "2026.04.02 13:50:54",
+    "lots": 0.01,
+    "sl": 4647.35,
+    "trailing_stop_price": 0,
+    "extreme_price": 4592.72,
+    "is_pyramid": false,
+    "last_profit": 3.32,
+    "last_price": 4592.72
+  }
+}
