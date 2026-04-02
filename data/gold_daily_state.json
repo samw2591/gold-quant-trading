@@ -1,24 +1,5 @@
 {
   "date": "2026-04-02",
-  "pnl": -143.19,
-  "loss_count": 4,
-  "macro_sentiment": {
-    "label": "NEUTRAL",
-    "score": 0.0,
-    "confidence": 0.0,
-    "keyword_score": 0.0,
-    "finbert_score": null,
-    "vader_score": 0.0,
-    "direction_bias": null,
-    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
-  },
-  "macro_cross_assets": {
-    "timestamp": "2026-04-02T12:58:53.974141",
-    "brent_oil_price": 101.16,
-    "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -14.52,
-    "us10y_yield_price": 4.32,
-    "us10y_yield_prev_close": 4.31,
-    "us10y_yield_change_pct": 0.19
-  }
+  "pnl": -193.17,
+  "loss_count": 5
 }
