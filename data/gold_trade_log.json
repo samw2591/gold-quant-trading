@@ -1174,5 +1174,27 @@
     "sentiment_score": 0.3752,
     "lot_multiplier": 1.0,
     "time": "2026-04-02T06:06:29.494164"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16397569,
+    "strategy": "keltner",
+    "direction": "BUY",
+    "entry_price": 4776.23,
+    "lots": 0.01,
+    "profit": -39.72,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-02T09:07:06.453191"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16398234,
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "entry_price": 4759.18,
+    "lots": 0.02,
+    "profit": -45.34,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-02T09:07:07.145916"
   }
 ]

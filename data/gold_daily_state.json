@@ -1,22 +1,22 @@
 {
   "date": "2026-04-02",
-  "pnl": -9.28,
-  "loss_count": 1,
+  "pnl": -94.34,
+  "loss_count": 3,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3159,
-    "confidence": 0.4738,
+    "score": 0.2831,
+    "confidence": 0.4247,
     "keyword_score": 1.0,
-    "finbert_score": -0.0004,
-    "vader_score": 0.0806,
+    "finbert_score": -0.0572,
+    "vader_score": 0.0584,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790138\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.32)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold market analysis for April 1 - key intra-day price entry levels for active traders - KITCO | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold rate today, March 31 2026: Yellow metal on track for worst month since 2008 - Check city-wise gold prices in Delhi, Mumbai, Patna - msn.com"
+    "news_summary": "\u5206\u6790153\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.28)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold market analysis for April 1 - key intra-day price entry levels for active traders - KITCO | Gold rate today, March 31 2026: Yellow metal on track for worst month since 2008 - Check city-wise gold prices in Delhi, Mumbai, Patna - MSN"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-02T00:57:54.177554",
-    "brent_oil_price": 99.26,
+    "timestamp": "2026-04-02T01:58:26.109332",
+    "brent_oil_price": 105.58,
     "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -16.13,
+    "brent_oil_change_pct": -10.79,
     "us10y_yield_price": 4.32,
     "us10y_yield_prev_close": 4.31,
     "us10y_yield_change_pct": 0.19
