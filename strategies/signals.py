@@ -20,6 +20,8 @@ import pandas as pd
 from typing import Dict, Optional, List
 from datetime import datetime
 
+import config
+
 log = logging.getLogger(__name__)
 
 
@@ -76,6 +78,7 @@ def prepare_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['RSI2'] = calc_rsi(df['Close'], 2)
     df['RSI14'] = calc_rsi(df['Close'], 14)
     df['ADX'] = calc_adx(df, 14)
+    df['Vol_MA20'] = df['Volume'].rolling(20).mean()
     return df
 
 
@@ -511,7 +514,6 @@ def check_m15_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
 # NY开盘区间突破 (ORB) 策略
 # ═══════════════════════════════════════════════════════════════
 
-import config as _cfg
 
 
 class ORBStrategy:
@@ -554,7 +556,7 @@ class ORBStrategy:
         1. 识别NY开盘K线 (UTC 14:xx) → 设定区间
         2. 后续的K线检查是否突破
         """
-        if not _cfg.ORB_ENABLED:
+        if not config.ORB_ENABLED:
             return None
         if len(df) < 10:
             return None
@@ -587,13 +589,13 @@ class ORBStrategy:
                 check_hour = check_time.hour if hasattr(check_time, 'hour') else -1
                 check_date = check_time.date() if hasattr(check_time, 'date') else None
                 
-                if check_hour == _cfg.ORB_NY_OPEN_HOUR_UTC:
+                if check_hour == config.ORB_NY_OPEN_HOUR_UTC:
                     self.range_high = float(check_bar['High'])
                     self.range_low = float(check_bar['Low'])
                     self.range_set_date = check_date
                     self.window_open = True
                     # 窗口有效期减去已过去的K线数
-                    self.window_expiry = max(1, _cfg.ORB_EXPIRY_MINUTES // 60 - lookback)
+                    self.window_expiry = max(1, config.ORB_EXPIRY_MINUTES // 60 - lookback)
 
                     range_width = self.range_high - self.range_low
                     if lookback > 0:
@@ -605,7 +607,6 @@ class ORBStrategy:
                     if lookback > 0:
                         break  # 跳出循环，下面Step 2会检查突破
                     return None  # 开盘K线本身不交易
-                    break
 
         # Step 2: 检查突破
         if self.window_open and self.range_high is not None and not self.traded_today:
@@ -639,10 +640,10 @@ class ORBStrategy:
                 log.info(f"  [🇺🇸 ORB] Range/ATR={range_width/atr:.1f}>2.0，假突破风险高，跳过")
                 return None
 
-            sl = round(range_width * _cfg.ORB_SL_MULTIPLIER, 2)
-            min_sl = round(atr * _cfg.ORB_SL_MIN_ATR_MULTIPLIER, 2) if atr > 0 else ATR_SL_MIN
+            sl = round(range_width * config.ORB_SL_MULTIPLIER, 2)
+            min_sl = round(atr * config.ORB_SL_MIN_ATR_MULTIPLIER, 2) if atr > 0 else ATR_SL_MIN
             sl = max(sl, min_sl)
-            tp = round(range_width * _cfg.ORB_TP_MULTIPLIER, 2)
+            tp = round(range_width * config.ORB_TP_MULTIPLIER, 2)
 
             # 突破上沿 → 做多
             if high > self.range_high:
@@ -712,17 +713,17 @@ def calc_auto_lot_size(atr: float, sl_distance: float) -> float:
     - lots = 100 / (77.5 × 100) = 0.013 → 0.01手
     - 实际风险 = 77.5 × 0.01 × 100 = $77.5
     """
-    if not _cfg.AUTO_LOT_SIZING:
-        return _cfg.LOT_SIZE
+    if not config.AUTO_LOT_SIZING:
+        return config.LOT_SIZE
 
     if sl_distance <= 0:
-        return _cfg.LOT_SIZE
+        return config.LOT_SIZE
 
-    lots = _cfg.RISK_PER_TRADE / (sl_distance * _cfg.POINT_VALUE_PER_LOT)
+    lots = config.RISK_PER_TRADE / (sl_distance * config.POINT_VALUE_PER_LOT)
     # 四舍五入到小数点后两位
     lots = round(lots, 2)
     # 限制范围
-    lots = max(_cfg.MIN_LOT_SIZE, min(_cfg.MAX_LOT_SIZE, lots))
+    lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, lots))
     return lots
 
 
@@ -730,7 +731,6 @@ def calc_auto_lot_size(atr: float, sl_distance: float) -> float:
 # 周一跳空回补策略 (Monday Gap Fill)
 # ═══════════════════════════════════════════════════════════════
 
-import config as _gap_cfg
 
 # 周五收盘价存储 (全局状态)
 _friday_close_price = None
@@ -760,7 +760,7 @@ def check_monday_gap_fill(df: pd.DataFrame) -> Optional[Dict]:
     """
     global _friday_close_price, _gap_traded_today
     
-    if not _gap_cfg.STRATEGIES.get('gap_fill', {}).get('enabled', False):
+    if not config.STRATEGIES.get('gap_fill', {}).get('enabled', False):
         return None
     if _friday_close_price is None:
         return None
@@ -819,18 +819,17 @@ def check_monday_gap_fill(df: pd.DataFrame) -> Optional[Dict]:
 
 def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
     """扫描所有已启用策略的信号"""
-    import config as _scan_cfg
     signals = []
     if timeframe == 'H1':
         sig = check_keltner_signal(df)
         if sig:
             signals.append(sig)
-        if _scan_cfg.STRATEGIES.get('macd', {}).get('enabled', True):
+        if config.STRATEGIES.get('macd', {}).get('enabled', True):
             sig = check_macd_signal(df)
             if sig:
                 signals.append(sig)
         # ORB策略 (也用H1数据)
-        if _scan_cfg.ORB_ENABLED:
+        if config.ORB_ENABLED:
             sig = check_orb_signal(df)
             if sig:
                 signals.append(sig)

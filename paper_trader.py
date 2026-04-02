@@ -16,6 +16,8 @@
 """
 import json
 import logging
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -29,7 +31,8 @@ log = logging.getLogger(__name__)
 class PaperPosition:
     """模拟持仓"""
     def __init__(self, strategy: str, direction: str, entry_price: float,
-                 sl: float, tp: float, lots: float, reason: str):
+                 sl: float, tp: float, lots: float, reason: str,
+                 factors: Optional[Dict] = None):
         self.strategy = strategy
         self.direction = direction
         self.entry_price = entry_price
@@ -37,6 +40,7 @@ class PaperPosition:
         self.tp = tp
         self.lots = lots
         self.reason = reason
+        self.factors = factors or {}
         self.entry_time = datetime.now().isoformat()
         self.bars_held = 0
         self.max_favorable = 0.0  # MFE
@@ -85,6 +89,7 @@ class PaperPosition:
             'pnl_points': round(pnl, 2),
             'exit_reason': exit_reason,
             'reason': self.reason,
+            'factors': self.factors,
             'entry_time': self.entry_time,
             'exit_time': datetime.now().isoformat(),
             'bars_held': self.bars_held,
@@ -108,6 +113,7 @@ class PaperPosition:
             'pnl_points': round(pnl, 2),
             'exit_reason': 'timeout',
             'reason': self.reason,
+            'factors': self.factors,
             'entry_time': self.entry_time,
             'exit_time': datetime.now().isoformat(),
             'bars_held': self.bars_held,
@@ -151,13 +157,22 @@ class PaperTrader:
                     content = f.read().strip()
                     if content:
                         return json.loads(content)
-        except:
+        except (json.JSONDecodeError, ValueError, OSError):
             pass
         return default
 
     def _save_json(self, path, data):
-        with open(path, 'w') as f:
-            json.dump(data, f, indent=2, default=str)
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(Path(path).parent), suffix='.tmp')
+        try:
+            with os.fdopen(tmp_fd, 'w') as f:
+                json.dump(data, f, indent=2, default=str)
+            os.replace(tmp_path, str(path))
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def _load_positions(self) -> List[PaperPosition]:
         """从文件恢复持仓"""
@@ -172,6 +187,7 @@ class PaperTrader:
                 tp=p.get('tp', 0),
                 lots=p.get('lots', 0.01),
                 reason=p.get('reason', ''),
+                factors=p.get('factors', {}),
             )
             pos.entry_time = p.get('entry_time', '')
             pos.bars_held = p.get('bars_held', 0)
@@ -193,6 +209,7 @@ class PaperTrader:
                 'sl': pos.sl, 'tp': pos.tp,
                 'lots': pos.lots,
                 'reason': pos.reason,
+                'factors': pos.factors,
                 'entry_time': pos.entry_time,
                 'bars_held': pos.bars_held,
                 'max_favorable': pos.max_favorable,
@@ -333,18 +350,50 @@ class PaperTrader:
             tp = sig.get('tp', 0)
             lots = 0.01  # 模拟盘固定小手数
 
+            factors = self._snapshot_factors(df, name)
+
             pos = PaperPosition(
                 strategy=name,
                 direction=sig['signal'],
                 entry_price=entry_price,
                 sl=sl, tp=tp, lots=lots,
                 reason=sig.get('reason', name),
+                factors=factors,
             )
             self.positions.append(pos)
             self._save_positions()
 
             log.info(f"  📝 [模拟] {sig['signal']} {name} @ {entry_price:.2f} "
                      f"SL={sl:.1f} TP={tp:.1f} | {sig.get('reason', '')}")
+
+    @staticmethod
+    def _snapshot_factors(df: pd.DataFrame, strategy: str) -> Dict:
+        """采集当前K线的因子快照，供 IC 分析使用"""
+        row = df.iloc[-1]
+        factors: Dict = {}
+        for col in ('RSI14', 'RSI2', 'ADX', 'ATR', 'MACD_hist',
+                     'EMA9', 'EMA21', 'EMA100', 'KC_upper', 'KC_lower',
+                     'Volume', 'Vol_MA20'):
+            val = row.get(col)
+            if val is not None and not pd.isna(val):
+                factors[col] = round(float(val), 4)
+
+        close = float(row['Close'])
+        atr = factors.get('ATR', 0)
+        if atr > 0:
+            kc_upper = factors.get('KC_upper', close)
+            factors['kc_breakout_strength'] = round((close - kc_upper) / atr, 4)
+
+        vol_ma = factors.get('Vol_MA20', 0)
+        vol = factors.get('Volume', 0)
+        if vol_ma > 0:
+            factors['volume_ratio'] = round(vol / vol_ma, 4)
+
+        atr_series = df['ATR'].dropna()
+        if len(atr_series) >= 50:
+            factors['atr_percentile'] = round(float((atr_series.iloc[-50:] < atr).mean()), 4)
+
+        return factors
 
     def _record_close(self, result: Dict):
         """记录平仓"""
@@ -413,95 +462,6 @@ def setup_paper_strategies(paper: PaperTrader):
     ─────────────────────────────
 
     """
-    # ── 策略P1: Stochastic极端 + EMA100趋势过滤 ──
-    # 来源: Algomatic Trading研究, 回测Sharpe 0.85, 胜率46.3%, 年均109笔
-    # 原理: Stochastic在超买/超卖区金叉/死叉 + 顺大趋势方向
-    def stoch_extreme_signal(df):
-        if len(df) < 105:
-            return None
-        row = df.iloc[-1]; prev = df.iloc[-2]
-        
-        # 计算Stochastic
-        low14 = df['Low'].iloc[-14:].min()
-        high14 = df['High'].iloc[-14:].max()
-        stk = 100 * (float(row['Close']) - low14) / (high14 - low14) if high14 != low14 else 50
-        
-        low14_p = df['Low'].iloc[-15:-1].min()
-        high14_p = df['High'].iloc[-15:-1].max()
-        pstk = 100 * (float(prev['Close']) - low14_p) / (high14_p - low14_p) if high14_p != low14_p else 50
-        
-        # 简化: 用K线方向代替Stoch_D交叉
-        ema100 = float(row['EMA100'])
-        close = float(row['Close'])
-        atr = float(row['ATR'])
-        
-        if any(pd.isna(v) for v in [ema100, atr]):
-            return None
-        
-        sl = max(10, min(40, round(atr * 2.0, 2)))
-        tp = round(atr * 3.0, 2)
-        
-        # 做多: Stoch从超卖区回升 + 顺势
-        if stk > 20 and pstk <= 20 and close > ema100:
-            return {'signal': 'BUY', 'sl': sl, 'tp': tp,
-                    'reason': f'P1 Stoch做多: K={stk:.0f}从超卖回升, 价>{ema100:.0f}'}
-        # 做空: Stoch从超买区回落 + 顺势
-        if stk < 80 and pstk >= 80 and close < ema100:
-            return {'signal': 'SELL', 'sl': sl, 'tp': tp,
-                    'reason': f'P1 Stoch做空: K={stk:.0f}从超买回落, 价<{ema100:.0f}'}
-        return None
-
-    paper.register_strategy('P1_stoch_extreme', {
-        'signal_func': stoch_extreme_signal,
-        'timeframe': 'H1',
-        'max_hold_bars': 12,
-        'max_positions': 1,
-        'enabled': True,
-    })
-
-    # ── 策略P2: London-NY重叠时段动量 ──
-    # 自研策略, 回测Sharpe 0.66, 胜率49.3%
-    # 原理: 伦敦和NY重叠时段(UTC 13-16)流动性最高, 顺EMA+MACD方向做动量
-    def london_ny_signal(df):
-        if len(df) < 105:
-            return None
-        bar_time = df.index[-1]
-        hour = bar_time.hour
-        if hour < 13 or hour > 16:
-            return None
-        
-        row = df.iloc[-1]
-        close = float(row['Close'])
-        ema9 = float(row['EMA9'])
-        ema21 = float(row['EMA21'])
-        adx = float(row['ADX'])
-        atr = float(row['ATR'])
-        macd_h = float(row['MACD_hist'])
-        
-        if any(pd.isna(v) for v in [ema9, ema21, adx, atr, macd_h]):
-            return None
-        if adx < 20:
-            return None
-        
-        sl = max(10, min(35, round(atr * 1.5, 2)))
-        tp = round(atr * 3.0, 2)
-        
-        if ema9 > ema21 and macd_h > 0 and close > ema21:
-            return {'signal': 'BUY', 'sl': sl, 'tp': tp,
-                    'reason': f'P2 LN动量做多: EMA9>{ema21:.0f}, MACD>0, ADX={adx:.0f}'}
-        if ema9 < ema21 and macd_h < 0 and close < ema21:
-            return {'signal': 'SELL', 'sl': sl, 'tp': tp,
-                    'reason': f'P2 LN动量做空: EMA9<{ema21:.0f}, MACD<0, ADX={adx:.0f}'}
-        return None
-
-    paper.register_strategy('P2_london_ny', {
-        'signal_func': london_ny_signal,
-        'timeframe': 'H1',
-        'max_hold_bars': 8,
-        'max_positions': 1,
-        'enabled': True,
-    })
-
     # ── 策略P3: 周五持仓过周末 (模拟盘) ──
     # 回测: Sharpe 0.96 (ADX>24), 胜率44.2%, 但平均盈亏+$2.6/笔
     # 原理: 周五收盘前顺趋势方向开仓，赌周末事件不会反转趋势
@@ -538,6 +498,181 @@ def setup_paper_strategies(paper: PaperTrader):
         'signal_func': friday_hold_signal,
         'timeframe': 'H1',
         'max_hold_bars': 48,  # 持仓到周一 (~48小时)
+        'max_positions': 1,
+        'enabled': True,
+    })
+
+    # ── 策略P4: ATR Regime 自适应 ──
+    # 根据ATR百分位区分波动率环境，低波用RSI均值回归，正常波动用动量，高波跳过
+    def atr_regime_signal(df):
+        if len(df) < 105:
+            return None
+        row = df.iloc[-1]
+        close = float(row['Close'])
+        atr = float(row['ATR'])
+        rsi14 = float(row['RSI14'])
+        ema9 = float(row['EMA9'])
+        ema21 = float(row['EMA21'])
+        ema100 = float(row['EMA100'])
+        macd_h = float(row['MACD_hist'])
+
+        if any(pd.isna(v) for v in [atr, rsi14, ema9, ema21, ema100, macd_h]):
+            return None
+
+        atr_series = df['ATR'].dropna()
+        if len(atr_series) < 50:
+            return None
+        atr_pct = (atr_series.iloc[-50:] < atr).mean()
+
+        if atr_pct > 0.70:
+            return None
+
+        if atr_pct < 0.30:
+            sl = max(8, min(25, round(atr * 2.0, 2)))
+            tp = round(atr * 2.0, 2)
+            if rsi14 < 30 and close > ema100:
+                return {'signal': 'BUY', 'sl': sl, 'tp': tp,
+                        'reason': f'P4 低波RSI做多: RSI={rsi14:.0f}<30, ATR%={atr_pct:.0%}'}
+            if rsi14 > 70 and close < ema100:
+                return {'signal': 'SELL', 'sl': sl, 'tp': tp,
+                        'reason': f'P4 低波RSI做空: RSI={rsi14:.0f}>70, ATR%={atr_pct:.0%}'}
+        else:
+            sl = max(10, min(35, round(atr * 2.0, 2)))
+            tp = round(atr * 2.5, 2)
+            if ema9 > ema21 and macd_h > 0 and close > ema100:
+                return {'signal': 'BUY', 'sl': sl, 'tp': tp,
+                        'reason': f'P4 正常动量做多: EMA9>21, MACD>0, ATR%={atr_pct:.0%}'}
+            if ema9 < ema21 and macd_h < 0 and close < ema100:
+                return {'signal': 'SELL', 'sl': sl, 'tp': tp,
+                        'reason': f'P4 正常动量做空: EMA9<21, MACD<0, ATR%={atr_pct:.0%}'}
+        return None
+
+    paper.register_strategy('P4_atr_regime', {
+        'signal_func': atr_regime_signal,
+        'timeframe': 'H1',
+        'max_hold_bars': 12,
+        'max_positions': 1,
+        'enabled': True,
+    })
+
+    # ── 策略P5: Volume确认突破 ──
+    # Keltner通道突破 + 成交量放大确认，过滤低量假突破
+    def volume_breakout_signal(df):
+        if len(df) < 105:
+            return None
+        row = df.iloc[-1]
+        close = float(row['Close'])
+        kc_upper = float(row['KC_upper'])
+        kc_lower = float(row['KC_lower'])
+        adx = float(row['ADX'])
+        atr = float(row['ATR'])
+        ema100 = float(row['EMA100'])
+        volume = float(row['Volume'])
+        vol_ma = float(row['Vol_MA20'])
+
+        if any(pd.isna(v) for v in [kc_upper, kc_lower, adx, atr, ema100, vol_ma]):
+            return None
+        if adx < 22:
+            return None
+        if vol_ma <= 0:
+            return None
+        if volume < vol_ma * 1.5:
+            return None
+
+        sl = max(10, min(45, round(atr * 2.5, 2)))
+        tp = round(atr * 3.0, 2)
+        vol_ratio = volume / vol_ma
+
+        if close > kc_upper and close > ema100:
+            return {'signal': 'BUY', 'sl': sl, 'tp': tp,
+                    'reason': f'P5 放量突破做多: 破KC上轨, Vol={vol_ratio:.1f}x均量, ADX={adx:.0f}'}
+        if close < kc_lower and close < ema100:
+            return {'signal': 'SELL', 'sl': sl, 'tp': tp,
+                    'reason': f'P5 放量突破做空: 破KC下轨, Vol={vol_ratio:.1f}x均量, ADX={adx:.0f}'}
+        return None
+
+    paper.register_strategy('P5_volume_breakout', {
+        'signal_func': volume_breakout_signal,
+        'timeframe': 'H1',
+        'max_hold_bars': 15,
+        'max_positions': 1,
+        'enabled': True,
+    })
+
+    # ── 策略P6: DXY过滤动量 ──
+    # 伦敦-纽约时段动量 + DXY负相关过滤 + 降低TP到2xATR
+    _dxy_cache = {'data': None, 'ts': 0}
+
+    def _get_dxy_change():
+        """获取DXY日涨跌幅，10分钟缓存"""
+        import time
+        now = time.monotonic()
+        if _dxy_cache['data'] is not None and (now - _dxy_cache['ts']) < 600:
+            return _dxy_cache['data']
+        try:
+            import yfinance as yf
+            from datetime import datetime, timedelta
+            end = datetime.now()
+            start = end - timedelta(days=5)
+            data = yf.download('DX-Y.NYB', start=start.strftime('%Y-%m-%d'),
+                               end=end.strftime('%Y-%m-%d'), progress=False)
+            if data.empty or len(data) < 2:
+                return None
+            if hasattr(data.columns, 'levels') and len(data.columns.levels) > 1:
+                data.columns = data.columns.droplevel(1)
+            latest = float(data['Close'].iloc[-1])
+            prev = float(data['Close'].iloc[-2])
+            change_pct = (latest - prev) / prev * 100
+            _dxy_cache['data'] = round(change_pct, 3)
+            _dxy_cache['ts'] = now
+            return _dxy_cache['data']
+        except Exception:
+            return None
+
+    def dxy_filtered_signal(df):
+        if len(df) < 105:
+            return None
+        bar_time = df.index[-1]
+        hour = bar_time.hour if hasattr(bar_time, 'hour') else -1
+        if hour < 13 or hour > 16:
+            return None
+
+        row = df.iloc[-1]
+        close = float(row['Close'])
+        ema9 = float(row['EMA9'])
+        ema21 = float(row['EMA21'])
+        adx = float(row['ADX'])
+        atr = float(row['ATR'])
+        macd_h = float(row['MACD_hist'])
+
+        if any(pd.isna(v) for v in [ema9, ema21, adx, atr, macd_h]):
+            return None
+        if adx < 20:
+            return None
+
+        sl = max(10, min(35, round(atr * 1.5, 2)))
+        tp = round(atr * 2.0, 2)
+
+        dxy_chg = _get_dxy_change()
+
+        if ema9 > ema21 and macd_h > 0 and close > ema21:
+            if dxy_chg is not None and dxy_chg > 0.05:
+                return None
+            dxy_info = f', DXY={dxy_chg:+.2f}%' if dxy_chg is not None else ''
+            return {'signal': 'BUY', 'sl': sl, 'tp': tp,
+                    'reason': f'P6 DXY做多: EMA9>{ema21:.0f}, MACD>0{dxy_info}'}
+        if ema9 < ema21 and macd_h < 0 and close < ema21:
+            if dxy_chg is not None and dxy_chg < -0.05:
+                return None
+            dxy_info = f', DXY={dxy_chg:+.2f}%' if dxy_chg is not None else ''
+            return {'signal': 'SELL', 'sl': sl, 'tp': tp,
+                    'reason': f'P6 DXY做空: EMA9<{ema21:.0f}, MACD<0{dxy_info}'}
+        return None
+
+    paper.register_strategy('P6_dxy_filtered', {
+        'signal_func': dxy_filtered_signal,
+        'timeframe': 'H1',
+        'max_hold_bars': 8,
         'max_positions': 1,
         'enabled': True,
     })

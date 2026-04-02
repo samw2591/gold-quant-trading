@@ -316,6 +316,8 @@ def load_m5_data() -> pd.DataFrame:
 
 
 def main():
+    config.DATA_DIR.mkdir(exist_ok=True)
+
     print("=" * 70)
     print("  黄金量化 — 历史行情回放测试 v2")
     print(f"  回放区间: {REPLAY_START} ~ {REPLAY_END}")

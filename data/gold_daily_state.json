@@ -4,19 +4,19 @@
   "loss_count": 3,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2703,
-    "confidence": 0.4054,
+    "score": 0.266,
+    "confidence": 0.399,
     "keyword_score": 1.0,
-    "finbert_score": -0.0769,
-    "vader_score": 0.0438,
+    "finbert_score": -0.087,
+    "vader_score": 0.0477,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790173\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.27)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold market analysis for April 1 - key intra-day price entry levels for active traders - KITCO | Trump Speech Triggers Sharp Short-Term Gold Volatility, Erasing Over $100 Intraday - TradingKey"
+    "news_summary": "\u5206\u6790170\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.27)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold market analysis for April 1 - key intra-day price entry levels for active traders - KITCO | Trump Speech Triggers Sharp Short-Term Gold Volatility, Erasing Over $100 Intraday - TradingKey"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-02T02:58:57.276598",
-    "brent_oil_price": 105.8,
+    "timestamp": "2026-04-02T03:19:13.374461",
+    "brent_oil_price": 106.13,
     "brent_oil_prev_close": 118.35,
-    "brent_oil_change_pct": -10.6,
+    "brent_oil_change_pct": -10.33,
     "us10y_yield_price": 4.32,
     "us10y_yield_prev_close": 4.31,
     "us10y_yield_change_pct": 0.19

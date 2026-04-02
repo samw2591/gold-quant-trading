@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config
 from gold_trader import GoldTrader
 from paper_trader import PaperTrader, setup_paper_strategies
+from ic_monitor import ICMonitor
 
 # ============================================================
 # 时区
@@ -33,6 +34,9 @@ LOCAL_TZ = ZoneInfo("Asia/Singapore")
 # ============================================================
 # 日志
 # ============================================================
+config.DATA_DIR.mkdir(exist_ok=True)
+config.LOG_DIR.mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
@@ -124,7 +128,7 @@ def main():
     try:
         import notifier
         notifier.notify_system_start()
-    except:
+    except Exception:
         pass
     
     signal_scanned_today = False
@@ -170,8 +174,18 @@ def main():
                             if eq_data and isinstance(eq_data, list):
                                 eq_record = eq_data[-1]
                         notifier.notify_daily_report(current_pnl, day_pnl, total_trades, eq_record)
-                    except:
+                    except Exception:
                         pass
+
+                    # IC 因子有效性报告
+                    try:
+                        ic_mon = ICMonitor()
+                        ic_report = ic_mon.generate_report()
+                        ic_msg = ic_mon.format_telegram_summary(ic_report)
+                        notifier.send_telegram(ic_msg)
+                        log.info("📊 IC 因子监控报告已发送")
+                    except Exception as e:
+                        log.warning(f"IC报告生成失败 (不影响交易): {e}")
                 
                 signal_scanned_today = False
                 last_date = today

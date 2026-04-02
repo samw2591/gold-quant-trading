@@ -1,27 +1,27 @@
 """
 黄金量化交易主引擎
 ==================
-管理持仓、执行交易、风控保护
+编排层: 组合数据获取、风控、持仓追踪模块，执行交易流程
 
 职责:
-1. 从MT4获取行情数据
+1. 调用 DataProvider 获取行情数据
 2. 运行信号引擎检测入场/出场
-3. 通过MT4桥接执行交易
-4. 风险管理 (总亏损保护、仓位控制)
-5. 记录交易日志
+3. 通过 MT4Bridge 执行交易
+4. 调用 RiskManager 做风险管理
+5. 调用 PositionTracker 记录交易日志
 """
-import json
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
-import yfinance as yf
 
 import config
 from mt4_bridge import MT4Bridge
-from strategies.signals import (prepare_indicators, scan_all_signals, check_exit_signal,
+from data_provider import DataProvider
+from risk_manager import RiskManager
+from position_tracker import PositionTracker
+from strategies.signals import (scan_all_signals, check_exit_signal,
                                 get_orb_strategy, calc_auto_lot_size)
 import notifier
 
@@ -41,13 +41,6 @@ except Exception as _import_err:
     MACRO_MONITOR_AVAILABLE = False
     logging.getLogger(__name__).warning(f"宏观监控模块导入失败: {_import_err}")
 
-# 策略默认止损止盈 (美元)
-STRATEGY_PARAMS = {
-    'keltner': {'sl': 20, 'tp': 35, 'max_bars': 15},
-    'macd': {'sl': 20, 'tp': 50, 'max_bars': 20},
-    'm15_rsi': {'sl': 15, 'tp': 0, 'max_bars': 12},  # RSI出场，不用固定止盈
-}
-
 log = logging.getLogger(__name__)
 
 
@@ -56,23 +49,10 @@ class GoldTrader:
 
     def __init__(self):
         self.bridge = MT4Bridge()
-        self.tracking_file = config.DATA_DIR / "gold_position_tracking.json"
-        self.log_file = config.DATA_DIR / "gold_trade_log.json"
-        self.pnl_file = config.DATA_DIR / "gold_total_pnl.json"
-        self.tracking = self._load_json(self.tracking_file, {})
-        self.trade_log = self._load_json(self.log_file, [])
-        self.total_pnl = self._load_json(self.pnl_file, {"total_pnl": 0, "trade_count": 0})
-        
-        # 错失信号记录
-        self.missed_signals_file = config.DATA_DIR / "gold_missed_signals.json"
-        self.missed_signals = self._load_json(self.missed_signals_file, [])
-        
-        # 冷却期跟踪: {strategy: 上次亏损时间}
-        self.cooldown_until = {}
-        # 日内亏损跟踪 (从文件恢复，防止重启丢失)
-        self.daily_state_file = config.DATA_DIR / "gold_daily_state.json"
-        self._load_daily_state()
-        
+        self.data = DataProvider(self.bridge)
+        self.risk = RiskManager(config.DATA_DIR)
+        self.tracker = PositionTracker(self.bridge, config.DATA_DIR)
+
         # 初始化舆情引擎
         self.sentiment = None
         if SENTIMENT_AVAILABLE:
@@ -93,357 +73,37 @@ class GoldTrader:
             except Exception as e:
                 log.warning(f"宏观监控初始化失败 (不影响交易): {e}")
 
-    def _load_json(self, path, default):
-        if path.exists():
-            with open(path) as f:
-                try:
-                    return json.load(f)
-                except:
-                    return default
-        return default
+    # ── 向后兼容属性 (供 gold_runner.py 使用) ──
 
-    def _save_json(self, path, data):
-        with open(path, 'w') as f:
-            json.dump(data, f, indent=2, default=str)
+    @property
+    def total_pnl(self):
+        return self.tracker.total_pnl
 
-    def _append_sentiment_history(self, daily_state: dict):
-        """Append today's sentiment snapshot to history file (one record per day)."""
-        history_file = config.DATA_DIR / "sentiment_history.json"
-        history = self._load_json(history_file, [])
-        today = daily_state.get("date", str(datetime.now().date()))
-        ms = daily_state.get("macro_sentiment", {})
-        ca = daily_state.get("macro_cross_assets", {})
+    @property
+    def tracking(self):
+        return self.tracker.tracking
 
-        record = {
-            "date": today,
-            "label": ms.get("label"),
-            "score": ms.get("score"),
-            "confidence": ms.get("confidence"),
-            "keyword_score": ms.get("keyword_score"),
-            "finbert_score": ms.get("finbert_score"),
-            "vader_score": ms.get("vader_score"),
-            "direction_bias": ms.get("direction_bias"),
-            "brent_oil_price": ca.get("brent_oil_price"),
-            "brent_oil_change_pct": ca.get("brent_oil_change_pct"),
-            "us10y_yield_price": ca.get("us10y_yield_price"),
-            "us10y_yield_change_pct": ca.get("us10y_yield_change_pct"),
-        }
+    @property
+    def daily_pnl(self):
+        return self.risk.daily_pnl
 
-        # Replace existing record for today, or append new
-        replaced = False
-        for i, r in enumerate(history):
-            if r.get("date") == today:
-                history[i] = record
-                replaced = True
-                break
-        if not replaced:
-            history.append(record)
-
-        self._save_json(history_file, history)
-
-    def _append_equity_record(self):
-        """Append today's equity + per-strategy stats to history (one record per day)."""
-        equity_file = config.DATA_DIR / "equity_curve.json"
-        history = self._load_json(equity_file, [])
-        today = str(datetime.now().date())
-
-        total_pnl = self.total_pnl.get("total_pnl", 0)
-        equity = round(config.CAPITAL + total_pnl, 2)
-
-        # Scan trade_log for today's closed trades, grouped by strategy
-        strat_stats: Dict[str, Dict] = {}
-        daily_wins = 0
-        daily_trade_count = 0
-        for entry in self.trade_log:
-            if entry.get("action") not in ("CLOSE", "CLOSE_DETECTED"):
-                continue
-            t = entry.get("time", "")
-            if not t.startswith(today):
-                continue
-            daily_trade_count += 1
-            profit = entry.get("profit", 0)
-            if profit > 0:
-                daily_wins += 1
-            strat = entry.get("strategy", "unknown")
-            if strat not in strat_stats:
-                strat_stats[strat] = {"trades": 0, "pnl": 0.0}
-            strat_stats[strat]["trades"] += 1
-            strat_stats[strat]["pnl"] = round(strat_stats[strat]["pnl"] + profit, 2)
-
-        record = {
-            "date": today,
-            "equity": equity,
-            "total_pnl": total_pnl,
-            "daily_pnl": self.daily_pnl,
-            "daily_trades": daily_trade_count,
-            "daily_wins": daily_wins,
-            "daily_losses": self.daily_loss_count,
-            "strategies": strat_stats,
-        }
-
-        replaced = False
-        for i, r in enumerate(history):
-            if r.get("date") == today:
-                history[i] = record
-                replaced = True
-                break
-        if not replaced:
-            history.append(record)
-
-        self._save_json(equity_file, history)
-
-    def _save_tracking(self):
-        self._save_json(self.tracking_file, self.tracking)
-
-    def _save_trade_log(self):
-        self._save_json(self.log_file, self.trade_log)
-
-    def _log_missed_signal(self, sig: Dict, filter_reason: str):
-        """记录被过滤的信号，用于复盘分析机会成本"""
-        record = {
-            'time': datetime.now().isoformat(),
-            'strategy': sig.get('strategy', ''),
-            'direction': sig.get('signal', ''),
-            'price': sig.get('close', 0),
-            'reason': sig.get('reason', ''),
-            'sl': sig.get('sl', 0),
-            'tp': sig.get('tp', 0),
-            'filter_reason': filter_reason,
-        }
-        self.missed_signals.append(record)
-        # 只保留最近500条
-        if len(self.missed_signals) > 500:
-            self.missed_signals = self.missed_signals[-500:]
-        self._save_json(self.missed_signals_file, self.missed_signals)
-
-    def _save_pnl(self):
-        self._save_json(self.pnl_file, self.total_pnl)
-
-    # ── 数据获取 ──
-
-    def _read_mt4_bars(self, filename: str) -> Optional[pd.DataFrame]:
-        """从MT4桥接文件读K线数据 (优先数据源)"""
-        filepath = config.BRIDGE_DIR / filename
-        try:
-            if not filepath.exists():
-                return None
-            with open(filepath, 'r') as f:
-                data = json.loads(f.read())
-            
-            bars = data.get('bars', [])
-            if len(bars) < 55:
-                return None
-            
-            rows = []
-            for b in bars:
-                rows.append({
-                    'Open': b['o'], 'High': b['h'], 'Low': b['l'],
-                    'Close': b['c'], 'Volume': b.get('v', 0),
-                })
-            
-            df = pd.DataFrame(rows)
-            # 解析时间戳作为索引
-            times = [pd.Timestamp(b['t'].replace('.', '-')) for b in bars]
-            df.index = pd.DatetimeIndex(times)
-            df.index.name = 'Datetime'
-            
-            return prepare_indicators(df)
-        except Exception as e:
-            log.debug(f"MT4本地数据读取失败 ({filename}): {e}")
-            return None
-
-    def _get_yfinance_data(self, interval='1h', period='60d') -> Optional[pd.DataFrame]:
-        """从yfinance获取数据 (fallback备用)"""
-        try:
-            df = yf.download('GC=F', period=period, interval=interval, progress=False)
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            df = df.dropna(subset=['Close'])
-            if len(df) < 55:
-                return None
-            return prepare_indicators(df)
-        except Exception as e:
-            log.debug(f"yfinance {interval}数据获取失败: {e}")
-            return None
-
-    def get_hourly_data(self) -> Optional[pd.DataFrame]:
-        """获取H1数据: MT4本地 > yfinance"""
-        df = self._read_mt4_bars('bars_h1.json')
-        if df is not None:
-            log.debug("H1数据来源: MT4本地")
-            return df
-        log.debug("H1数据来源: yfinance (fallback)")
-        return self._get_yfinance_data('1h', '60d')
-    
-    def get_m15_data(self) -> Optional[pd.DataFrame]:
-        """获取M15数据: MT4本地 > yfinance"""
-        df = self._read_mt4_bars('bars_m15.json')
-        if df is not None:
-            log.debug("M15数据来源: MT4本地")
-            return df
-        log.debug("M15数据来源: yfinance (fallback)")
-        return self._get_yfinance_data('15m', '30d')
-
-    # ── 风控检查 ──
-
-    def check_total_loss_limit(self) -> bool:
-        """检查是否超过总亏损上限"""
-        total = self.total_pnl.get('total_pnl', 0)
-        if total <= -config.MAX_TOTAL_LOSS:
-            log.warning(f"🛑 总亏损已达 ${total:.2f}，超过上限 ${config.MAX_TOTAL_LOSS}，停止交易")
-            return True
-        return False
+    @property
+    def daily_loss_count(self):
+        return self.risk.daily_loss_count
 
     def get_strategy_positions(self) -> List[Dict]:
-        """获取本策略的持仓 (通过magic number过滤)"""
-        all_pos = self.bridge.get_positions()
-        return [p for p in all_pos if p.get('magic') == config.MAGIC_NUMBER]
-
-    # ── 核心交易逻辑 ──
+        return self.tracker.get_strategy_positions()
 
     def _sync_positions_tracking(self):
-        """同步MT4持仓与tracking记录
-        1. 更新现有持仓的实时盈亏
-        2. 已平仓单(止损/手动)自动检测并记录盈亏
-        3. 新开仓单自动补录tracking
-        """
-        mt4_positions = self.get_strategy_positions()
-        mt4_tickets = {str(p['ticket']): p for p in mt4_positions}
-        
-        # 1. 更新现有持仓的实时盈亏 + 极值价格 (存入tracking，平仓/trailing stop时用)
-        for pos in mt4_positions:
-            tk = str(pos['ticket'])
-            if tk in self.tracking:
-                current = pos.get('current_price', 0)
-                self.tracking[tk]['last_profit'] = pos.get('profit', 0)
-                self.tracking[tk]['last_price'] = current
-                direction = self.tracking[tk].get('direction', 'BUY')
-                old_extreme = self.tracking[tk].get('extreme_price', current)
-                if direction == 'BUY':
-                    self.tracking[tk]['extreme_price'] = max(old_extreme, current)
-                else:
-                    self.tracking[tk]['extreme_price'] = min(old_extreme, current) if old_extreme > 0 else current
-        self._save_tracking()
-        
-        # 2. 检测已消失的持仓 (被MT4止损/手动平仓)
-        tracked_tickets = list(self.tracking.keys())
-        for ticket_key in tracked_tickets:
-            # 跳过pending条目，它们不是真实ticket
-            if ticket_key.startswith('pending_'):
-                continue
-            if ticket_key not in mt4_tickets:
-                track = self.tracking[ticket_key]
-                strategy = track.get('strategy', 'unknown')
-                direction = track.get('direction', 'BUY')
-                entry_price = track.get('entry_price', 0)
-                last_profit = track.get('last_profit', 0)
-                lots = track.get('lots', config.LOT_SIZE)
-                
-                log.info(f"  ⚠️ 检测到 #{ticket_key} ({strategy}) 已被MT4平仓")
-                log.info(f"     估算盈亏: ${last_profit:+.2f} (开仓价: {entry_price})")
-                notifier.notify_close(int(ticket_key), strategy, last_profit, 'MT4自动平仓(止损或手动)')
-                
-                # 更新总盈亏
-                self.total_pnl['total_pnl'] = round(
-                    self.total_pnl.get('total_pnl', 0) + last_profit, 2
-                )
-                self.total_pnl['trade_count'] = self.total_pnl.get('trade_count', 0) + 1
-                self._save_pnl()
-                
-                # 更新日内盈亏
-                self._update_daily_pnl(last_profit)
-                
-                # 亏损时设置冷却期
-                if last_profit < 0:
-                    from datetime import timedelta
-                    cooldown_hours = config.COOLDOWN_BARS  # 3小时
-                    self.cooldown_until[strategy] = datetime.now() + timedelta(hours=cooldown_hours)
-                    log.info(f"     ❄️ {strategy} 进入冷却期，{cooldown_hours}小时后才可开仓")
-                
-                # 记录到交易日志
-                trade = {
-                    'action': 'CLOSE_DETECTED', 'ticket': int(ticket_key),
-                    'strategy': strategy, 'direction': direction,
-                    'entry_price': entry_price, 'lots': lots,
-                    'profit': last_profit,
-                    'reason': '🚨 MT4自动平仓 (止损或手动)',
-                    'time': datetime.now().isoformat(),
-                }
-                self.trade_log.append(trade)
-                self._save_trade_log()
-                
-                del self.tracking[ticket_key]
-                self._save_tracking()
-        
-        # 2. 清理pending条目: 真实ticket已到位时，删除临时的pending记录
-        pending_keys = [k for k in self.tracking if k.startswith('pending_')]
-        for pk in pending_keys:
-            p_strategy = self.tracking[pk].get('strategy', '')
-            # 检查MT4是否已有该策略的真实持仓
-            matched = False
-            for pos in mt4_positions:
-                tk = str(pos['ticket'])
-                if tk in self.tracking and self.tracking[tk].get('strategy') == p_strategy:
-                    matched = True
-                    break
-                # 或者新单还没被记录，通过comment匹配
-                comment = pos.get('comment', '').lower()
-                if (p_strategy == 'keltner' and 'kelt' in comment) or \
-                   (p_strategy == 'orb' and 'orb' in comment) or \
-                   (p_strategy == 'm15_rsi' and ('rsi' in comment or 'm15' in comment)):
-                    matched = True
-                    break
-            if matched:
-                del self.tracking[pk]
-                self._save_tracking()
-                log.debug(f"  清理pending: {pk} (已匹配真实持仓)")
-            else:
-                # 超过10分钟的pending记录，认为开仓失败，清理
-                entry_str = self.tracking[pk].get('entry_date', '')
-                try:
-                    entry_time = datetime.fromisoformat(entry_str)
-                    if (datetime.now() - entry_time).total_seconds() > 600:
-                        del self.tracking[pk]
-                        self._save_tracking()
-                        log.warning(f"  清理过期pending: {pk} (超过10分钟未匹配)")
-                except:
-                    pass
-        
-        # 3. 检测未tracking的新仓位 (开仓后ticket未同步)
-        for pos in mt4_positions:
-            ticket_key = str(pos['ticket'])
-            if ticket_key not in self.tracking:
-                # 从comment推断策略 (comment格式: GOLD_kelt / GOLD_orb / GOLD_m15_)
-                comment = pos.get('comment', '')
-                strategy = 'unknown'
-                cl = comment.lower()
-                if 'kelt' in cl:
-                    strategy = 'keltner'
-                elif 'orb' in cl:
-                    strategy = 'orb'
-                elif 'macd' in cl:
-                    strategy = 'macd'
-                elif 'rsi' in cl or 'm15' in cl:
-                    strategy = 'm15_rsi'
-                
-                if strategy == 'unknown':
-                    log.warning(f"  ⚠️ 无法识别策略: ticket={ticket_key} comment='{comment}'")
-                
-                direction = 'SELL' if pos.get('type', 0) == 1 else 'BUY'
-                
-                self.tracking[ticket_key] = {
-                    'strategy': strategy,
-                    'direction': direction,
-                    'entry_price': pos.get('open_price', 0),
-                    'entry_date': pos.get('open_time', datetime.now().isoformat()),
-                    'lots': pos.get('lots', 0),
-                    'sl': pos.get('sl', 0),
-                    'trailing_stop_price': 0,
-                    'extreme_price': pos.get('open_price', 0),
-                    'is_pyramid': False,
-                }
-                self._save_tracking()
-                log.info(f"  📝 同步新仓位: #{ticket_key} {strategy} {direction} @ {pos.get('open_price', 0)}")
+        self.tracker.sync_positions(risk_manager=self.risk)
+
+    def get_hourly_data(self) -> Optional[pd.DataFrame]:
+        return self.data.get_hourly_data()
+
+    def get_m15_data(self) -> Optional[pd.DataFrame]:
+        return self.data.get_m15_data()
+
+    # ── 核心交易流程 ──
 
     def scan_and_trade(self) -> Dict:
         """完整扫描+交易流程"""
@@ -453,27 +113,28 @@ class GoldTrader:
         log.info(f"{'='*60}")
 
         # 同步MT4持仓状态
-        self._sync_positions_tracking()
+        self.tracker.sync_positions(risk_manager=self.risk)
 
         # 总亏损检查
-        if self.check_total_loss_limit():
+        if self.risk.check_total_loss_limit(self.tracker.total_pnl.get('total_pnl', 0)):
             return {"status": "stopped", "reason": "total_loss_limit"}
 
         # 日内亏损检查
-        if self._check_daily_loss_limit():
+        if self.risk.check_daily_loss_limit():
             log.warning(f"\n{'!'*60}")
-            log.warning(f"🚨 日内亏损{self.daily_loss_count}笔 (上限{config.DAILY_MAX_LOSSES}笔) | 日内PnL: ${self.daily_pnl:.2f}")
+            log.warning(f"🚨 日内亏损{self.risk.daily_loss_count}笔 (上限{config.DAILY_MAX_LOSSES}笔) | 日内PnL: ${self.risk.daily_pnl:.2f}")
             log.warning(f"🛑 系统停止交易，明日自动恢复")
             log.warning(f"{'!'*60}")
-            notifier.notify_stop_review(self.daily_pnl)
-            return {"status": "STOP_REVIEW", "daily_pnl": self.daily_pnl, "daily_losses": self.daily_loss_count}
+            notifier.notify_stop_review(self.risk.daily_pnl)
+            return {"status": "STOP_REVIEW", "daily_pnl": self.risk.daily_pnl, "daily_losses": self.risk.daily_loss_count}
 
         # 获取舆情分析结果
         sentiment_ctx = self._get_sentiment_context()
 
-        # 舆情状态落盘（merge 写入，不覆盖技术面字段）
+        # 舆情状态落盘
         if sentiment_ctx:
-            state = self._load_json(self.daily_state_file, {})
+            daily_state_file = config.DATA_DIR / "gold_daily_state.json"
+            state = self.tracker._load_json(daily_state_file, {})
             s = sentiment_ctx["sentiment"]
             state["macro_sentiment"] = {
                 "label": s["label"],
@@ -485,7 +146,6 @@ class GoldTrader:
                 "direction_bias": sentiment_ctx["trade_modifier"]["direction_bias"],
                 "news_summary": sentiment_ctx.get("news_summary", ""),
             }
-            # 跨资产宏观数据落盘 (观察模式)
             if self.macro_monitor:
                 try:
                     cross_assets = self.macro_monitor.get_cross_asset_snapshot()
@@ -493,10 +153,8 @@ class GoldTrader:
                         state["macro_cross_assets"] = cross_assets
                 except Exception as e:
                     log.debug(f"跨资产数据获取失败 (不影响交易): {e}")
-            self._save_json(self.daily_state_file, state)
-
-            # 追加到历史文件（按日期去重，每天只保留最新一条）
-            self._append_sentiment_history(state)
+            self.tracker._save_json(daily_state_file, state)
+            self.tracker.append_sentiment_history(state)
 
         # 经济日历暂停检查
         if sentiment_ctx and not sentiment_ctx['trade_modifier']['allow_trading']:
@@ -506,9 +164,9 @@ class GoldTrader:
             return {"status": "paused", "reason": pause_reason}
 
         # 获取多时间框架数据
-        df_h1 = self.get_hourly_data()
-        df_m15 = self.get_m15_data()
-        
+        df_h1 = self.data.get_hourly_data()
+        df_m15 = self.data.get_m15_data()
+
         if df_h1 is None and df_m15 is None:
             return {"status": "error", "reason": "no_data"}
 
@@ -518,20 +176,20 @@ class GoldTrader:
             rsi14 = float(latest['RSI14']) if not pd.isna(latest['RSI14']) else 50
             macd_h = float(latest['MACD_hist']) if not pd.isna(latest['MACD_hist']) else 0
             log.info(f"  XAU/USD H1: ${close:.2f}  RSI(14): {rsi14:.1f}  MACD: {macd_h:+.2f}")
-        
+
         if df_m15 is not None:
             m15_latest = df_m15.iloc[-1]
             m15_rsi = float(m15_latest['RSI2']) if not pd.isna(m15_latest['RSI2']) else 50
             log.info(f"  XAU/USD M15: RSI(2): {m15_rsi:.1f}")
 
-        # Step 1: 检查现有持仓出场 (H1和M5都检查)
+        # Step 1: 检查现有持仓出场
         exits = []
         if df_h1 is not None:
             exits += self._check_exits(df_h1)
         if df_m15 is not None:
             exits += self._check_exits(df_m15)
 
-        # Step 2: 检查新入场信号 (H1 + M5)
+        # Step 2: 检查新入场信号
         entries = []
         if df_h1 is not None:
             entries += self._check_entries(df_h1, 'H1', sentiment_ctx)
@@ -544,10 +202,9 @@ class GoldTrader:
             log.info(f"⚡ 执行了 {total} 笔操作")
         else:
             log.info(f"✅ 无操作")
-        log.info(f"  总盈亏: ${self.total_pnl.get('total_pnl', 0):.2f} / 上限: -${config.MAX_TOTAL_LOSS}")
-        log.info(f"  日内盈亏: ${self.daily_pnl:.2f} | 亏损{self.daily_loss_count}/{config.DAILY_MAX_LOSSES}笔")
-        
-        # 打印ADX和舆情
+        log.info(f"  总盈亏: ${self.tracker.total_pnl.get('total_pnl', 0):.2f} / 上限: -${config.MAX_TOTAL_LOSS}")
+        log.info(f"  日内盈亏: ${self.risk.daily_pnl:.2f} | 亏损{self.risk.daily_loss_count}/{config.DAILY_MAX_LOSSES}笔")
+
         if df_h1 is not None:
             adx_val = float(df_h1.iloc[-1]['ADX']) if not pd.isna(df_h1.iloc[-1].get('ADX', float('nan'))) else 0
             atr_val = float(df_h1.iloc[-1]['ATR']) if not pd.isna(df_h1.iloc[-1].get('ATR', float('nan'))) else 0
@@ -555,30 +212,28 @@ class GoldTrader:
             orb = get_orb_strategy()
             log.info(f"  ADX={adx_val:.1f} ({adx_status})  ATR=${atr_val:.2f}  止损=${atr_val*2.5:.2f}")
             log.info(f"  🇺🇸 ORB: {orb.get_status()}")
-        
+
         if sentiment_ctx:
             s = sentiment_ctx['sentiment']
             m = sentiment_ctx['trade_modifier']
             label_cn = {'BULLISH': '看涨', 'BEARISH': '看跌', 'NEUTRAL': '中性'}
             log.info(f"  🌐 舆情: {label_cn.get(s['label'], s['label'])}({s['score']:.2f}) "
                      f"方向偏好: {m['direction_bias'] or '无'} 仓位系数: {m['lot_multiplier']:.1f}")
-        
-        # 打印冷却期状态
-        if self.cooldown_until:
-            for strat, until in self.cooldown_until.items():
+
+        if self.risk.cooldown_until:
+            for strat, until in self.risk.cooldown_until.items():
                 remaining = (until - datetime.now()).total_seconds() / 60
                 if remaining > 0:
                     log.info(f"  ❄️ {strat} 冷却中 (还剩{remaining:.0f}分钟)")
         log.info(f"{'='*60}")
 
-        # 每日净值曲线 + 分策略绩效追加记录
-        self._append_equity_record()
+        self.tracker.append_equity_record(self.risk.daily_pnl, self.risk.daily_loss_count)
 
         return {"exits": exits, "entries": entries}
 
     def _check_exits(self, df: pd.DataFrame) -> List[Dict]:
         """检查出场信号"""
-        positions = self.get_strategy_positions()
+        positions = self.tracker.get_strategy_positions()
         if not positions:
             log.info(f"  📭 无策略持仓")
             return []
@@ -590,21 +245,18 @@ class GoldTrader:
 
         for pos in positions:
             ticket = pos.get('ticket', 0)
-            symbol = pos.get('symbol', '')
             lots = pos.get('lots', 0)
             open_price = pos.get('open_price', 0)
             current_price = pos.get('current_price', 0)
             profit = pos.get('profit', 0)
-            comment = pos.get('comment', '')
 
-            # 从tracking获取策略信息
             track_key = str(ticket)
-            track = self.tracking.get(track_key, {})
+            track = self.tracker.tracking.get(track_key, {})
             strategy = track.get('strategy', 'unknown')
             entry_date_str = track.get('entry_date', now.isoformat())
             try:
                 entry_date = datetime.fromisoformat(entry_date_str)
-            except:
+            except (ValueError, TypeError):
                 entry_date = now
             hold_hours = (now - entry_date).total_seconds() / 3600
             hold_display = f"{hold_hours:.0f}h" if hold_hours < 48 else f"{hold_hours/24:.1f}天"
@@ -614,12 +266,10 @@ class GoldTrader:
             log.info(f"    {emoji} #{ticket} {strategy}: {lots}手 @ {open_price:.2f} "
                      f"→ {current_price:.2f} ({pnl_pct:+.2f}%) ${profit:+.2f} {hold_display}")
 
-            # 出场判断
             reason = None
             direction = track.get('direction', 'BUY')
 
             # 1. 策略出场信号
-            # M15 RSI: 最小持仓15分钟(1根K线), 防止RSI(2)在K线内闪烁导致秒进秒出
             if strategy in ('m15_rsi', 'm5_rsi') and hold_hours < 0.25:
                 pass
             else:
@@ -627,7 +277,7 @@ class GoldTrader:
                 if exit_sig:
                     reason = exit_sig
 
-            # 2. Keltner Trailing Stop (追踪止盈)
+            # 2. Keltner Trailing Stop
             if not reason and strategy == 'keltner' and config.TRAILING_STOP_ENABLED:
                 atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
                 if atr > 0 and open_price > 0:
@@ -652,8 +302,8 @@ class GoldTrader:
                             old_trail = track.get('trailing_stop_price', 0)
                             trail_price = min(new_trail, old_trail) if old_trail > 0 else new_trail
 
-                        self.tracking[track_key]['trailing_stop_price'] = trail_price
-                        self._save_tracking()
+                        self.tracker.tracking[track_key]['trailing_stop_price'] = trail_price
+                        self.tracker._save_tracking()
 
                         triggered = (direction == 'BUY' and current_price <= trail_price) or \
                                     (direction == 'SELL' and current_price >= trail_price)
@@ -665,7 +315,7 @@ class GoldTrader:
                             log.info(f"      📈 Trailing激活: 浮盈${float_profit:.2f} "
                                      f"追踪价{trail_price:.2f} (距离${trail_distance:.2f})")
 
-            # 3. 时间止损 (max_hold_bars = H1 K线数 = 小时数)
+            # 3. 时间止损
             max_hold = config.STRATEGIES.get(strategy, {}).get('max_hold_bars', 15)
             if not reason and hold_hours >= max_hold:
                 reason = f"⏰ 时间止损: 持仓{hold_hours:.0f}小时 >= 上限{max_hold}小时"
@@ -683,92 +333,213 @@ class GoldTrader:
                     'time': now.isoformat(),
                 }
                 exits.append(trade)
-                self.trade_log.append(trade)
-                self._save_trade_log()
+                self.tracker.record_trade(trade)
 
-                # 更新总盈亏 + 发送平仓通知
                 if success:
                     notifier.notify_close(ticket, strategy, profit, reason)
+                    self.tracker.update_pnl(profit)
+                    self.risk.update_daily_pnl(profit)
+                    if profit < 0:
+                        self.risk.add_cooldown(strategy, config.COOLDOWN_BARS)
 
-                    self.total_pnl['total_pnl'] = round(
-                        self.total_pnl.get('total_pnl', 0) + profit, 2
-                    )
-                    self.total_pnl['trade_count'] = self.total_pnl.get('trade_count', 0) + 1
-                    self._save_pnl()
-
-                    if track_key in self.tracking:
-                        del self.tracking[track_key]
-                        self._save_tracking()
+                    if track_key in self.tracker.tracking:
+                        del self.tracker.tracking[track_key]
+                        self.tracker._save_tracking()
             else:
                 log.info(f"      → 继续持有")
 
         return exits
 
-    def _load_daily_state(self):
-        """从文件加载日内状态，防止重启丢失"""
-        state = self._load_json(self.daily_state_file, {})
-        saved_date = state.get('date', '')
-        today = str(datetime.now().date())
-        
-        if saved_date == today:
-            # 同一天，恢复状态
-            self.daily_pnl = state.get('pnl', 0.0)
-            self.daily_loss_count = state.get('loss_count', 0)
-            self.daily_date = datetime.now().date()
-            log.info(f"  📊 恢复日内状态: PnL=${self.daily_pnl:.2f}, 亏损{self.daily_loss_count}/{config.DAILY_MAX_LOSSES}笔")
-        else:
-            # 新的一天，重置
-            self.daily_pnl = 0.0
-            self.daily_loss_count = 0
-            self.daily_date = datetime.now().date()
-
-    def _save_daily_state(self):
-        """保存日内状态到文件"""
-        state = {
-            'date': str(self.daily_date),
-            'pnl': self.daily_pnl,
-            'loss_count': self.daily_loss_count,
-        }
-        self._save_json(self.daily_state_file, state)
-
-    def _update_daily_pnl(self, profit: float):
-        """更新日内盈亏跟踪"""
-        today = datetime.now().date()
-        if today != self.daily_date:
-            self.daily_pnl = 0.0
-            self.daily_loss_count = 0
-            self.daily_date = today
-        self.daily_pnl = round(self.daily_pnl + profit, 2)
-        if profit < 0:
-            self.daily_loss_count += 1
-            log.info(f"     📊 日内亏损第{self.daily_loss_count}笔 (上限{config.DAILY_MAX_LOSSES}笔)")
-        self._save_daily_state()
-
-    def _check_daily_loss_limit(self) -> bool:
-        """检查是否超过日内最大亏损笔数"""
-        today = datetime.now().date()
-        if today != self.daily_date:
-            self.daily_pnl = 0.0
-            self.daily_loss_count = 0
-            self.daily_date = today
-            self._save_daily_state()
-        # 笔数限制 (主要控制)
-        if self.daily_loss_count >= config.DAILY_MAX_LOSSES:
-            return True
-        # 金额限制 (极端保护)
-        if self.daily_pnl <= -config.DAILY_MAX_LOSS:
-            return True
-        return False
-
-    def _is_in_cooldown(self, strategy: str) -> bool:
-        """检查策略是否在冷却期"""
-        if strategy in self.cooldown_until:
-            if datetime.now() < self.cooldown_until[strategy]:
-                remaining = (self.cooldown_until[strategy] - datetime.now()).total_seconds() / 60
-                return True
+    def _check_entries(self, df: pd.DataFrame, timeframe: str = 'H1',
+                        sentiment_ctx: Optional[Dict] = None) -> List[Dict]:
+        """检查新入场信号"""
+        current_positions = self.tracker.get_strategy_positions()
+        if len(current_positions) >= config.MAX_POSITIONS:
+            _missed_signals = scan_all_signals(df, timeframe)
+            for _ms in _missed_signals:
+                self.tracker.log_missed_signal(_ms, f"持仓已满({len(current_positions)}/{config.MAX_POSITIONS})")
+            if _missed_signals:
+                log.info(f"\n  📊 已持有 {len(current_positions)}/{config.MAX_POSITIONS} 笔，不再开仓 (错失{len(_missed_signals)}个信号)")
             else:
-                del self.cooldown_until[strategy]  # 冷却期已过
-        return False
+                log.info(f"\n  📊 已持有 {len(current_positions)}/{config.MAX_POSITIONS} 笔，不再开仓")
+            return []
+
+        current_dir = self._get_current_direction()
+
+        sentiment_bias = None
+        lot_multiplier = 1.0
+
+        slots = config.MAX_POSITIONS - len(current_positions)
+        log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
+
+        signals = scan_all_signals(df, timeframe)
+
+        if not signals:
+            latest = df.iloc[-1]
+            rsi2 = float(latest['RSI2']) if not pd.isna(latest['RSI2']) else 100
+            if rsi2 < 20:
+                log.info(f"    👀 RSI(2)={rsi2:.1f} 接近触发 (阈值<5)")
+            else:
+                log.info(f"    → 无信号")
+            return []
+
+        entries = []
+        for sig in signals[:slots]:
+            strategy = sig['strategy']
+            reason = sig['reason']
+            close = sig['close']
+
+            # 冷却期检查
+            if self.risk.is_in_cooldown(strategy):
+                remaining = (self.risk.cooldown_until[strategy] - datetime.now()).total_seconds() / 60
+                log.info(f"    ❄️ {reason} — 但{strategy}在冷却期中 (还剩{remaining:.0f}分钟)")
+                self.tracker.log_missed_signal(sig, f"冷却期(还剩{remaining:.0f}分钟)")
+                continue
+
+            # 趋势耗尽熔断
+            if strategy == 'keltner':
+                rsi14 = float(df.iloc[-1]['RSI14']) if not pd.isna(df.iloc[-1].get('RSI14', float('nan'))) else 50
+                direction = sig['signal']
+                if direction == 'SELL' and rsi14 < config.KELTNER_EXHAUSTION_RSI_LOW:
+                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} < {config.KELTNER_EXHAUSTION_RSI_LOW} (超卖, 拒绝追空)")
+                    self.tracker.log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}<{config.KELTNER_EXHAUSTION_RSI_LOW}, 超卖拒绝追空)")
+                    continue
+                if direction == 'BUY' and rsi14 > config.KELTNER_EXHAUSTION_RSI_HIGH:
+                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} > {config.KELTNER_EXHAUSTION_RSI_HIGH} (超买, 拒绝追多)")
+                    self.tracker.log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}>{config.KELTNER_EXHAUSTION_RSI_HIGH}, 超买拒绝追多)")
+                    continue
+
+            # 同策略重复持仓检测
+            active_strategies = set()
+            for tk, track in self.tracker.tracking.items():
+                active_strategies.add(track.get('strategy', ''))
+            if strategy in active_strategies:
+                direction = sig['signal']
+                if strategy == 'keltner' and self._can_add_position(strategy, direction, df):
+                    log.info(f"    🔥 {reason} — ADX强趋势+浮盈充足, 允许加仓")
+                else:
+                    log.info(f"    🚫 {reason} — 但{strategy}已有持仓，不重复开仓")
+                    self.tracker.log_missed_signal(sig, f"同策略已持仓({strategy})")
+                    continue
+
+            # 方向冲突检测
+            direction = sig['signal']
+            if current_dir and direction != current_dir:
+                log.info(f"    ⛔ {reason} — 但当前持仓方向为{current_dir}，跳过反向{direction}信号")
+                self.tracker.log_missed_signal(sig, f"方向冲突(持仓{current_dir}, 信号{direction})")
+                continue
+
+            log.info(f"    🚀 {reason}")
+
+            sl_pips = sig.get('sl', config.STOP_LOSS_PIPS)
+            tp_pips = sig.get('tp', 0)
+
+            if tp_pips <= 0:
+                tp_pips = sl_pips * 2
+                log.info(f"    🛡️ 安全止盈: ${tp_pips:.1f} (2×止损, MT4硬保护)")
+
+            base_lots = calc_auto_lot_size(0, sl_pips)
+            actual_lots = round(base_lots * lot_multiplier, 2)
+            actual_lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, actual_lots))
+            if actual_lots != config.LOT_SIZE:
+                log.info(f"    📊 自动调仓: 止损${sl_pips:.1f} → {actual_lots}手 (风险${sl_pips*actual_lots*config.POINT_VALUE_PER_LOT:.0f})")
+            if lot_multiplier != 1.0:
+                log.info(f"    🌐 舆情仓位调整: ×{lot_multiplier:.1f}")
+
+            if direction == 'BUY':
+                success = self.bridge.buy(
+                    lots=actual_lots,
+                    sl_pips=sl_pips,
+                    tp_pips=tp_pips,
+                    comment=f"GOLD_{strategy[:4]}",
+                )
+            else:
+                success = self.bridge.sell(
+                    lots=actual_lots,
+                    sl_pips=sl_pips,
+                    tp_pips=tp_pips,
+                    comment=f"GOLD_{strategy[:4]}",
+                )
+
+            if success:
+                factors = self._snapshot_factors(df, strategy)
+                trade = {
+                    'action': 'OPEN', 'strategy': strategy,
+                    'direction': direction,
+                    'lots': actual_lots, 'price': close,
+                    'sl_pips': sl_pips, 'tp_pips': tp_pips,
+                    'reason': reason,
+                    'sentiment_score': sentiment_ctx['sentiment']['score'] if sentiment_ctx else None,
+                    'lot_multiplier': lot_multiplier,
+                    'factors': factors,
+                    'time': datetime.now().isoformat(),
+                }
+                entries.append(trade)
+                self.tracker.record_trade(trade)
+
+                temp_key = f"pending_{strategy}_{datetime.now().strftime('%H%M%S')}"
+                self.tracker.tracking[temp_key] = {
+                    'strategy': strategy,
+                    'direction': direction,
+                    'entry_price': close,
+                    'entry_date': datetime.now().isoformat(),
+                    'lots': actual_lots,
+                    'sl': sl_pips,
+                    'pending': True,
+                    'trailing_stop_price': 0,
+                    'extreme_price': close,
+                    'is_pyramid': strategy in active_strategies,
+                }
+                self.tracker._save_tracking()
+
+                log.info(f"    ✅ 已下单: {actual_lots}手 止损${sl_pips:.1f} 止盈${tp_pips:.1f}")
+                notifier.notify_open(strategy, direction, actual_lots, close, sl_pips, reason)
+
+        return entries
+
+    def check_exits_only(self) -> Dict:
+        """仅检查出场 (盘中监控, H1+M5双时间框架)"""
+        self.tracker.sync_positions(risk_manager=self.risk)
+
+        exits = []
+        df_h1 = self.data.get_hourly_data()
+        if df_h1 is not None:
+            exits += self._check_exits(df_h1)
+        df_m15 = self.data.get_m15_data()
+        if df_m15 is not None:
+            exits += self._check_exits(df_m15)
+        return {"exits": exits}
+
+    # ── 辅助方法 ──
+
+    @staticmethod
+    def _snapshot_factors(df: pd.DataFrame, strategy: str) -> Dict:
+        """采集当前K线的因子快照，供 IC 分析使用"""
+        row = df.iloc[-1]
+        factors = {}
+        for col in ('RSI14', 'RSI2', 'ADX', 'ATR', 'MACD_hist',
+                     'EMA9', 'EMA21', 'EMA100', 'KC_upper', 'KC_lower',
+                     'Volume', 'Vol_MA20'):
+            val = row.get(col)
+            if val is not None and not pd.isna(val):
+                factors[col] = round(float(val), 4)
+
+        close = float(row['Close'])
+        atr = factors.get('ATR', 0)
+        if atr > 0:
+            kc_upper = factors.get('KC_upper', close)
+            factors['kc_breakout_strength'] = round((close - kc_upper) / atr, 4)
+
+        vol_ma = factors.get('Vol_MA20', 0)
+        vol = factors.get('Volume', 0)
+        if vol_ma > 0:
+            factors['volume_ratio'] = round(vol / vol_ma, 4)
+
+        atr_series = df['ATR'].dropna()
+        if len(atr_series) >= 50:
+            factors['atr_percentile'] = round((atr_series.iloc[-50:] < atr).mean(), 4)
+
+        return factors
 
     def _get_sentiment_context(self) -> Optional[Dict]:
         """获取舆情分析结果 (失败返回None，不影响交易)"""
@@ -783,10 +554,9 @@ class GoldTrader:
 
     def _get_current_direction(self) -> Optional[str]:
         """获取当前持仓方向 (BUY/SELL/None)"""
-        positions = self.get_strategy_positions()
+        positions = self.tracker.get_strategy_positions()
         if not positions:
             return None
-        # 以第一笔持仓的方向为准 (0=BUY, 1=SELL)
         pos_type = positions[0].get('type', 0)
         return 'SELL' if pos_type == 1 else 'BUY'
 
@@ -806,7 +576,7 @@ class GoldTrader:
         latest_entry_time = None
         latest_entry_price = None
 
-        for tk, track in self.tracking.items():
+        for tk, track in self.tracker.tracking.items():
             if track.get('strategy') == strategy:
                 same_strategy_count += 1
                 existing_direction = track.get('direction')
@@ -825,7 +595,6 @@ class GoldTrader:
         if existing_direction and signal_direction != existing_direction:
             return False
 
-        # 时间冷却: 距上一笔同策略入场至少 N 分钟
         if latest_entry_time:
             elapsed_min = (datetime.now() - latest_entry_time).total_seconds() / 60
             if elapsed_min < config.ADD_POSITION_MIN_HOLD_MINUTES:
@@ -833,7 +602,6 @@ class GoldTrader:
                          f"(需≥{config.ADD_POSITION_MIN_HOLD_MINUTES}分钟)")
                 return False
 
-        # 空间验证: 价格距上一笔入场价至少 0.5×ATR
         if latest_entry_price and latest_entry_price > 0:
             current_price = float(df.iloc[-1]['Close'])
             min_distance = atr * config.ADD_POSITION_MIN_DISTANCE_ATR
@@ -848,7 +616,7 @@ class GoldTrader:
 
         profit_threshold = atr * config.ADD_POSITION_MIN_PROFIT_ATR
         lots = 0.01
-        for tk, track in self.tracking.items():
+        for tk, track in self.tracker.tracking.items():
             if track.get('strategy') == strategy:
                 lots = track.get('lots', 0.01)
                 break
@@ -858,7 +626,7 @@ class GoldTrader:
         if float_profit_points < profit_threshold:
             return False
 
-        total_positions = len(self.get_strategy_positions())
+        total_positions = len(self.tracker.get_strategy_positions())
         if total_positions >= config.MAX_POSITIONS:
             return False
 
@@ -866,182 +634,3 @@ class GoldTrader:
                  f"浮盈${min_profit:.2f}(≥{profit_threshold:.1f}点×手数), "
                  f"同策略{same_strategy_count}/{config.KELTNER_MAX_SAME_STRATEGY}")
         return True
-
-    def _check_entries(self, df: pd.DataFrame, timeframe: str = 'H1',
-                        sentiment_ctx: Optional[Dict] = None) -> List[Dict]:
-        """检查新入场信号"""
-        # 持仓数检查
-        current_positions = self.get_strategy_positions()
-        if len(current_positions) >= config.MAX_POSITIONS:
-            # 仍然扫描信号，记录错失的机会
-            _missed_signals = scan_all_signals(df, timeframe)
-            for _ms in _missed_signals:
-                self._log_missed_signal(_ms, f"持仓已满({len(current_positions)}/{config.MAX_POSITIONS})")
-            if _missed_signals:
-                log.info(f"\n  📊 已持有 {len(current_positions)}/{config.MAX_POSITIONS} 笔，不再开仓 (错失{len(_missed_signals)}个信号)")
-            else:
-                log.info(f"\n  📊 已持有 {len(current_positions)}/{config.MAX_POSITIONS} 笔，不再开仓")
-            return []
-
-        # 获取当前持仓方向，防止开反向仓
-        current_dir = self._get_current_direction()
-        
-        # 舆情参数 (方向过滤已关闭，仅保留经济日历暂停 + 日志显示)
-        # 原因: 舆情准确率未验证，如果<55%只会增加噪音
-        sentiment_bias = None   # 已关闭: 不再用舆情过滤方向
-        lot_multiplier = 1.0    # 已关闭: 不再用舆情调整仓位
-
-        slots = config.MAX_POSITIONS - len(current_positions)
-        log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
-
-        # 扫描对应时间框架的策略信号
-        signals = scan_all_signals(df, timeframe)
-
-        if not signals:
-            # 打印接近触发的信号
-            latest = df.iloc[-1]
-            rsi2 = float(latest['RSI2']) if not pd.isna(latest['RSI2']) else 100
-            if rsi2 < 20:
-                log.info(f"    👀 RSI(2)={rsi2:.1f} 接近触发 (阈值<5)")
-            else:
-                log.info(f"    → 无信号")
-            return []
-
-        entries = []
-        for sig in signals[:slots]:
-            strategy = sig['strategy']
-            reason = sig['reason']
-            close = sig['close']
-
-            # 冷却期检查: 止损后等待冷却期结束
-            if self._is_in_cooldown(strategy):
-                remaining = (self.cooldown_until[strategy] - datetime.now()).total_seconds() / 60
-                log.info(f"    ❄️ {reason} — 但{strategy}在冷却期中 (还剩{remaining:.0f}分钟)")
-                self._log_missed_signal(sig, f"冷却期(还剩{remaining:.0f}分钟)")
-                continue
-
-            # 趋势耗尽熔断: RSI14极端时拦截Keltner追涨/追跌
-            if strategy == 'keltner':
-                rsi14 = float(df.iloc[-1]['RSI14']) if not pd.isna(df.iloc[-1].get('RSI14', float('nan'))) else 50
-                direction = sig['signal']
-                if direction == 'SELL' and rsi14 < config.KELTNER_EXHAUSTION_RSI_LOW:
-                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} < {config.KELTNER_EXHAUSTION_RSI_LOW} (超卖, 拒绝追空)")
-                    self._log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}<{config.KELTNER_EXHAUSTION_RSI_LOW}, 超卖拒绝追空)")
-                    continue
-                if direction == 'BUY' and rsi14 > config.KELTNER_EXHAUSTION_RSI_HIGH:
-                    log.info(f"    🛑 {reason} — 趋势耗尽熔断: RSI14={rsi14:.1f} > {config.KELTNER_EXHAUSTION_RSI_HIGH} (超买, 拒绝追多)")
-                    self._log_missed_signal(sig, f"趋势耗尽(RSI14={rsi14:.1f}>{config.KELTNER_EXHAUSTION_RSI_HIGH}, 超买拒绝追多)")
-                    continue
-
-            # 同策略重复持仓检测: 同一策略已有持仓时不再开新仓
-            # 例外: Keltner 在 ADX>=28 且已有持仓浮盈充足时允许顺势加仓
-            active_strategies = set()
-            for tk, track in self.tracking.items():
-                active_strategies.add(track.get('strategy', ''))
-            if strategy in active_strategies:
-                direction = sig['signal']
-                if strategy == 'keltner' and self._can_add_position(strategy, direction, df):
-                    log.info(f"    🔥 {reason} — ADX强趋势+浮盈充足, 允许加仓")
-                else:
-                    log.info(f"    🚫 {reason} — 但{strategy}已有持仓，不重复开仓")
-                    self._log_missed_signal(sig, f"同策略已持仓({strategy})")
-                    continue
-
-            # 方向冲突检测: 已有持仓时不开反向仓
-            direction = sig['signal']  # 'BUY' 或 'SELL'
-            if current_dir and direction != current_dir:
-                log.info(f"    ⛔ {reason} — 但当前持仓方向为{current_dir}，跳过反向{direction}信号")
-                self._log_missed_signal(sig, f"方向冲突(持仓{current_dir}, 信号{direction})")
-                continue
-
-            # 舆情方向过滤: 已关闭 (等待准确率验证)
-            # if sentiment_bias and direction != sentiment_bias:
-            #     log.info(f"    🌐 {reason} — 但舆情偏好{sentiment_bias}，跳过反向{direction}信号")
-            #     continue
-
-            log.info(f"    🚀 {reason}")
-
-            # 止损/止盈距离 (优先用信号自带的ATR止损止盈)
-            sl_pips = sig.get('sl', config.STOP_LOSS_PIPS)
-            tp_pips = sig.get('tp', 0)
-            
-            # M15 RSI策略tp=0(用RSI信号出场)，但MT4仍需要硬止盈保护
-            # 设置安全止盈 = 2×止损距离 (RR 1:2)
-            if tp_pips <= 0:
-                tp_pips = sl_pips * 2
-                log.info(f"    🛡️ 安全止盈: ${tp_pips:.1f} (2×止损, MT4硬保护)")
-            
-            # ATR自动调仓: 根据止损距离计算手数，保持每笔风险$100
-            base_lots = calc_auto_lot_size(0, sl_pips)
-            actual_lots = round(base_lots * lot_multiplier, 2)
-            actual_lots = max(config.MIN_LOT_SIZE, min(config.MAX_LOT_SIZE, actual_lots))
-            if actual_lots != config.LOT_SIZE:
-                log.info(f"    📊 自动调仓: 止损${sl_pips:.1f} → {actual_lots}手 (风险${sl_pips*actual_lots*config.POINT_VALUE_PER_LOT:.0f})")
-            if lot_multiplier != 1.0:
-                log.info(f"    🌐 舆情仓位调整: ×{lot_multiplier:.1f}")
-            
-            if direction == 'BUY':
-                success = self.bridge.buy(
-                    lots=actual_lots,
-                    sl_pips=sl_pips,
-                    tp_pips=tp_pips,
-                    comment=f"GOLD_{strategy[:4]}",
-                )
-            else:
-                success = self.bridge.sell(
-                    lots=actual_lots,
-                    sl_pips=sl_pips,
-                    tp_pips=tp_pips,
-                    comment=f"GOLD_{strategy[:4]}",
-                )
-
-            if success:
-                trade = {
-                    'action': 'OPEN', 'strategy': strategy,
-                    'direction': direction,
-                    'lots': actual_lots, 'price': close,
-                    'sl_pips': sl_pips, 'tp_pips': tp_pips,
-                    'reason': reason,
-                    'sentiment_score': sentiment_ctx['sentiment']['score'] if sentiment_ctx else None,
-                    'lot_multiplier': lot_multiplier,
-                    'time': datetime.now().isoformat(),
-                }
-                entries.append(trade)
-                self.trade_log.append(trade)
-                self._save_trade_log()
-                
-                # 立即写入tracking，防止同次扫描或下次扫描时重复开仓
-                # 用临时key，下次_sync_positions_tracking时会用真实ticket替换
-                temp_key = f"pending_{strategy}_{datetime.now().strftime('%H%M%S')}"
-                self.tracking[temp_key] = {
-                    'strategy': strategy,
-                    'direction': direction,
-                    'entry_price': close,
-                    'entry_date': datetime.now().isoformat(),
-                    'lots': actual_lots,
-                    'sl': sl_pips,
-                    'pending': True,
-                    'trailing_stop_price': 0,
-                    'extreme_price': close,
-                    'is_pyramid': strategy in active_strategies,
-                }
-                self._save_tracking()
-
-                log.info(f"    ✅ 已下单: {actual_lots}手 止损${sl_pips:.1f} 止盈${tp_pips:.1f}")
-                notifier.notify_open(strategy, direction, actual_lots, close, sl_pips, reason)
-
-        return entries
-
-    def check_exits_only(self) -> Dict:
-        """仅检查出场 (盘中监控, H1+M5双时间框架)"""
-        # 先同步持仓状态，检测止损/手动平仓
-        self._sync_positions_tracking()
-        
-        exits = []
-        df_h1 = self.get_hourly_data()
-        if df_h1 is not None:
-            exits += self._check_exits(df_h1)
-        df_m15 = self.get_m15_data()
-        if df_m15 is not None:
-            exits += self._check_exits(df_m15)
-        return {"exits": exits}

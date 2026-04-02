@@ -113,5 +113,3 @@ TELEGRAM_CHAT_ID = "8531960227"
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "logs"
-DATA_DIR.mkdir(exist_ok=True)
-LOG_DIR.mkdir(exist_ok=True)

@@ -7,6 +7,7 @@ that downstream modules use to scale position sizes.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
@@ -43,8 +44,12 @@ BREAKING_RISK_KEYWORDS = [
 class CalendarGuard:
     """Guards trading around high-impact economic events."""
 
+    _NEWS_CACHE_TTL = 300  # 5 minutes
+
     def __init__(self, news_collector: Optional[NewsCollector] = None):
         self._collector = news_collector or NewsCollector()
+        self._news_cache: List[Dict] = []
+        self._news_cache_ts: float = 0
 
     def should_pause_trading(self) -> Tuple[bool, str]:
         """Check if trading should be paused right now.
@@ -77,9 +82,12 @@ class CalendarGuard:
                 logger.warning(f"[日历避险] 暂停交易 — {reason}")
                 return True, reason
 
-        # 2. Check breaking news for sudden risks
+        # 2. Check breaking news for sudden risks (cached for 5 minutes)
         try:
-            news = self._collector.collect_gold_news()
+            if time.monotonic() - self._news_cache_ts > self._NEWS_CACHE_TTL:
+                self._news_cache = self._collector.collect_gold_news()
+                self._news_cache_ts = time.monotonic()
+            news = self._news_cache
             for article in news[:20]:  # Only scan most recent
                 title_lower = article.get("title", "").lower()
                 for kw in BREAKING_RISK_KEYWORDS:

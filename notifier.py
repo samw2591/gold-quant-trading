@@ -23,9 +23,9 @@ def send_telegram(message: str):
             "parse_mode": "HTML",
         }, timeout=10)
         if not resp.json().get("ok"):
-            log.debug(f"Telegram发送失败: {resp.text}")
+            log.warning(f"Telegram发送失败: {resp.text}")
     except Exception as e:
-        log.debug(f"Telegram异常: {e}")
+        log.warning(f"Telegram异常: {e}")
 
 
 def notify_open(strategy: str, direction: str, lots: float, price: float, sl: float, reason: str):

@@ -141,7 +141,7 @@ class MT4Bridge:
         try:
             if self.response_file.exists():
                 self.response_file.unlink()
-        except:
+        except OSError:
             pass
 
     def _wait_response(self, timeout: int = 10) -> bool:
@@ -159,7 +159,7 @@ class MT4Bridge:
                 # 清除响应文件
                 try:
                     self.response_file.unlink()
-                except:
+                except OSError:
                     pass
                 return success
             time.sleep(0.5)
