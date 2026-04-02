@@ -4,21 +4,21 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": -0.1373,
-    "confidence": 0.206,
+    "score": -0.1513,
+    "confidence": 0.2269,
     "keyword_score": 1.0,
-    "finbert_score": -0.4264,
-    "vader_score": 0.0747,
+    "finbert_score": -0.445,
+    "vader_score": 0.0682,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790191\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.14)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 30/100(MEDIUM)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold price today, Thursday, April 2: Gold loses ground after Trump speech - Yahoo Finance | Gold prices dip as stronger dollar weighs; Iran conflict remains in focus - Investing.com"
+    "news_summary": "\u5206\u6790178\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.15)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 32/100(MEDIUM)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price drops after Trump makes stunning claim about Iran - thestreet.com | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold prices dip as stronger dollar weighs; Iran conflict remains in focus - Investing.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-02T16:55:32.902536",
-    "brent_oil_price": 107.58,
+    "timestamp": "2026-04-02T17:55:46.488017",
+    "brent_oil_price": 108.46,
     "brent_oil_prev_close": 101.16,
-    "brent_oil_change_pct": 6.35,
+    "brent_oil_change_pct": 7.22,
     "us10y_yield_price": 4.31,
     "us10y_yield_prev_close": 4.32,
-    "us10y_yield_change_pct": -0.28
+    "us10y_yield_change_pct": -0.23
   }
 }
