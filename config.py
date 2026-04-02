@@ -88,9 +88,9 @@ STRATEGIES = {
         "max_hold_bars": 6,  # v5优化: 8→6根K线 (~6小时, Sharpe 1.31→1.51)
     },
     "gap_fill": {
-        "enabled": True,
+        "enabled": False,  # 禁用: 两次独立回测Sharpe均为负(-1.25/-1.71), 实盘0次触发
         "name": "周一跳空回补",
-        "max_hold_bars": 8,  # 周一开盘后8小时内回补
+        "max_hold_bars": 8,
     },
 }
 
