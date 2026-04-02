@@ -4,16 +4,16 @@
   "loss_count": 4,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": 0.1087,
-    "confidence": 0.1631,
+    "score": 0.1072,
+    "confidence": 0.1608,
     "keyword_score": 1.0,
-    "finbert_score": -0.4173,
-    "vader_score": 0.0866,
+    "finbert_score": -0.4021,
+    "vader_score": 0.0414,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790197\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.11)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Silver Price Today | Silver Spot Price Charts - SD Bullion | Gold prices fall to $4,670.2, silver slips as Fed rate cut \u2060bets remain low - Economy Middle East"
+    "news_summary": "\u5206\u6790208\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.11)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold prices fall to $4,670.2, silver slips as Fed rate cut \u2060bets remain low - Economy Middle East | Gold Price Plummets from $4,800 Peak as Trump\u2019s Stark Iran Remarks Fuel Dollar Rally - MEXC"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-02T08:58:41.376233",
+    "timestamp": "2026-04-02T09:58:53.171368",
     "brent_oil_price": 101.16,
     "brent_oil_prev_close": 118.35,
     "brent_oil_change_pct": -14.52,

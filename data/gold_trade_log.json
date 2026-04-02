@@ -190,7 +190,7 @@
     "time": "2026-03-25T17:54:18.725698"
   },
   {
-    "action": "CLOSE_DETECTED",
+    "action": "CLOSE_DETECTED_DUPLICATE",
     "ticket": 3985509,
     "strategy": "unknown",
     "direction": "BUY",
@@ -198,7 +198,8 @@
     "lots": 0.03,
     "profit": 27.99,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
-    "time": "2026-03-25T18:22:30.539426"
+    "time": "2026-03-25T18:22:30.539426",
+    "duplicate_note": "False detection: MT4 bridge read race condition. PnL reversed."
   },
   {
     "action": "CLOSE_DETECTED",
