@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": 0.0,
-    "confidence": 0.0,
-    "keyword_score": 0.0,
-    "finbert_score": null,
-    "vader_score": 0.0,
+    "score": 0.2097,
+    "confidence": 0.3145,
+    "keyword_score": 1.0,
+    "finbert_score": -0.2238,
+    "vader_score": 0.1079,
     "direction_bias": null,
-    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+    "news_summary": "\u5206\u6790152\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.21)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 29/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold Price Surge: Market Awaits Presidential Iran Conflict Speech | 2026 - News and Statistics - IndexBox | Factbox-Wells Fargo lifts end-2026 target for gold to $6,100-$6,300/oz By Reuters - Investing.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-03T06:22:59.048583",
+    "timestamp": "2026-04-03T06:57:38.511455",
     "brent_oil_price": 109.03,
     "brent_oil_prev_close": 101.16,
     "brent_oil_change_pct": 7.78,
