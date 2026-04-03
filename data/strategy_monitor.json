@@ -1,0 +1,46 @@
+{
+  "change_date": "2026-04-03",
+  "config": "Trail 0.8/0.25 + SL 3.5ATR + TP 5.0ATR + ADX 18",
+  "backtest": {
+    "sharpe": 2.54,
+    "win_rate": 72.0,
+    "rr": 0.51,
+    "config": "Trail 0.8/0.25 + SL 3.5ATR + TP 5.0ATR + ADX 18"
+  },
+  "thresholds": {
+    "consecutive_loss_days": 3,
+    "min_win_rate": 60.0,
+    "min_rr": 0.35,
+    "max_daily_loss": -200.0
+  },
+  "days": [
+    {
+      "date": "2026-04-03",
+      "pnl": 0.0,
+      "trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "kc_n": 0,
+      "kc_pnl": 0,
+      "rsi_n": 0,
+      "rsi_pnl": 0,
+      "orb_n": 0,
+      "orb_pnl": 0,
+      "equity": 2237.83
+    }
+  ],
+  "summary": {
+    "observation_days": 1,
+    "total_trades": 0,
+    "total_wins": 0,
+    "total_losses": 0,
+    "cum_pnl": 0.0,
+    "cum_win_rate": 0,
+    "cum_rr": 0.0,
+    "cum_kc_pnl": 0,
+    "cum_rsi_pnl": 0,
+    "cum_orb_pnl": 0,
+    "last_updated": "2026-04-04 00:00:24.706118"
+  },
+  "alerts": []
+}

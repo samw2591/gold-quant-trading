@@ -88,5 +88,15 @@
     "daily_wins": 0,
     "daily_losses": 0,
     "strategies": {}
+  },
+  {
+    "date": "2026-04-04",
+    "equity": 2237.83,
+    "total_pnl": 237.83,
+    "daily_pnl": 0.0,
+    "daily_trades": 0,
+    "daily_wins": 0,
+    "daily_losses": 0,
+    "strategies": {}
   }
 ]
