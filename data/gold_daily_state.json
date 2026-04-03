@@ -3,17 +3,17 @@
   "pnl": 0.0,
   "loss_count": 0,
   "macro_sentiment": {
-    "label": "BULLISH",
-    "score": 0.2886,
-    "confidence": 0.4329,
-    "keyword_score": 1.0,
-    "finbert_score": -0.072,
-    "vader_score": 0.123,
-    "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790152\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.29)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 30/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Precious Metals Price Update: Gold, Silver, PGMs Slide, Rally, Slide on Trump's War Rhetoric - investingnews.com | Gold Rate Today [3 April, 2026]: Gold Pulls Back 2.8% to $4,650 on De-escalation Hopes; Domestic Rates Drop to \u20b91.48 Lakh/10g | Check City-Wise Rates of 24K, 22K & 18K - The Sunday Guardian"
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
+    "direction_bias": null,
+    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-03T01:57:37.002580",
+    "timestamp": "2026-04-03T02:21:04.582393",
     "brent_oil_price": 109.05,
     "brent_oil_prev_close": 101.16,
     "brent_oil_change_pct": 7.8,
