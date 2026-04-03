@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.3463,
-    "confidence": 0.5194,
+    "score": 0.3929,
+    "confidence": 0.5894,
     "keyword_score": 1.0,
-    "finbert_score": 0.0569,
-    "vader_score": 0.0894,
+    "finbert_score": 0.1433,
+    "vader_score": 0.1063,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790166\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.35)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 29/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Wells Fargo resets gold price target for the rest of 2026 - MSN | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Futures Streaming Chart - investing.com"
+    "news_summary": "\u5206\u6790178\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.39)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 29/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Wells Fargo resets gold price target for the rest of 2026 - MSN | Gold Futures Streaming Chart - Investing.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-03T09:58:29.645939",
+    "timestamp": "2026-04-03T10:58:39.967028",
     "brent_oil_price": 109.03,
     "brent_oil_prev_close": 101.16,
     "brent_oil_change_pct": 7.78,
