@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.29,
-    "confidence": 0.435,
+    "score": 0.288,
+    "confidence": 0.432,
     "keyword_score": 1.0,
-    "finbert_score": -0.0307,
-    "vader_score": 0.027,
+    "finbert_score": -0.0347,
+    "vader_score": 0.0266,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790200\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.29)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 28/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of April 3, 2026 - Fortune | What is gold and silver price prediction for Monday, and will precious metals continue to drop or rise aga - The Economic Times | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org"
+    "news_summary": "\u5206\u6790198\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.29)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 28/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: What is gold and silver price prediction for Monday, and will precious metals continue to drop or rise aga - The Economic Times | Current price of gold as of April 3, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-03T13:59:15.972610",
+    "timestamp": "2026-04-03T14:59:29.782347",
     "brent_oil_price": 109.03,
     "brent_oil_prev_close": 101.16,
     "brent_oil_change_pct": 7.78,
