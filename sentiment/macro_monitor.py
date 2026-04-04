@@ -1,63 +1,94 @@
 """
-Cross-asset macro monitor for gold trading context.
+Cross-asset macro monitor — backward-compatible wrapper.
 
-Tracks Brent Crude Oil and US 10-Year Treasury Yield to detect
-macro regime shifts (e.g. stagflation) that invert gold's normal
-safe-haven behavior.
+Original functionality (Brent + US10Y) has been migrated to the
+unified macro data pipeline at `macro/data_provider.py`.
 
-This module is OBSERVATION ONLY — it writes data to gold_daily_state.json
-but does NOT influence any trading decisions.
+This module is kept as a thin wrapper so existing imports in
+`gold_trader.py` continue to work without changes until the
+full migration to `MacroDataProvider` is complete.
 """
 
 import logging
-from datetime import datetime, timedelta
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+_MACRO_AVAILABLE = False
+try:
+    from macro.data_provider import MacroDataProvider
+    _MACRO_AVAILABLE = True
+except ImportError:
+    pass
 
 _YF_AVAILABLE = False
 try:
     import yfinance as yf
     _YF_AVAILABLE = True
 except ImportError:
-    logger.warning("[宏观监控] yfinance 未安装，跨资产监控不可用")
-
-BRENT_TICKER = "BZ=F"
-US10Y_TICKER = "^TNX"
+    pass
 
 
 class MacroMonitor:
-    """Fetches daily cross-asset data for observation / future rule building."""
+    """Backward-compatible wrapper around MacroDataProvider.
+
+    Returns the same dict format as the original implementation,
+    with additional fields from the new macro pipeline.
+    """
 
     def __init__(self, cache_ttl_seconds: int = 600):
-        self._cache: Dict = {}
-        self._cache_ts: float = 0.0
+        self._provider: Optional[MacroDataProvider] = None
+        if _MACRO_AVAILABLE:
+            try:
+                import config
+                self._provider = MacroDataProvider(
+                    fred_api_key=getattr(config, 'FRED_API_KEY', ''),
+                    cache_ttl=cache_ttl_seconds,
+                    cache_path=str(getattr(config, 'MACRO_CACHE_PATH', None) or ''),
+                )
+            except Exception as e:
+                logger.warning(f"[宏观监控] MacroDataProvider 初始化失败: {e}")
+
         self._cache_ttl = cache_ttl_seconds
 
     def get_cross_asset_snapshot(self) -> Optional[Dict]:
-        """Return latest Brent + US10Y snapshot, cached for `cache_ttl` seconds."""
+        """Return macro snapshot in the original dict format.
+
+        Includes original fields (brent_oil_price, us10y_yield_price)
+        plus new fields from MacroDataProvider (dxy, vix, tips_10y, etc).
+        """
+        if self._provider:
+            try:
+                snap = self._provider.get_snapshot()
+                result = snap.to_dict()
+
+                # Map to legacy field names for backward compat
+                if snap.brent is not None:
+                    result["brent_oil_price"] = snap.brent
+                    result["brent_oil_prev_close"] = snap.brent_prev
+                    result["brent_oil_change_pct"] = snap.brent_change_pct
+                if snap.us10y is not None:
+                    result["us10y_yield_price"] = snap.us10y
+                    result["us10y_yield_prev_close"] = snap.us10y_prev
+                    result["us10y_yield_change_pct"] = snap.us10y_change_pct
+
+                return result
+            except Exception as e:
+                logger.warning(f"[宏观监控] MacroDataProvider 调用失败: {e}")
+
+        # Fallback to direct yfinance if MacroDataProvider not available
         if not _YF_AVAILABLE:
             return None
 
-        now = datetime.now().timestamp()
-        if self._cache and (now - self._cache_ts) < self._cache_ttl:
-            return self._cache
+        return self._legacy_fetch()
 
-        try:
-            snapshot = self._fetch()
-            if snapshot:
-                self._cache = snapshot
-                self._cache_ts = now
-            return snapshot
-        except Exception as exc:
-            logger.warning(f"[宏观监控] 数据获取失败: {exc}")
-            return self._cache or None
+    def _legacy_fetch(self) -> Optional[Dict]:
+        """Original implementation as ultimate fallback."""
+        from datetime import datetime, timedelta
 
-    def _fetch(self) -> Optional[Dict]:
         result: Dict = {"timestamp": datetime.utcnow().isoformat()}
-
-        brent = self._fetch_ticker(BRENT_TICKER, "brent_oil")
-        us10y = self._fetch_ticker(US10Y_TICKER, "us10y_yield")
+        brent = self._fetch_ticker("BZ=F", "brent_oil")
+        us10y = self._fetch_ticker("^TNX", "us10y_yield")
 
         if brent is None and us10y is None:
             return None
@@ -66,16 +97,10 @@ class MacroMonitor:
             result.update(brent)
         if us10y:
             result.update(us10y)
-
-        logger.info(
-            f"[宏观监控] 油价: ${result.get('brent_oil_price', 'N/A')} "
-            f"({result.get('brent_oil_change_pct', 'N/A')}%) | "
-            f"US10Y: {result.get('us10y_yield_price', 'N/A')}% "
-            f"({result.get('us10y_yield_change_pct', 'N/A')}%)"
-        )
         return result
 
     def _fetch_ticker(self, ticker: str, prefix: str) -> Optional[Dict]:
+        from datetime import datetime, timedelta
         try:
             end = datetime.now()
             start = end - timedelta(days=5)
@@ -85,10 +110,8 @@ class MacroMonitor:
                 progress=False, auto_adjust=True,
             )
             if data.empty or len(data) < 2:
-                logger.debug(f"[宏观监控] {ticker}: 数据不足")
                 return None
 
-            # Handle MultiIndex columns from yfinance
             if hasattr(data.columns, 'levels') and len(data.columns.levels) > 1:
                 data.columns = data.columns.droplevel(1)
 

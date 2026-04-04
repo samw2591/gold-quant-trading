@@ -132,6 +132,12 @@ class BacktestEngine:
         atr_regime_lots: bool = False,
         # Transaction cost
         spread_cost: float = 0.0,
+        spread_model: str = "fixed",        # "fixed" | "atr_scaled" | "session_aware"
+        spread_base: float = 0.30,          # base spread for dynamic models
+        spread_max: float = 3.0,            # max spread cap
+        # Macro regime (P4)
+        macro_df: Optional[pd.DataFrame] = None,
+        macro_regime_enabled: bool = False,
         # Label
         label: str = "",
     ):
@@ -194,6 +200,20 @@ class BacktestEngine:
 
         # Cost
         self._spread_cost = spread_cost
+        self._spread_model = spread_model
+        self._spread_base = spread_base
+        self._spread_max = spread_max
+
+        # Macro regime
+        self._macro_df = macro_df
+        self._macro_regime_enabled = macro_regime_enabled
+        self._macro_regime_detector = None
+        if macro_regime_enabled and macro_df is not None:
+            try:
+                from macro.regime_detector import MacroRegimeDetector
+                self._macro_regime_detector = MacroRegimeDetector()
+            except ImportError:
+                pass
 
         # State
         self.positions: List[Position] = []
@@ -388,6 +408,22 @@ class BacktestEngine:
             if self._current_regime == 'choppy':
                 self.skipped_choppy += 1
                 return
+
+        # Macro regime gating
+        if self._macro_regime_enabled and self._macro_regime_detector and self._macro_df is not None:
+            try:
+                bar_date = pd.Timestamp(bar_time).normalize()
+                if bar_date.tz is not None:
+                    bar_date = bar_date.tz_localize(None)
+                if bar_date in self._macro_df.index:
+                    macro_row = self._macro_df.loc[bar_date]
+                    m_regime = self._macro_regime_detector.detect_from_row(macro_row)
+                    m_weights = self._macro_regime_detector.get_strategy_weights(m_regime)
+                    if not m_weights.get('allow_trading', True):
+                        self.skipped_choppy += 1
+                        return
+            except Exception:
+                pass
 
         # Regime-based disable
         if self._regime_config and h1_window is not None and len(h1_window) > 0:
@@ -597,14 +633,54 @@ class BacktestEngine:
 
     # ── Close position ────────────────────────────────────────
 
+    def _calc_dynamic_spread(self, bar_time, h1_atr: float = 0) -> float:
+        """Calculate spread cost based on the active model."""
+        if self._spread_model == "fixed":
+            return self._spread_cost
+
+        if self._spread_model == "atr_scaled":
+            if h1_atr <= 0:
+                return self._spread_base
+            h1_window = self._get_h1_window(bar_time)
+            atr_pct = 0.5
+            if h1_window is not None and len(h1_window) > 0:
+                val = h1_window.iloc[-1].get('atr_percentile', 0.5)
+                if not pd.isna(val):
+                    atr_pct = float(val)
+            scaled = self._spread_base * (1 + atr_pct)
+            return min(scaled, self._spread_max)
+
+        if self._spread_model == "session_aware":
+            hour = pd.Timestamp(bar_time).hour
+            if 0 <= hour < 8:       # Asia session
+                mult = 1.5
+            elif 8 <= hour < 14:    # London session
+                mult = 1.0
+            elif 14 <= hour < 21:   # NY session (tightest)
+                mult = 0.8
+            else:                   # Late/close
+                mult = 2.0
+            return min(self._spread_base * mult, self._spread_max)
+
+        return self._spread_cost
+
     def _close_position(self, pos: Position, exit_price: float, exit_time, reason: str):
         if pos.direction == 'BUY':
             pnl_points = exit_price - pos.entry_price
         else:
             pnl_points = pos.entry_price - exit_price
         pnl = round(pnl_points * pos.lots * config.POINT_VALUE_PER_LOT, 2)
-        if self._spread_cost > 0:
-            pnl -= round(self._spread_cost * pos.lots * config.POINT_VALUE_PER_LOT, 2)
+
+        h1_atr = 0
+        h1w = self._get_h1_window(exit_time)
+        if h1w is not None and len(h1w) > 0:
+            atr_val = h1w.iloc[-1].get('ATR', 0)
+            if not pd.isna(atr_val):
+                h1_atr = float(atr_val)
+
+        spread = self._calc_dynamic_spread(exit_time, h1_atr)
+        if spread > 0:
+            pnl -= round(spread * pos.lots * config.POINT_VALUE_PER_LOT, 2)
 
         trade = TradeRecord(
             strategy=pos.strategy, direction=pos.direction,

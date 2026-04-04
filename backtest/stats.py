@@ -6,8 +6,12 @@ Replaces: backtest.print_report, backtest_m15.calc_stats/print_comparison
 """
 from typing import Dict, List, Optional
 
+import itertools
+import random
+
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 import config
 from backtest.engine import TradeRecord
@@ -183,3 +187,304 @@ def print_ranked(results: List[Dict], title: str = "Ranked Results"):
               f"{v['win_rate']:>5.1f}% {v['rr']:>4.2f}")
 
     print(f"\n  {'='*130}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# Advanced statistical tests (PSR / DSR / PBO)
+# ═══════════════════════════════════════════════════════════════
+
+_EULER_MASCHERONI = 0.5772156649015329
+
+
+def _annualized_daily_sharpe(returns: List[float]) -> float:
+    """Annualized Sharpe from daily PnL: (mean/std) * sqrt(252)."""
+    arr = np.asarray(returns, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    n = len(arr)
+    if n < 2:
+        return 0.0
+    std = float(np.std(arr, ddof=1))
+    if std <= 0 or not np.isfinite(std):
+        return 0.0
+    mu = float(np.mean(arr))
+    return float((mu / std) * np.sqrt(252.0))
+
+
+def _sharpe_ratio_std(sr: float, n: int, skew: float, excess_kurt: float) -> float:
+    """Asymptotic std of Sharpe estimator (Bailey & López de Prado, 2012)."""
+    if n < 2:
+        return float("nan")
+    inner = 1.0 - skew * sr + ((excess_kurt - 1.0) / 4.0) * (sr ** 2)
+    if inner < 0:
+        inner = 0.0
+    v = inner / float(n - 1)
+    return float(np.sqrt(v)) if v >= 0 and np.isfinite(v) else float("nan")
+
+
+def probabilistic_sharpe(returns: List[float], sharpe_benchmark: float = 0) -> Dict:
+    """Probabilistic Sharpe Ratio (Bailey & López de Prado, 2012).
+
+    Tests if observed SR significantly exceeds sharpe_benchmark.
+    Returns dict with: sharpe_obs, psr, p_value, n, skew, kurtosis, sr_std
+    """
+    default = {
+        "sharpe_obs": 0.0,
+        "psr": 0.0,
+        "p_value": 1.0,
+        "n": 0,
+        "skew": 0.0,
+        "kurtosis": 0.0,
+        "sr_std": float("nan"),
+    }
+    if not returns:
+        return default
+    arr = np.asarray(returns, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    n = int(len(arr))
+    if n < 10:
+        return {**default, "n": n}
+    std = float(np.std(arr, ddof=1))
+    if std <= 0 or not np.isfinite(std):
+        return {**default, "n": n}
+    skew = float(stats.skew(arr, bias=False))
+    excess_kurt = float(stats.kurtosis(arr, fisher=True, bias=False))
+    sharpe_obs = _annualized_daily_sharpe(arr.tolist())
+    # Use non-annualized SR in the std formula (Bailey & LdP use daily SR)
+    daily_sr = float(np.mean(arr) / std)
+    sr_std = _sharpe_ratio_std(daily_sr, n, skew, excess_kurt)
+    if not np.isfinite(sr_std) or sr_std <= 0:
+        return {
+            "sharpe_obs": sharpe_obs,
+            "psr": 0.0,
+            "p_value": 1.0,
+            "n": n,
+            "skew": skew,
+            "kurtosis": excess_kurt,
+            "sr_std": sr_std,
+        }
+    sr_std_annualized = sr_std * np.sqrt(252)
+    z = (sharpe_obs - sharpe_benchmark) / sr_std_annualized if sr_std_annualized > 0 else 0.0
+    psr = float(stats.norm.cdf(z))
+    p_value = float(1.0 - psr)
+    return {
+        "sharpe_obs": sharpe_obs,
+        "psr": psr,
+        "p_value": p_value,
+        "n": n,
+        "skew": skew,
+        "kurtosis": excess_kurt,
+        "sr_std": sr_std,
+    }
+
+
+def deflated_sharpe(
+    returns: List[float],
+    n_trials: int,
+    all_sharpes_var: float = None,
+) -> Dict:
+    """Deflated Sharpe Ratio (Bailey & López de Prado, 2014).
+
+    Adjusts SR for multiple testing by computing E[max(SR)] under null.
+    Returns dict with: sharpe_obs, sr_star (expected max under null),
+                       dsr (deflated probability), n_trials, passed (bool)
+    """
+    default = {
+        "sharpe_obs": 0.0,
+        "sr_star": float("nan"),
+        "dsr": 0.0,
+        "n_trials": int(n_trials) if n_trials is not None else 0,
+        "passed": False,
+    }
+    if not returns or n_trials is None or n_trials < 1:
+        return default
+    N = int(n_trials)
+    if N < 1:
+        return default
+    psr_parts = probabilistic_sharpe(returns, sharpe_benchmark=0.0)
+    n = psr_parts["n"]
+    sharpe_obs = psr_parts["sharpe_obs"]
+    skew = psr_parts["skew"]
+    excess_kurt = psr_parts["kurtosis"]
+    if n < 10:
+        return {
+            **default,
+            "sharpe_obs": sharpe_obs,
+            "n_trials": N,
+        }
+    if all_sharpes_var is not None and np.isfinite(all_sharpes_var) and all_sharpes_var >= 0:
+        v_sr = float(all_sharpes_var)
+    else:
+        sr_std = psr_parts["sr_std"]
+        if not np.isfinite(sr_std) or sr_std <= 0:
+            return {
+                "sharpe_obs": sharpe_obs,
+                "sr_star": float("nan"),
+                "dsr": 0.0,
+                "n_trials": N,
+                "passed": False,
+            }
+        v_sr = sr_std ** 2
+
+    sqrt_v = float(np.sqrt(v_sr))
+    term1 = stats.norm.ppf(1.0 - 1.0 / N)
+    term2 = stats.norm.ppf(1.0 - 1.0 / (N * np.e))
+    sr_star = sqrt_v * (
+        (1.0 - _EULER_MASCHERONI) * term1 + _EULER_MASCHERONI * term2
+    )
+    if not np.isfinite(sr_star):
+        return {
+            "sharpe_obs": sharpe_obs,
+            "sr_star": float("nan"),
+            "dsr": 0.0,
+            "n_trials": N,
+            "passed": False,
+        }
+    arr = np.asarray(returns, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    daily_std = float(np.std(arr, ddof=1))
+    daily_sr = float(np.mean(arr) / daily_std) if daily_std > 0 else 0.0
+    sr_std_dsr = _sharpe_ratio_std(daily_sr, n, skew, excess_kurt)
+    if not np.isfinite(sr_std_dsr) or sr_std_dsr <= 0:
+        dsr = 0.0
+    else:
+        z = (sharpe_obs - sr_star) / (sr_std_dsr * np.sqrt(252))
+        dsr = float(stats.norm.cdf(z))
+    passed = bool(dsr > 0.95)
+    return {
+        "sharpe_obs": sharpe_obs,
+        "sr_star": float(sr_star),
+        "dsr": dsr,
+        "n_trials": N,
+        "passed": passed,
+    }
+
+
+def compute_pbo(
+    daily_pnls_by_variant: Dict[str, List[float]],
+    n_partitions: int = 8,
+) -> Dict:
+    """Probability of Backtest Overfitting (Bailey et al., 2015).
+
+    Splits time series into n_partitions blocks, creates C(S, S/2)
+    train/test combinations. For each: finds IS-best variant, checks
+    its OOS rank. PBO = proportion where IS-best ranks below median OOS.
+
+    Args:
+        daily_pnls_by_variant: Dict mapping variant label to list of daily PnL
+        n_partitions: Number of time blocks (must be even, default 8)
+
+    Returns dict with: pbo, n_combinations, is_best_oos_ranks,
+                       logit_distribution, overfit_risk (LOW/MEDIUM/HIGH)
+    """
+    empty = {
+        "pbo": 0.0,
+        "n_combinations": 0,
+        "is_best_oos_ranks": [],
+        "logit_distribution": [],
+        "overfit_risk": "LOW",
+    }
+    if not daily_pnls_by_variant:
+        return empty
+    if n_partitions < 2 or n_partitions % 2 != 0:
+        return empty
+
+    labels = list(daily_pnls_by_variant.keys())
+    k_variants = len(labels)
+    if k_variants < 2:
+        return empty
+
+    lengths = [len(daily_pnls_by_variant[lbl]) for lbl in labels]
+    t = min(lengths)
+    if t < n_partitions * 2:
+        return empty
+
+    series = {
+        lbl: np.asarray(daily_pnls_by_variant[lbl][:t], dtype=float) for lbl in labels
+    }
+
+    s_blocks = n_partitions
+    edges = np.linspace(0, t, s_blocks + 1, dtype=int)
+    block_indices = [
+        (int(edges[i]), int(edges[i + 1])) for i in range(s_blocks)
+    ]
+
+    def _sharpe_blocks(lbl: str, block_ids: tuple) -> float:
+        parts = []
+        for b in block_ids:
+            a, bnd = block_indices[b]
+            parts.append(series[lbl][a:bnd])
+        if not parts:
+            return float("-inf")
+        sl = np.concatenate(parts)
+        sl = sl[np.isfinite(sl)]
+        if len(sl) < 10:
+            return float("-inf")
+        std = float(np.std(sl, ddof=1))
+        if std <= 0:
+            return float("-inf")
+        return _annualized_daily_sharpe(sl.tolist())
+
+    all_combos = list(itertools.combinations(range(s_blocks), s_blocks // 2))
+    n_all = len(all_combos)
+    max_combos = 100
+    if n_all > max_combos:
+        all_combos = random.sample(all_combos, max_combos)
+        n_combinations = max_combos
+    else:
+        n_combinations = n_all
+
+    is_best_oos_ranks: List[int] = []
+    logit_distribution: List[float] = []
+    overfit_count = 0
+
+    for is_blocks in all_combos:
+        is_set = set(is_blocks)
+        oos_blocks = tuple(b for b in range(s_blocks) if b not in is_set)
+
+        is_sharpes = {lbl: _sharpe_blocks(lbl, is_blocks) for lbl in labels}
+        best_lbl = max(is_sharpes, key=is_sharpes.get)
+        if not np.isfinite(is_sharpes[best_lbl]) or is_sharpes[best_lbl] == float(
+            "-inf"
+        ):
+            continue
+
+        oos_sharpes = {lbl: _sharpe_blocks(lbl, oos_blocks) for lbl in labels}
+        sorted_lbls = sorted(
+            labels,
+            key=lambda x: oos_sharpes[x],
+            reverse=True,
+        )
+        rank = sorted_lbls.index(best_lbl) + 1
+
+        is_best_oos_ranks.append(rank)
+        denom = max(k_variants - rank, 1e-12)
+        logit_distribution.append(float(np.log(rank / denom)))
+
+        if rank > k_variants / 2.0:
+            overfit_count += 1
+
+    n_used = len(is_best_oos_ranks)
+    if n_used == 0:
+        return {
+            "pbo": 0.0,
+            "n_combinations": n_combinations,
+            "is_best_oos_ranks": [],
+            "logit_distribution": [],
+            "overfit_risk": "LOW",
+        }
+
+    pbo = overfit_count / float(n_used)
+    if pbo < 0.20:
+        risk = "LOW"
+    elif pbo < 0.40:
+        risk = "MEDIUM"
+    else:
+        risk = "HIGH"
+
+    return {
+        "pbo": float(pbo),
+        "n_combinations": n_combinations,
+        "is_best_oos_ranks": is_best_oos_ranks,
+        "logit_distribution": logit_distribution,
+        "overfit_risk": risk,
+    }

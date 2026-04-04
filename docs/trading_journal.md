@@ -7,6 +7,33 @@
 
 ## 系统变更记录
 
+- **2026-04-04**: `backtest/stats.py` 新增高级统计：`probabilistic_sharpe`（PSR）、`deflated_sharpe`（DSR）、`compute_pbo`（CSCV/PBO，组合数>100 随机抽样）；依赖 `scipy.stats`、`itertools`、`random`。
+- **2026-04-04**: **宏观 Regime 检测** — 新增 `macro/regime_detector.py`：`MacroRegime`（6 类）、`MacroRegimeDetector`（快照/CSV 行规则分类）、`add_regime_column`（回测表增加 `macro_regime` 与 `regime_weights`）；`macro/__init__.py` 导出上述符号。流动性危机用 VIX>35+DXY 走强代理（无金价列）；`spread_2_10` 日变动在 `add_regime_column` 内注入为 `spread_2_10_chg`。
+- **2026-04-04**: **P2 动态点差模型** — `backtest/engine.py` 新增 `spread_model` 参数（fixed/atr_scaled/session_aware）
+  - `atr_scaled`: 基于 ATR 百分位放大点差（高波动 = 宽点差），`spread = base × (1 + atr_pct)`
+  - `session_aware`: 按交易时段调整（亚盘×1.5, 伦敦×1.0, 纽约×0.8, 收盘×2.0）
+  - 向后兼容：默认 `spread_model="fixed"` 行为不变
+- **2026-04-04**: **P3 高级统计检验** — `backtest/stats.py` 新增 3 个函数
+  - `probabilistic_sharpe()`: 概率夏普比率（Bailey & LdP 2012），测试SR是否显著优于基准
+  - `deflated_sharpe()`: 通缩夏普比率（Bailey & LdP 2014），校正多重测试偏差
+  - `compute_pbo()`: CSCV 回测过拟合概率（Bailey et al 2015），16分区组合验证
+  - 修复: 将公式中的 SR 从年化值改为日级值，避免 `inner < 0` 导致 sr_std=0
+- **2026-04-04**: **P4 宏观Regime自动识别** — 新建 `macro/regime_detector.py`
+  - 6种Regime: EASING_INFLATION_UP/DOWN, TIGHTENING_INFLATION_UP/DOWN, RISK_OFF, LIQUIDITY_CRISIS
+  - 检测逻辑: VIX>35+DXY涨→流动性危机, VIX>30→避险, 然后TIPS趋势+BEI趋势→4种宏观组合
+  - 策略权重映射: lot_multiplier 0.3~1.2, sell_enabled, expand_sl 等
+  - 回测集成: `BacktestEngine` 新增 `macro_df`/`macro_regime_enabled` 参数
+  - 11年分布: 紧缩+通胀上升38.6%, 紧缩+通胀下降31.7%, 宽松+通胀上升13.3%, 宽松+通胀下降10.9%, 避险4.0%, 流动性危机1.5%
+  - 关键验证: 2020-03-16→LIQUIDITY_CRISIS, 2022-03-01→RISK_OFF, 2024-09-18→EASING_INFLATION_UP
+- **2026-04-04**: **P1 宏观数据管道** — 新建 `macro/` 包（`data_provider.py` + `__init__.py`），统一 yfinance + FRED 数据获取
+  - yfinance: DXY(美元指数), VIX(恐慌指数), Brent(原油), US10Y(10年期国债)
+  - FRED (需 API key): TIPS 10Y(实际利率), US2Y, 2-10利差, 5Y BEI(通胀预期)
+  - 实时快照: `get_snapshot()` 返回 `MacroSnapshot` dataclass，含衍生指标（DXY SMA20、VIX 百分位、实际利率regime、VIX regime）
+  - 历史下载: `download_history()` 保存 CSV，支持回测对齐。11年测试: 2935天, DXY/VIX/Brent/US10Y 全部成功，NaN<0.1%
+  - 向后兼容: `sentiment/macro_monitor.py` 改为薄包装，`gold_trader.py` 无需修改
+  - `config.py` 新增 `FRED_API_KEY`, `MACRO_ENABLED`, `MACRO_CACHE_TTL`, `MACRO_CACHE_PATH`
+  - `requirements.txt` 新增 `fredapi`, `scipy`
+  - `data/macro_history.csv` 已生成（2015-2026, 2935天×10列）
 - **2026-04-04**: `backtest_cost_adjusted.py` 迁移至统一包：`run_variant(DataBundle(...), ..., verbose=False, spread_cost=..., regime_config=..., min_entry_gap_hours=...)` 替代 `Round2Engine`/`RegimeEngine`/`CooldownEngine` 继承链；`TRUE_BASELINE_KWARGS`/`C12_KWARGS`/`V3_REGIME`/`load_m15`/`load_h1_aligned`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除对 `config` 追踪止损全局变量的临时修改。
 - **2026-04-04**: `backtest_advanced.py` 迁移至统一包：`DataBundle`、`run_variant(verbose=False)`（保留原控制台格式）、`C12_KWARGS`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除 `RegimeEngine`/`ParamExploreEngine`/`Round2Engine` 与本地 `prepare_indicators_custom`；K-Fold 用 `DataBundle.slice`；参数探索用 raw `DataBundle` + 每 variant 自定义指标（等同 `load_custom` 逻辑）。`backtest.runner.run_variant` 增加关键字参数 `verbose=True` 供静默调用。
 - **2026-04-04**: `backtest_combo_verify.py` 迁移至统一包：`BacktestEngine` + `DataBundle` + `calc_stats`，`C12_KWARGS`/`V3_REGIME`/`prepare_indicators_custom`/`add_atr_percentile`/`load_m15`/`load_h1_aligned` 自 `backtest.runner`；本地 `_run_bundle` 复现原 `run_fixed`/`run_regime` 的全局重置与打印格式（未用 `run_variant` 以免其自带输出覆盖 Phase1 行格式）。
@@ -581,6 +608,17 @@
 - **C12 Adaptive (0.35/0.60) 已实装**（config.py `INTRADAY_TREND_ENABLED=True`），回测确认有效
 - Combo 配置 (0.40/0.65) 存在阈值悬崖风险，暂不实装，待进一步验证
 
+### Phase 6: 细粒度阈值扫描结果 (2026-04-04, 服务器运行)
+
+- **2026-04-04**: `backtest_threshold_scan.py` kc_only 0.55→0.72 步长 0.01，Combo 配置 + $0.50 spread
+- **核心发现: 0.65 不是渐进阈值，是 M15 RSI 的硬二元开关**
+  - kc_only ≤ 0.64: 结果完全一致（N=17904, Sharpe=0.35, M15=8286笔）
+  - kc_only ≥ 0.65: 结果完全一致（N=9693, Sharpe=1.86, M15=**5笔**, skip_m15=262522）
+  - 0.64→0.65 之间无中间态，是精确断点
+- **根因**: Combo 配置下盘中趋势评分几乎不超过 0.65，阈值设 0.65 等于完全关闭 M15 RSI
+- **Sharpe 1.86 的本质**: 不是"聪明地在趋势日交易"，是关掉了 M15 RSI 后只靠 H1 策略赚钱（M15 在 $0.50 点差下是净亏损源）
+- **决策: 保留 kc_only=0.60**，不采用 0.65。如需优化 Combo 成本问题，应单独提高 M15 RSI 信号质量而非用门控间接关闭
+
 ## 回测框架统一重构 (2026-04-04)
 
 - **2026-04-04**: **回测技术债清理** — 将 15 个分散的回测脚本（~6,500 行）中的公共引擎代码统一为 `backtest/` 包
@@ -615,5 +653,12 @@
 - [x] ~~gap_fill 策略回测 Sharpe -1.71，需研究是否调参优化或禁用~~ → 已禁用（两次独立回测 Sharpe -1.25/-1.71，实盘 0 次触发）
 - [x] ~~考虑在 ADX > 40 极端趋势环境下临时降低/暂停 M15 RSI 均值回归策略权重~~ → 已改为加入 EMA100 方向过滤（更精准，不会误杀顺势交易）
 - [ ] 渐进清理剩余 7 个旧引擎脚本（backtest_overfit_test, backtest_stress_test, backtest_trend_day, backtest_round3_combo, backtest_overnight, backtest_round2, backtest_verify_migration）
-- [ ] 引入宏观因子回测：经济日历事件标记作为第一个宏观因子纳入回测框架
-- [ ] DXY 日线作为日级别方向过滤（P6 策略的实盘验证版本）
+- [x] ~~引入宏观因子回测：经济日历事件标记作为第一个宏观因子纳入回测框架~~ → 已建立 `macro/` 数据管道（P1），DXY/VIX/Brent/US10Y + FRED(TIPS/US2Y/BEI/利差) 11年日线已下载
+- [ ] DXY 日线作为日级别方向过滤（P6 策略的实盘验证版本）— 数据管道+regime检测器已就绪
+- [x] ~~注册 FRED API key 并配置到环境变量，补全 TIPS 10Y/US2Y/2-10利差/BEI 5Y 数据~~ → 已完成，18列数据全部下载
+- [x] ~~P2: 动态点差模型~~ → `backtest/engine.py` 支持 fixed/atr_scaled/session_aware 三种点差模型
+- [x] ~~P3: 高级统计检验~~ → PSR/DSR/CSCV-PBO 已集成到 `backtest/stats.py`
+- [x] ~~P4: 宏观 Regime 自动识别~~ → `macro/regime_detector.py` 6种regime + 策略权重映射，已集成到回测引擎
+- [ ] 编写 `backtest_macro_regime.py` 验证宏观regime过滤对策略的实际影响
+- [ ] 编写 `backtest_statistical_validation.py` 对 C12/Combo 运行 CSCV/PBO 验证
+- [ ] 编写 `backtest_spread_model.py` 对比三种点差模型的回测差异

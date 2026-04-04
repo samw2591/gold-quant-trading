@@ -10,7 +10,10 @@ Backward compatibility:
     continues to work — these are re-exported here.
 """
 from backtest.engine import BacktestEngine, Position, TradeRecord
-from backtest.stats import calc_stats, aggregate_daily_pnl, print_comparison, print_ranked
+from backtest.stats import (
+    calc_stats, aggregate_daily_pnl, print_comparison, print_ranked,
+    probabilistic_sharpe, deflated_sharpe, compute_pbo,
+)
 from backtest.runner import (
     DataBundle, run_variant, run_variants, run_kfold,
     load_csv, load_m15, load_h1_aligned, add_atr_percentile,

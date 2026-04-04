@@ -70,6 +70,12 @@ INTRADAY_TREND_ENABLED = True         # 启用盘中趋势评分门控
 INTRADAY_TREND_THRESHOLD = 0.35       # < 此值 = CHOPPY，禁止所有新开仓
 INTRADAY_TREND_KC_ONLY_THRESHOLD = 0.60  # < 此值 = NEUTRAL，仅允许 H1 策略 (Keltner/ORB)
 
+# ── 宏观数据管道 ──
+import os as _os
+FRED_API_KEY = _os.environ.get("FRED_API_KEY", "")  # FRED API key (免费注册: https://fred.stlouisfed.org/docs/api/api_key.html)
+MACRO_ENABLED = True              # 启用宏观数据采集 (DXY/VIX/TIPS/国债/BEI)
+MACRO_CACHE_TTL = 3600            # 宏观快照缓存时间 (秒), 盘中每小时更新
+
 # ============================================================
 # 策略参数
 # ============================================================
@@ -119,3 +125,4 @@ TELEGRAM_CHAT_ID = "8531960227"
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 LOG_DIR = BASE_DIR / "logs"
+MACRO_CACHE_PATH = DATA_DIR / "macro_snapshot.json"
