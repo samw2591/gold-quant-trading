@@ -77,7 +77,7 @@ def main():
         daily = aggregate_daily_pnl(trades)
         all_daily_pnls[label] = daily
         all_sharpes.append(stats['sharpe'])
-        print(f"N={stats['n_trades']}, Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}")
+        print(f"N={stats['n']}, Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}")
 
     # ── Part 1: PSR ──
     print("\n" + "=" * 90)

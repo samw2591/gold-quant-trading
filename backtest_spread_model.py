@@ -53,7 +53,7 @@ def main():
         print(f"\n  Running C12 + {label}...", flush=True)
         stats = run_variant(bundle, f"C12 {label}", verbose=False, **kw)
         c12_results.append(stats)
-        print(f"    N={stats['n_trades']}, Sharpe={stats['sharpe']:.2f}, "
+        print(f"    N={stats['n']}, Sharpe={stats['sharpe']:.2f}, "
               f"PnL=${stats['total_pnl']:.0f}, MaxDD=${stats['max_dd']:.0f}")
 
     print("\n" + "-" * 90)
@@ -78,7 +78,7 @@ def main():
         print(f"\n  Running C12+Adaptive + {label}...", flush=True)
         stats = run_variant(bundle, f"Adaptive {label}", verbose=False, **kw)
         adaptive_results.append(stats)
-        print(f"    N={stats['n_trades']}, Sharpe={stats['sharpe']:.2f}, "
+        print(f"    N={stats['n']}, Sharpe={stats['sharpe']:.2f}, "
               f"PnL=${stats['total_pnl']:.0f}, MaxDD=${stats['max_dd']:.0f}")
 
     print("\n" + "-" * 90)

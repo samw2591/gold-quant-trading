@@ -94,7 +94,7 @@ def main():
         print(f"\n  Running {label}...", flush=True)
         stats = run_variant(bundle, label, verbose=False, **kw)
         results.append(stats)
-        print(f"    N={stats['n_trades']}, Sharpe={stats['sharpe']:.2f}, "
+        print(f"    N={stats['n']}, Sharpe={stats['sharpe']:.2f}, "
               f"PnL=${stats['total_pnl']:.0f}, MaxDD=${stats['max_dd']:.0f}")
 
     print("\n" + "-" * 90)
