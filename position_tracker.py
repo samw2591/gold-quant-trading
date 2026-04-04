@@ -72,6 +72,12 @@ class PositionTracker:
             if ticket_key.startswith('pending_'):
                 continue
             if ticket_key not in mt4_tickets:
+                if self._ticket_already_closed(int(ticket_key)):
+                    log.info(f"  ℹ️ #{ticket_key} 已有平仓记录, 仅清理tracking")
+                    del self.tracking[ticket_key]
+                    self._save_tracking()
+                    continue
+
                 track = self.tracking[ticket_key]
                 strategy = track.get('strategy', 'unknown')
                 direction = track.get('direction', 'BUY')
@@ -139,10 +145,10 @@ class PositionTracker:
                 except (ValueError, TypeError):
                     pass
 
-        # 4. 检测未tracking的新仓位
+        # 4. 检测未tracking的新仓位 (排除已有平仓记录的ticket)
         for pos in mt4_positions:
             ticket_key = str(pos['ticket'])
-            if ticket_key not in self.tracking:
+            if ticket_key not in self.tracking and not self._ticket_already_closed(pos['ticket']):
                 comment = pos.get('comment', '')
                 strategy = 'unknown'
                 cl = comment.lower()
@@ -173,6 +179,13 @@ class PositionTracker:
                 }
                 self._save_tracking()
                 log.info(f"  📝 同步新仓位: #{ticket_key} {strategy} {direction} @ {pos.get('open_price', 0)}")
+
+    def _ticket_already_closed(self, ticket: int) -> bool:
+        """检查某 ticket 是否已有 CLOSE/CLOSE_DETECTED 记录，防止重复计算 PnL"""
+        for entry in reversed(self.trade_log):
+            if entry.get('ticket') == ticket and entry.get('action') in ('CLOSE', 'CLOSE_DETECTED'):
+                return True
+        return False
 
     # ── 交易记录 ──
 

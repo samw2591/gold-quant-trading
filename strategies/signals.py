@@ -85,11 +85,11 @@ def prepare_indicators(df: pd.DataFrame) -> pd.DataFrame:
 # ═══════════════════════════════════════════════════════════════
 # 常量
 # ═══════════════════════════════════════════════════════════════
-ADX_TREND_THRESHOLD = 24    # 回测最优: Sharpe 0.60 (25→0.52, 23→0.45)
-ATR_SL_MULTIPLIER = 2.5     # v3: 改为2.5×ATR (backtrader项目实测值)
+ADX_TREND_THRESHOLD = 18    # R3组合回测最优: ADX18 Sharpe +0.09, 组合Sharpe 2.54 (24→18)
+ATR_SL_MULTIPLIER = 3.5     # R3组合回测: SL 3.5ATR 减少假突破被震出, 组合Sharpe 2.54 (2.5→3.5)
 ATR_SL_MIN = 10
 ATR_SL_MAX = 50
-ATR_TP_MULTIPLIER = 3.0     # v5: 止盈3.0×ATR (6.5×太远, MFE P90才$17, 几乎永远不触发)
+ATR_TP_MULTIPLIER = 5.0     # R3组合回测: TP 5.0ATR 有追踪止盈时给利润更多空间 (3.0→5.0)
 
 
 def _calc_atr_stop(df: pd.DataFrame) -> float:
@@ -480,15 +480,19 @@ def check_exit_signal(df: pd.DataFrame, strategy: str, direction: str) -> Option
     return None
 
 
-def check_m15_rsi_signal(df: pd.DataFrame) -> Optional[Dict]:
+def check_m15_rsi_signal(df: pd.DataFrame, h1_adx: float = None) -> Optional[Dict]:
     """
-    M15 RSI均值回归信号 + EMA100趋势方向过滤
+    M15 RSI均值回归信号 + EMA100趋势方向过滤 + H1 ADX强趋势屏蔽
 
     v7: 加入EMA100过滤，防止在强趋势中逆势开仓
-    回测: Sharpe 1.02→1.28(+25%), MaxDD $662→$524(-21%), 胜率 56.4%→58.6%
+    v8: 加入H1 ADX>40屏蔽 (M15回测: Sharpe 0.76→0.97, +0.21)
     """
     if len(df) < 105:
         return None
+
+    if h1_adx is not None and h1_adx > config.RSI_ADX_BLOCK_THRESHOLD:
+        return None
+
     latest = df.iloc[-1]
     close = float(latest['Close'])
     rsi2 = float(latest['RSI2'])
@@ -821,7 +825,8 @@ def check_monday_gap_fill(df: pd.DataFrame) -> Optional[Dict]:
 # 信号扫描入口
 # ═══════════════════════════════════════════════════════════════
 
-def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
+def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1',
+                     h1_adx: float = None) -> List[Dict]:
     """扫描所有已启用策略的信号"""
     signals = []
     if timeframe == 'H1':
@@ -843,7 +848,7 @@ def scan_all_signals(df: pd.DataFrame, timeframe: str = 'H1') -> List[Dict]:
         if sig:
             signals.append(sig)
     elif timeframe in ('M5', 'M15'):
-        sig = check_m15_rsi_signal(df)
+        sig = check_m15_rsi_signal(df, h1_adx=h1_adx)
         if sig:
             signals.append(sig)
     return signals

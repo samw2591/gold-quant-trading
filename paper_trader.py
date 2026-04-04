@@ -576,7 +576,7 @@ def setup_paper_strategies(paper: PaperTrader):
             return None
         if vol_ma <= 0:
             return None
-        if volume < vol_ma * 1.5:
+        if volume < vol_ma * 1.2:
             return None
 
         sl = max(10, min(45, round(atr * 2.5, 2)))
@@ -634,7 +634,7 @@ def setup_paper_strategies(paper: PaperTrader):
             return None
         bar_time = df.index[-1]
         hour = bar_time.hour if hasattr(bar_time, 'hour') else -1
-        if hour < 13 or hour > 16:
+        if hour < 12 or hour > 20:
             return None
 
         row = df.iloc[-1]

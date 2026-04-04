@@ -41,6 +41,14 @@ except Exception as _import_err:
     MACRO_MONITOR_AVAILABLE = False
     logging.getLogger(__name__).warning(f"宏观监控模块导入失败: {_import_err}")
 
+# 盘中趋势自适应 (安全导入)
+try:
+    from intraday_trend import IntradayTrendMeter
+    TREND_METER_AVAILABLE = True
+except Exception as _import_err:
+    TREND_METER_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"盘中趋势模块导入失败: {_import_err}")
+
 log = logging.getLogger(__name__)
 
 
@@ -72,6 +80,15 @@ class GoldTrader:
                 log.info("📊 跨资产宏观监控已加载 (观察模式)")
             except Exception as e:
                 log.warning(f"宏观监控初始化失败 (不影响交易): {e}")
+
+        # 盘中趋势自适应
+        self.trend_meter = None
+        if TREND_METER_AVAILABLE and config.INTRADAY_TREND_ENABLED:
+            try:
+                self.trend_meter = IntradayTrendMeter()
+                log.info("📈 盘中趋势自适应已加载")
+            except Exception as e:
+                log.warning(f"盘中趋势模块初始化失败 (不影响交易): {e}")
 
     # ── 向后兼容属性 (供 gold_runner.py 使用) ──
 
@@ -190,11 +207,16 @@ class GoldTrader:
             exits += self._check_exits(df_m15)
 
         # Step 2: 检查新入场信号
+        h1_adx = None
+        if df_h1 is not None:
+            _adx_raw = df_h1.iloc[-1].get('ADX', float('nan'))
+            h1_adx = float(_adx_raw) if not pd.isna(_adx_raw) else None
+
         entries = []
         if df_h1 is not None:
             entries += self._check_entries(df_h1, 'H1', sentiment_ctx)
         if df_m15 is not None:
-            entries += self._check_entries(df_m15, 'M15', sentiment_ctx)
+            entries += self._check_entries(df_m15, 'M15', sentiment_ctx, h1_adx=h1_adx)
 
         total = len(exits) + len(entries)
         log.info(f"\n{'='*60}")
@@ -219,6 +241,9 @@ class GoldTrader:
             label_cn = {'BULLISH': '看涨', 'BEARISH': '看跌', 'NEUTRAL': '中性'}
             log.info(f"  🌐 舆情: {label_cn.get(s['label'], s['label'])}({s['score']:.2f}) "
                      f"方向偏好: {m['direction_bias'] or '无'} 仓位系数: {m['lot_multiplier']:.1f}")
+
+        if self.trend_meter:
+            log.info(f"  📈 趋势: {self.trend_meter.status_line()}")
 
         if self.risk.cooldown_until:
             for strat, until in self.risk.cooldown_until.items():
@@ -351,11 +376,12 @@ class GoldTrader:
         return exits
 
     def _check_entries(self, df: pd.DataFrame, timeframe: str = 'H1',
-                        sentiment_ctx: Optional[Dict] = None) -> List[Dict]:
+                        sentiment_ctx: Optional[Dict] = None,
+                        h1_adx: float = None) -> List[Dict]:
         """检查新入场信号"""
         current_positions = self.tracker.get_strategy_positions()
         if len(current_positions) >= config.MAX_POSITIONS:
-            _missed_signals = scan_all_signals(df, timeframe)
+            _missed_signals = scan_all_signals(df, timeframe, h1_adx=h1_adx)
             for _ms in _missed_signals:
                 self.tracker.log_missed_signal(_ms, f"持仓已满({len(current_positions)}/{config.MAX_POSITIONS})")
             if _missed_signals:
@@ -363,6 +389,17 @@ class GoldTrader:
             else:
                 log.info(f"\n  📊 已持有 {len(current_positions)}/{config.MAX_POSITIONS} 笔，不再开仓")
             return []
+
+        # 盘中趋势门控
+        if self.trend_meter and df is not None:
+            h1_df = self.data.get_hourly_data()
+            if h1_df is not None:
+                self.trend_meter.update(h1_df)
+            if not self.trend_meter.should_allow_entry(timeframe):
+                regime = self.trend_meter.get_regime()
+                score = self.trend_meter.get_score()
+                log.info(f"\n  📈 {self.trend_meter.status_line()} — skip {timeframe} entries")
+                return []
 
         current_dir = self._get_current_direction()
 
@@ -372,7 +409,7 @@ class GoldTrader:
         slots = config.MAX_POSITIONS - len(current_positions)
         log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
 
-        signals = scan_all_signals(df, timeframe)
+        signals = scan_all_signals(df, timeframe, h1_adx=h1_adx)
 
         if not signals:
             latest = df.iloc[-1]

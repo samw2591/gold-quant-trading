@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from sentiment.news_collector import NewsCollector
 from sentiment.analyzer import SentimentAnalyzer
 from sentiment.calendar_guard import CalendarGuard
+from sentiment.polymarket_monitor import PolymarketMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 _NEUTRAL_CONTEXT: Dict = {
     "sentiment": {"score": 0.0, "label": "NEUTRAL", "confidence": 0.0},
     "calendar": {"risk_level": "LOW", "pause": False, "pause_reason": "", "next_event": None},
+    "polymarket": {"risk_index": 0.0, "risk_level": "LOW", "top_risks": [], "market_count": 0, "error": None},
     "news_summary": "舆情数据采集中...",
     "trade_modifier": {"allow_trading": True, "direction_bias": None, "lot_multiplier": 1.0},
 }
@@ -40,6 +42,7 @@ class SentimentEngine:
         self.collector = NewsCollector()
         self.analyzer = SentimentAnalyzer()
         self.calendar = CalendarGuard(news_collector=self.collector)
+        self.polymarket = PolymarketMonitor()
 
         self._update_interval = update_interval
 
@@ -132,12 +135,15 @@ class SentimentEngine:
         # 3. Sentiment analysis
         sentiment = self.analyzer.get_sentiment_signal(headlines)
 
-        # 4. Build news summary
-        news_summary = self._build_summary(headlines, sentiment)
+        # 4. Polymarket geopolitical risk (network I/O, cached 5 min)
+        poly_data = self._fetch_polymarket_risk()
 
-        # 5. Compute trade modifier
+        # 5. Build news summary (include Polymarket risk)
+        news_summary = self._build_summary(headlines, sentiment, poly_data)
+
+        # 6. Compute trade modifier (now includes Polymarket)
         trade_modifier = self._compute_trade_modifier(
-            sentiment, calendar_pause, risk_level
+            sentiment, calendar_pause, risk_level, poly_data
         )
 
         details = sentiment.get("details", {})
@@ -151,14 +157,25 @@ class SentimentEngine:
                 "vader_score": details.get("vader_score", 0.0),
             },
             "calendar": calendar_info,
+            "polymarket": {
+                "risk_index": poly_data.get("risk_index", 0),
+                "risk_level": poly_data.get("risk_level", "UNKNOWN"),
+                "top_risks": poly_data.get("top_risks", []),
+                "gold_sentiment_boost": poly_data.get("gold_sentiment_boost", 0),
+                "market_count": poly_data.get("market_count", 0),
+                "error": poly_data.get("error"),
+            },
             "news_summary": news_summary,
             "trade_modifier": trade_modifier,
         }
 
+        poly_idx = poly_data.get("risk_index", 0)
+        poly_lvl = poly_data.get("risk_level", "N/A")
         logger.info(
             f"[舆情引擎] 分析完成 — "
             f"情绪: {sentiment['label']}({sentiment['score']:.2f}), "
-            f"风险: {risk_level}, "
+            f"日历风险: {risk_level}, "
+            f"Polymarket: {poly_idx:.0f}({poly_lvl}), "
             f"允许交易: {trade_modifier['allow_trading']}, "
             f"方向偏好: {trade_modifier['direction_bias']}, "
             f"仓位系数: {trade_modifier['lot_multiplier']:.2f}"
@@ -196,7 +213,15 @@ class SentimentEngine:
 
         return unique
 
-    def _build_summary(self, headlines: list, sentiment: Dict) -> str:
+    def _fetch_polymarket_risk(self) -> Dict:
+        """Fetch Polymarket geopolitical risk. Never raises."""
+        try:
+            return self.polymarket.get_risk_index()
+        except Exception as exc:
+            logger.warning(f"[舆情引擎] Polymarket 采集失败: {exc}")
+            return PolymarketMonitor._default_result()
+
+    def _build_summary(self, headlines: list, sentiment: Dict, poly_data: Dict = None) -> str:
         """Build a concise Chinese-language summary of the news."""
         if not headlines:
             return "当前无相关新闻数据"
@@ -214,8 +239,14 @@ class SentimentEngine:
         samples = headlines[:3]
         sample_text = " | ".join(samples)
 
+        poly_str = ""
+        if poly_data and poly_data.get("market_count", 0) > 0:
+            poly_idx = poly_data.get("risk_index", 0)
+            poly_lvl = poly_data.get("risk_level", "N/A")
+            poly_str = f" Polymarket地缘风险: {poly_idx:.0f}/100({poly_lvl})。"
+
         return (
-            f"分析{count}条新闻，整体情绪{label}(得分{score:.2f})。"
+            f"分析{count}条新闻，整体情绪{label}(得分{score:.2f})。{poly_str}"
             f"代表性标题: {sample_text}"
         )
 
@@ -224,13 +255,16 @@ class SentimentEngine:
         sentiment: Dict,
         calendar_pause: bool,
         risk_level: str,
+        poly_data: Dict = None,
     ) -> Dict:
-        """Decide trading adjustments based on sentiment + calendar.
+        """Decide trading adjustments based on sentiment + calendar + Polymarket.
 
         Decision logic:
           1. Calendar says pause -> allow_trading=False
-          2. Use analyzer's BULLISH/BEARISH label (threshold 0.15) with confidence >= 0.3
+          2. Use analyzer's BULLISH/BEARISH label (threshold 0.25) with confidence >= 0.3
           3. HIGH calendar risk -> lot_multiplier *= 0.5
+          4. Polymarket risk_index >= 60 -> direction_bias=BUY (避险需求)
+          5. Polymarket risk_index >= 85 -> lot_multiplier *= 0.5 (极端风险减仓防黑天鹅)
         """
         allow_trading = True
         direction_bias: Optional[str] = None
@@ -256,6 +290,21 @@ class SentimentEngine:
             lot_multiplier *= 0.5
         elif risk_level == "EXTREME":
             lot_multiplier *= 0.3
+
+        # Polymarket 地缘风险影响
+        if poly_data and poly_data.get("error") is None:
+            poly_idx = poly_data.get("risk_index", 0)
+            poly_boost = poly_data.get("gold_sentiment_boost", 0)
+
+            # 高风险 (60-85): 避险需求 → 偏向做多黄金
+            if poly_idx >= 60 and direction_bias is None:
+                direction_bias = "BUY"
+                logger.info(f"[舆情引擎] Polymarket风险{poly_idx:.0f}>=60, 偏向做多黄金")
+
+            # 极端风险 (>=85): 减仓防范流动性危机
+            if poly_idx >= 85:
+                lot_multiplier *= 0.5
+                logger.info(f"[舆情引擎] Polymarket风险{poly_idx:.0f}>=85, 极端风险减仓50%")
 
         lot_multiplier = round(lot_multiplier, 2)
 

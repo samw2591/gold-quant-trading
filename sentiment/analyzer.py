@@ -15,6 +15,12 @@ Scoring architecture:
   2. Gold keyword score  (weight 0.30) — domain-specific supplement
   3. VADER score         (weight 0.20) — general sentiment baseline
   Falls back to keyword(0.40) + VADER(0.60) if FinBERT unavailable.
+
+v3.1 changes (2026-04-02):
+  - Extreme FinBERT boost: when |finbert_score| > 0.30, weights shift to
+    FinBERT 70% / keyword 15% / vader 15%. Prevents keyword_score from
+    diluting strong semantic signals on extreme days (e.g. 4/2 crash where
+    FinBERT=-0.40 was overridden by keyword_score=1.0).
 """
 
 import logging
@@ -240,8 +246,13 @@ class SentimentAnalyzer:
         finbert_score = self._finbert_analyze(headlines)
 
         # v3: FinBERT is PRIMARY (trained model, balanced), keyword is supplement
+        # v3.1: extreme FinBERT (|score|>0.30) gets higher weight to avoid
+        # keyword_score diluting strong semantic signals (e.g. 4/2 crash)
         if finbert_score is not None:
-            combined = finbert_score * 0.50 + kw_score * 0.30 + vader_score * 0.20
+            if abs(finbert_score) > 0.30:
+                combined = finbert_score * 0.70 + kw_score * 0.15 + vader_score * 0.15
+            else:
+                combined = finbert_score * 0.50 + kw_score * 0.30 + vader_score * 0.20
             mode = "finbert+keyword+vader"
         else:
             combined = kw_score * 0.40 + vader_score * 0.60

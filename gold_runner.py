@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config
 from gold_trader import GoldTrader
 from paper_trader import PaperTrader, setup_paper_strategies
+from strategy_monitor import update as monitor_update, get_report as monitor_report
 from ic_monitor import ICMonitor
 
 # ============================================================
@@ -137,6 +138,7 @@ def main():
     daily_start_pnl = trader.total_pnl.get('total_pnl', 0)
     daily_trades = 0
     last_data_sync_hour = -1  # 数据同步跟踪
+    trading_halted = False    # 日内亏损超限时置 True，日切自动恢复
     
     # ── 心跳检测状态 ──
     consecutive_disconnect = 0       # 连续掉线次数
@@ -177,6 +179,20 @@ def main():
                     except Exception:
                         pass
 
+                    # 策略观察期监控
+                    try:
+                        if eq_record:
+                            alert_msg = monitor_update(eq_record)
+                            if alert_msg:
+                                notifier.send_telegram(alert_msg)
+                                log.warning(f"⚠️ 策略观察期预警已触发")
+                            obs_report = monitor_report()
+                            if obs_report:
+                                notifier.send_telegram(obs_report)
+                                log.info("📋 策略观察期报告已发送")
+                    except Exception as e:
+                        log.warning(f"策略监控更新失败 (不影响交易): {e}")
+
                     # IC 因子有效性报告
                     try:
                         ic_mon = ICMonitor()
@@ -192,6 +208,9 @@ def main():
                 scan_count = 0
                 daily_start_pnl = trader.total_pnl.get('total_pnl', 0)
                 daily_trades = 0
+                if trading_halted:
+                    trading_halted = False
+                    log.info(f"\n✅ 日切重置: 交易暂停已解除，恢复正常交易")
                 log.info(f"\n📅 {today} ({now.strftime('%A')})")
                 log.info(f"  💰 今日起始盈亏: ${daily_start_pnl:+.2f}")
 
@@ -289,9 +308,12 @@ def main():
                 log.debug(f"模拟盘扫描出错: {e}")
 
             # 每5分钟做一次完整信号扫描 (M15策略需要, 每10次循环×30秒≈5分钟)
-            # 周五收盘前30分钟(UTC 20:30+)停止开新仓，只检查出场
+            # 跳过条件: 周五收盘前30分钟 / 日内亏损超限暂停
             is_friday_no_new = (now_utc.weekday() == 4 and now_utc.hour >= 20 and now_utc.minute >= 30)
-            if is_friday_no_new:
+            if trading_halted:
+                if scan_count % 60 == 0:
+                    log.info(f"⏸️ 交易暂停中 (日内亏损超限)，持仓监控/舆情采集继续运行，次日自动恢复")
+            elif is_friday_no_new:
                 if scan_count % 20 == 0:
                     log.info(f"🚧 周五收盘前30分钟，停止开新仓，只监控出场")
             elif scan_count == 1 or scan_count % 10 == 0:
@@ -299,13 +321,14 @@ def main():
                 try:
                     result = trader.scan_and_trade()
                     
-                    # 检查是否触发停止复盘
+                    # 检查是否触发停止交易 (系统继续运行，日切自动恢复)
                     if result.get('status') == 'STOP_REVIEW':
+                        trading_halted = True
                         log.warning("\n" + "=" * 60)
-                        log.warning("🚨 系统已停止 — 日内亏损超限")
-                        log.warning("请复盘后手动重启: python gold_runner.py")
+                        log.warning("🚨 日内亏损超限 — 停止开新仓，系统继续监控")
+                        log.warning("📊 舆情采集、持仓监控、心跳检测继续运行")
+                        log.warning("🔄 次日 0:00 自动恢复交易")
                         log.warning("=" * 60)
-                        break
                     
                     entries = result.get('entries', [])
                     exits = result.get('exits', [])
