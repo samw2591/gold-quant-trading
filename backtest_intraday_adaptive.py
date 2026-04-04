@@ -15,163 +15,50 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
-import config
-from strategies.signals import get_orb_strategy, prepare_indicators, scan_all_signals
+from strategies.signals import get_orb_strategy, prepare_indicators
 import strategies.signals as signals_mod
-from backtest import TradeRecord
-from backtest_m15 import (
-    load_m15, load_h1_aligned, MultiTimeframeEngine,
-    calc_stats, M15_CSV_PATH, H1_CSV_PATH,
+
+from backtest import BacktestEngine, DataBundle, calc_stats
+from backtest.runner import (
+    C12_KWARGS,
+    V3_REGIME,
+    add_atr_percentile,
+    prepare_indicators_custom,
+    load_m15,
+    load_h1_aligned,
+    M15_CSV_PATH,
+    H1_CSV_PATH,
 )
-from backtest_round2 import Round2Engine
-from backtest_advanced import (
-    C12_KWARGS, RegimeEngine, prepare_indicators_custom,
-)
-from backtest_combo_verify import V3_REGIME, add_atr_percentile
 
 RESULTS = {}
 SPREAD = 0.50
 
 
-def calc_realtime_score(today_bars: pd.DataFrame) -> float:
-    """Compute trend score from today's H1 bars seen so far."""
-    if len(today_bars) < 2:
-        return 0.5
-
-    latest = today_bars.iloc[-1]
-
-    adx = float(latest.get('ADX', 20))
-    if np.isnan(adx):
-        adx = 20
-    adx_score = min(adx / 40.0, 1.0)
-
-    kc_upper = today_bars.get('KC_upper')
-    kc_lower = today_bars.get('KC_lower')
-    if kc_upper is not None and kc_lower is not None:
-        breaks = (
-            (today_bars['Close'] > kc_upper) |
-            (today_bars['Close'] < kc_lower)
-        ).sum()
-        kc_score = min(float(breaks) / len(today_bars), 1.0)
-    else:
-        kc_score = 0.0
-
-    ema9 = today_bars.get('EMA9')
-    ema21 = today_bars.get('EMA21')
-    ema100 = today_bars.get('EMA100')
-    if ema9 is not None and ema21 is not None and ema100 is not None:
-        bullish = (ema9 > ema21) & (ema21 > ema100)
-        bearish = (ema9 < ema21) & (ema21 < ema100)
-        aligned = (bullish | bearish).sum()
-        ema_score = float(aligned) / len(today_bars)
-    else:
-        ema_score = 0.0
-
-    day_open = float(today_bars.iloc[0]['Open'])
-    day_close = float(latest['Close'])
-    day_high = float(today_bars['High'].max())
-    day_low = float(today_bars['Low'].min())
-    day_range = day_high - day_low
-    ti = abs(day_close - day_open) / day_range if day_range > 0.01 else 0.0
-
-    score = 0.30 * adx_score + 0.25 * kc_score + 0.25 * ema_score + 0.20 * ti
-    return round(score, 3)
-
-
-class IntradayAdaptiveEngine(RegimeEngine):
-    """Backtest engine that gates entries using real-time intraday trend score.
-
-    At each bar, computes trend_score from today's H1 bars seen so far,
-    then decides whether to allow entries based on thresholds.
-    """
-
-    def __init__(self, m15_df, h1_df,
-                 choppy_threshold=0.35,
-                 kc_only_threshold=0.60,
-                 **kwargs):
-        super().__init__(m15_df, h1_df, **kwargs)
-        self.choppy_threshold = choppy_threshold
-        self.kc_only_threshold = kc_only_threshold
-        self.current_score = 0.5
-        self.current_regime = 'neutral'
-        self.skipped_choppy = 0
-        self.skipped_neutral_m15 = 0
-        self._cached_date = None
-        self._cached_h1_count = 0
-        self._precompute_h1_dates()
-
-    def _precompute_h1_dates(self):
-        """Pre-build a date->row mapping for fast lookups."""
-        self._h1_date_map = {}
-        if self.h1_df is not None:
-            dates = self.h1_df.index.date
-            for i, d in enumerate(dates):
-                if d not in self._h1_date_map:
-                    self._h1_date_map[d] = []
-                self._h1_date_map[d].append(i)
-
-    def _update_score_h1(self, h1_window, bar_time):
-        """Recalculate trend score — only called on H1 bars."""
-        if h1_window is None or len(h1_window) < 2:
-            return
-
-        bar_date = pd.Timestamp(bar_time).date()
-        h1_len = len(h1_window)
-
-        if bar_date == self._cached_date and h1_len == self._cached_h1_count:
-            return
-
-        indices = self._h1_date_map.get(bar_date)
-        if indices:
-            valid = [i for i in indices if i < h1_len]
-            if len(valid) >= 2:
-                today_bars = self.h1_df.iloc[valid]
-                self.current_score = calc_realtime_score(today_bars)
-                if self.current_score >= self.kc_only_threshold:
-                    self.current_regime = 'trending'
-                elif self.current_score >= self.choppy_threshold:
-                    self.current_regime = 'neutral'
-                else:
-                    self.current_regime = 'choppy'
-        elif bar_date != self._cached_date:
-            self.current_score = 0.5
-            self.current_regime = 'neutral'
-
-        self._cached_date = bar_date
-        self._cached_h1_count = h1_len
-
-    def _check_h1_entries(self, h1_window, bar_time):
-        self._update_score_h1(h1_window, bar_time)
-        if self.current_regime == 'choppy':
-            self.skipped_choppy += 1
-            return
-        super()._check_h1_entries(h1_window, bar_time)
-
-    def _check_m15_entries(self, m15_window, h1_window, bar_time):
-        if self.current_regime == 'choppy':
-            self.skipped_choppy += 1
-            return
-        if self.current_regime == 'neutral':
-            self.skipped_neutral_m15 += 1
-            return
-        super()._check_m15_entries(m15_window, h1_window, bar_time)
-
-
-def run_adaptive(m15_df, h1_df, label,
-                 choppy_threshold=0.35, kc_only_threshold=0.60,
-                 regime_config=None, spread=SPREAD, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
+def _reset_signal_state():
+    get_orb_strategy().reset_daily()
     signals_mod._friday_close_price = None
     signals_mod._gap_traded_today = False
 
-    engine = IntradayAdaptiveEngine(
-        m15_df, h1_df,
+
+def run_adaptive(
+    m15_df,
+    h1_df,
+    label,
+    choppy_threshold=0.35,
+    kc_only_threshold=0.60,
+    regime_config=None,
+    spread=SPREAD,
+    **kwargs,
+):
+    _reset_signal_state()
+    engine = BacktestEngine(
+        m15_df,
+        h1_df,
+        intraday_adaptive=True,
         choppy_threshold=choppy_threshold,
         kc_only_threshold=kc_only_threshold,
         regime_config=regime_config,
@@ -186,27 +73,34 @@ def run_adaptive(m15_df, h1_df, label,
     stats['m15_entries'] = engine.m15_entry_count
     stats['skipped_choppy'] = engine.skipped_choppy
     stats['skipped_neutral_m15'] = engine.skipped_neutral_m15
-    return stats, trades
+    return stats
 
 
 def run_baseline(m15_df, h1_df, label, regime_config=None, spread=SPREAD, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-
+    _reset_signal_state()
     if regime_config:
-        engine = RegimeEngine(m15_df, h1_df, regime_config=regime_config,
-                              label=label, spread_cost=spread, **kwargs)
+        engine = BacktestEngine(
+            m15_df,
+            h1_df,
+            regime_config=regime_config,
+            label=label,
+            spread_cost=spread,
+            **kwargs,
+        )
     else:
-        engine = Round2Engine(m15_df, h1_df, label=label,
-                              spread_cost=spread, **kwargs)
+        engine = BacktestEngine(
+            m15_df,
+            h1_df,
+            label=label,
+            spread_cost=spread,
+            **kwargs,
+        )
     trades = engine.run()
     stats = calc_stats(trades, engine.equity_curve)
     stats['label'] = label
     stats['h1_entries'] = engine.h1_entry_count
     stats['m15_entries'] = engine.m15_entry_count
-    return stats, trades
+    return stats
 
 
 def stats_to_row(stats, label=None):
@@ -246,7 +140,6 @@ def main():
     print(f"  Spread: ${SPREAD}")
     print("=" * 100)
 
-    # Load data
     print("\n  Loading data...", flush=True)
     m15_raw = load_m15()
     m15_raw = m15_raw[m15_raw.index >= pd.Timestamp('2015-01-01', tz='UTC')]
@@ -262,31 +155,37 @@ def main():
 
     print(f"  M15: {len(m15_custom)} bars, H1: {len(h1_custom)} bars\n")
 
-    # ══════════════════════════════════════════════════════════════
-    # TEST 1: Baseline vs Adaptive (default thresholds)
-    # ══════════════════════════════════════════════════════════════
+    combo_bundle = DataBundle(m15_custom, h1_custom)
+
     print("=" * 100)
     print("  TEST 1: Baseline vs Intraday Adaptive (Combo config)")
     print("=" * 100)
 
-    # A: Baseline
     print("\n  [A: Combo Baseline (all entries)]", flush=True)
     t0 = time.time()
-    stats_a, trades_a = run_baseline(
-        m15_custom, h1_custom, "A: Combo Baseline",
-        regime_config=V3_REGIME, spread=SPREAD, **C12_KWARGS,
+    stats_a = run_baseline(
+        m15_custom,
+        h1_custom,
+        "A: Combo Baseline",
+        regime_config=V3_REGIME,
+        spread=SPREAD,
+        **C12_KWARGS,
     )
     ppt_a = stats_a['total_pnl'] / stats_a['n'] if stats_a['n'] > 0 else 0
     print(f"    N={stats_a['n']}, Sharpe={stats_a['sharpe']:.2f}, PnL=${stats_a['total_pnl']:.0f}, "
           f"$/trade={ppt_a:.2f}, {time.time()-t0:.0f}s")
 
-    # B: Adaptive default (0.35 / 0.60)
     print("\n  [B: Adaptive (choppy<0.35 skip, neutral<0.60 H1-only)]", flush=True)
     t0 = time.time()
-    stats_b, trades_b = run_adaptive(
-        m15_custom, h1_custom, "B: Adaptive (0.35/0.60)",
-        choppy_threshold=0.35, kc_only_threshold=0.60,
-        regime_config=V3_REGIME, spread=SPREAD, **C12_KWARGS,
+    stats_b = run_adaptive(
+        m15_custom,
+        h1_custom,
+        "B: Adaptive (0.35/0.60)",
+        choppy_threshold=0.35,
+        kc_only_threshold=0.60,
+        regime_config=V3_REGIME,
+        spread=SPREAD,
+        **C12_KWARGS,
     )
     ppt_b = stats_b['total_pnl'] / stats_b['n'] if stats_b['n'] > 0 else 0
     print(f"    N={stats_b['n']}, Sharpe={stats_b['sharpe']:.2f}, PnL=${stats_b['total_pnl']:.0f}, "
@@ -295,19 +194,25 @@ def main():
 
     test1 = [stats_to_row(stats_a), stats_to_row(stats_b)]
 
-    # Also test with C12 defaults
     print("\n  [C: C12 Baseline]", flush=True)
-    stats_c, _ = run_baseline(
-        m15_default, h1_default, "C: C12 Baseline",
-        spread=SPREAD, **C12_KWARGS,
+    stats_c = run_baseline(
+        m15_default,
+        h1_default,
+        "C: C12 Baseline",
+        spread=SPREAD,
+        **C12_KWARGS,
     )
     print(f"    N={stats_c['n']}, Sharpe={stats_c['sharpe']:.2f}, PnL=${stats_c['total_pnl']:.0f}")
 
     print("\n  [D: C12 Adaptive (0.35/0.60)]", flush=True)
-    stats_d, _ = run_adaptive(
-        m15_default, h1_default, "D: C12 Adaptive (0.35/0.60)",
-        choppy_threshold=0.35, kc_only_threshold=0.60,
-        spread=SPREAD, **C12_KWARGS,
+    stats_d = run_adaptive(
+        m15_default,
+        h1_default,
+        "D: C12 Adaptive (0.35/0.60)",
+        choppy_threshold=0.35,
+        kc_only_threshold=0.60,
+        spread=SPREAD,
+        **C12_KWARGS,
     )
     print(f"    N={stats_d['n']}, Sharpe={stats_d['sharpe']:.2f}, PnL=${stats_d['total_pnl']:.0f}")
 
@@ -315,9 +220,6 @@ def main():
     print_table(test1, "Test 1: Baseline vs Adaptive")
     RESULTS['test1'] = test1
 
-    # ══════════════════════════════════════════════════════════════
-    # TEST 2: Threshold Sensitivity
-    # ══════════════════════════════════════════════════════════════
     print(f"\n{'='*100}")
     print(f"  TEST 2: Threshold Sensitivity (Combo config)")
     print(f"{'='*100}")
@@ -339,10 +241,15 @@ def main():
         label = f"Adaptive {name}"
         print(f"\n  [{label}]", flush=True)
         t0 = time.time()
-        stats, trades = run_adaptive(
-            m15_custom, h1_custom, label,
-            choppy_threshold=choppy_th, kc_only_threshold=kc_th,
-            regime_config=V3_REGIME, spread=SPREAD, **C12_KWARGS,
+        stats = run_adaptive(
+            m15_custom,
+            h1_custom,
+            label,
+            choppy_threshold=choppy_th,
+            kc_only_threshold=kc_th,
+            regime_config=V3_REGIME,
+            spread=SPREAD,
+            **C12_KWARGS,
         )
         ppt = stats['total_pnl'] / stats['n'] if stats['n'] > 0 else 0
         print(f"    N={stats['n']}, Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}, "
@@ -369,9 +276,6 @@ def main():
     print(f"\n  Best config: choppy<{best_choppy}, kc_only<{best_kc} "
           f"(Sharpe={best_config['sharpe']:.2f})")
 
-    # ══════════════════════════════════════════════════════════════
-    # TEST 3: K-Fold Validation (best config)
-    # ══════════════════════════════════════════════════════════════
     print(f"\n{'='*100}")
     print(f"  TEST 3: K-Fold Validation (best: choppy<{best_choppy}, kc_only<{best_kc})")
     print(f"{'='*100}")
@@ -387,23 +291,29 @@ def main():
 
     fold_results = []
     for fold_name, test_start, test_end in folds:
-        ts = pd.Timestamp(test_start, tz='UTC')
-        te = pd.Timestamp(test_end, tz='UTC')
         print(f"\n  {fold_name}: {test_start} ~ {test_end}", flush=True)
 
-        m15_w = m15_custom[(m15_custom.index >= ts) & (m15_custom.index < te)]
-        h1_w = h1_custom[(h1_custom.index >= ts) & (h1_custom.index < te)]
-        if len(m15_w) < 1000:
+        fold_data = combo_bundle.slice(test_start, test_end)
+        if len(fold_data.m15_df) < 1000:
             continue
 
-        stats_best, _ = run_adaptive(
-            m15_w, h1_w, f"Adaptive [{fold_name}]",
-            choppy_threshold=best_choppy, kc_only_threshold=best_kc,
-            regime_config=V3_REGIME, spread=SPREAD, **C12_KWARGS,
+        stats_best = run_adaptive(
+            fold_data.m15_df,
+            fold_data.h1_df,
+            f"Adaptive [{fold_name}]",
+            choppy_threshold=best_choppy,
+            kc_only_threshold=best_kc,
+            regime_config=V3_REGIME,
+            spread=SPREAD,
+            **C12_KWARGS,
         )
-        stats_base, _ = run_baseline(
-            m15_w, h1_w, f"Baseline [{fold_name}]",
-            regime_config=V3_REGIME, spread=SPREAD, **C12_KWARGS,
+        stats_base = run_baseline(
+            fold_data.m15_df,
+            fold_data.h1_df,
+            f"Baseline [{fold_name}]",
+            regime_config=V3_REGIME,
+            spread=SPREAD,
+            **C12_KWARGS,
         )
 
         fold_results.append({
@@ -435,9 +345,6 @@ def main():
 
     RESULTS['test3_kfold'] = fold_results
 
-    # ══════════════════════════════════════════════════════════════
-    # FINAL SUMMARY
-    # ══════════════════════════════════════════════════════════════
     print(f"\n{'='*100}")
     print(f"  FINAL SUMMARY")
     print(f"{'='*100}")

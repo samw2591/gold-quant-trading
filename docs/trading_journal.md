@@ -7,6 +7,10 @@
 
 ## 系统变更记录
 
+- **2026-04-04**: `backtest_cost_adjusted.py` 迁移至统一包：`run_variant(DataBundle(...), ..., verbose=False, spread_cost=..., regime_config=..., min_entry_gap_hours=...)` 替代 `Round2Engine`/`RegimeEngine`/`CooldownEngine` 继承链；`TRUE_BASELINE_KWARGS`/`C12_KWARGS`/`V3_REGIME`/`load_m15`/`load_h1_aligned`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除对 `config` 追踪止损全局变量的临时修改。
+- **2026-04-04**: `backtest_advanced.py` 迁移至统一包：`DataBundle`、`run_variant(verbose=False)`（保留原控制台格式）、`C12_KWARGS`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除 `RegimeEngine`/`ParamExploreEngine`/`Round2Engine` 与本地 `prepare_indicators_custom`；K-Fold 用 `DataBundle.slice`；参数探索用 raw `DataBundle` + 每 variant 自定义指标（等同 `load_custom` 逻辑）。`backtest.runner.run_variant` 增加关键字参数 `verbose=True` 供静默调用。
+- **2026-04-04**: `backtest_combo_verify.py` 迁移至统一包：`BacktestEngine` + `DataBundle` + `calc_stats`，`C12_KWARGS`/`V3_REGIME`/`prepare_indicators_custom`/`add_atr_percentile`/`load_m15`/`load_h1_aligned` 自 `backtest.runner`；本地 `_run_bundle` 复现原 `run_fixed`/`run_regime` 的全局重置与打印格式（未用 `run_variant` 以免其自带输出覆盖 Phase1 行格式）。
+- **2026-04-04**: `backtest_intraday_adaptive.py` 迁移至统一包 `backtest`：`BacktestEngine` + `intraday_adaptive=True` 替代 `IntradayAdaptiveEngine`/`RegimeEngine`/`Round2Engine` 继承链；数据与阈值实验仍用 `load_m15`/`load_h1_aligned`、`C12_KWARGS`、`V3_REGIME`、`prepare_indicators_custom`、`add_atr_percentile`；K-Fold 使用 `DataBundle.slice`。
 - **2026-04-02**: 完成架构大重构，将 `gold_trader.py`（~1048行）拆分为 4 个模块：
   - `data_provider.py` — 行情数据获取
   - `risk_manager.py` — 风控管理
@@ -507,6 +511,92 @@
      - **(c) 保守方案 — 跳过震荡日**：用 `prev_score < 0.25` 加 `asian_range_vs_atr < 0.5` 识别极端震荡日（约 10-15%），对这部分日子暂停交易，Sharpe 从 0.35→1.96
   4. **下一步**：研究"盘中实时趋势判断"方案 — 这不需要预测未来，只需要在开盘 2-3 小时后判断"今天正在成为趋势日"
 
+## 盘中自适应交易系统 (2026-04-04)
+
+### 设计思路
+
+- **2026-04-04**: 基于趋势日研究结论，决定不做"提前预判"，而是建"盘中自适应系统"——观察已发生的市场状态再决定交易行为
+- **核心哲学**: 渐进式披露的交易版——先看市场给你什么信号，再决定怎么反应
+- **为什么不预测**: T-1 技术指标无法预测趋势日（准确率~55%，跟抛硬币差不多），因为趋势日本质是事件驱动（非农/FOMC/地缘冲突），不是惯性延续
+
+### 核心组件：IntradayTrendMeter (`intraday_trend.py`)
+
+- 每次 `scan_and_trade` 调用时用当日已有的 H1 bar 计算趋势评分 (0-1)
+- 4 个子因子：ADX(30%) + KC突破比例(25%) + EMA排列一致性(25%) + 趋势强度(20%)
+- 三级门控：
+  - **>= 0.60 TRENDING**: 所有策略正常交易
+  - **0.35-0.60 NEUTRAL**: 仅允许 H1 策略 (Keltner/ORB)，跳过 M15 RSI
+  - **< 0.35 CHOPPY**: 禁止所有新开仓
+
+### 集成方式
+
+- `config.py` 新增 `INTRADAY_TREND_ENABLED`, `INTRADAY_TREND_THRESHOLD=0.35`, `INTRADAY_TREND_KC_ONLY_THRESHOLD=0.60`
+- `gold_trader.py` 的 `_check_entries` 中，max position 检查之后、信号扫描之前加入趋势门控
+- `INTRADAY_TREND_ENABLED = False` 一键关闭回退到原有行为
+- 不影响已持仓出场/trailing stop，不影响 SentimentEngine 和 RiskManager
+
+### Phase 5 回测 — 盘中实时评分 (完成)
+
+- **2026-04-04**: 使用重构后的统一回测引擎 (`backtest_intraday_adaptive.py`) 完成全部 3 项测试，72 分钟
+
+**Test 1: Baseline vs Adaptive (spread=$0.50)**:
+
+| 配置 | N | Sharpe | PnL | MaxDD | $/trade |
+|------|---|--------|-----|-------|---------|
+| A: Combo Baseline | 17,917 | 0.35 | $2,578 | $3,058 | $0.14 |
+| B: Combo Adaptive (0.35/0.60) | 17,904 | 0.35 | $2,618 | $3,058 | $0.15 |
+| C: C12 Baseline | 15,770 | -0.53 | -$3,656 | $4,243 | -$0.23 |
+| **D: C12 Adaptive (0.35/0.60)** | **7,365** | **1.03** | **$5,497** | **$732** | **$0.75** |
+
+- **关键发现**: Combo 配置自适应效果不明显（skipped_choppy=0，几乎没有时段低于阈值），但 C12 默认配置效果显著——Sharpe 从 -0.53 → 1.03，MaxDD 从 $4,243 → $732
+- 原因：Combo 配置（KC1.25+EMA30）的更窄通道本身就在趋势时段产生信号，非趋势时段信号已经很少，门控无效；C12（KC1.5+EMA20）在非趋势时段会产生更多噪声信号，门控有效剔除
+
+**Test 2: 阈值敏感性 (Combo config)**:
+
+| kc_only 阈值 | N | Sharpe | PnL | $/trade |
+|---|---|---|---|---|
+| ≤ 0.60 | 17,904 | 0.35 | $2,618 | $0.15 |
+| ≥ 0.65 | 9,693 | **1.86** | **$11,400** | **$1.18** |
+
+- **存在阈值悬崖**：0.60→0.65 之间存在非连续跳跃（无中间态），这是过拟合红旗
+- choppy 阈值（0.25-0.45）对 Combo 配置几乎无影响
+- 最佳配置 choppy=0.40/kc_only=0.65，但因阈值不平滑暂不实装
+
+**Test 3: K-Fold 验证 (best: 0.40/0.65, Combo config)**:
+
+| Fold | Adaptive Sharpe | Baseline Sharpe | Winner |
+|---|---|---|---|
+| Fold1 (2015-2016) | 1.45 | -0.90 | Adapt |
+| Fold2 (2017-2018) | 0.30 | -2.19 | Adapt |
+| Fold3 (2019-2020) | 1.58 | 1.58 | Base |
+| Fold4 (2021-2022) | 1.73 | 0.28 | Adapt |
+| Fold5 (2023-2024) | 0.98 | 0.98 | Base |
+| Fold6 (2025-2026) | 1.99 | 0.85 | Adapt |
+
+- Avg Sharpe: Adaptive=**1.34** vs Baseline=0.10, Adaptive 赢 4/6 折
+- Fold3/Fold5 持平（大波动期所有交易都在高评分时段，门控未生效）
+- 最大提升出现在震荡为主的时期（Fold1/2/4）
+
+### 结论
+- **C12 Adaptive (0.35/0.60) 已实装**（config.py `INTRADAY_TREND_ENABLED=True`），回测确认有效
+- Combo 配置 (0.40/0.65) 存在阈值悬崖风险，暂不实装，待进一步验证
+
+## 回测框架统一重构 (2026-04-04)
+
+- **2026-04-04**: **回测技术债清理** — 将 15 个分散的回测脚本（~6,500 行）中的公共引擎代码统一为 `backtest/` 包
+  - 新建 `backtest/engine.py`: 单一参数化 `BacktestEngine`，替代旧的继承链（`MultiTimeframeEngine → Round2Engine → RegimeEngine → IntradayAdaptiveEngine / CooldownEngine / ParamExploreEngine`）
+  - 新建 `backtest/stats.py`: 统一统计计算（`calc_stats`）和报告格式化（`print_comparison`, `print_ranked`）
+  - 新建 `backtest/runner.py`: 数据加载（`load_csv/load_m15/load_h1_aligned`）、`DataBundle` 类、`run_variant/run_variants/run_kfold` 执行器、配置预设（`C12_KWARGS`, `V3_REGIME`, `TRUE_BASELINE_KWARGS`）
+  - 新建 `backtest/__init__.py`: 公开 API + 向后兼容别名（`_aggregate_daily_pnl`, `Position`, `TradeRecord`, `load_csv`）
+  - **验证通过**: 5 个场景（C12, Adaptive Trail, Baseline, Spread Cost, RSI ADX Filter）新旧引擎结果完全一致（diff=0.0000）
+- **2026-04-04**: **重构 4 个核心实验脚本**，全部改用统一 `backtest` 包：
+  - `backtest_advanced.py`: 607→438 行（-28%），删除本地 `RegimeEngine/ParamExploreEngine/prepare_indicators_custom`
+  - `backtest_combo_verify.py`: 337→310 行（-8%），使用 `DataBundle` + `_run_bundle` 替代 `run_fixed/run_regime`
+  - `backtest_cost_adjusted.py`: 402→336 行（-16%），删除 `CooldownEngine/CooldownRegimeEngine`，用 `min_entry_gap_hours` 参数替代
+  - `backtest_intraday_adaptive.py`: 471→378 行（-20%），删除 `IntradayAdaptiveEngine/calc_realtime_score`，用 `intraday_adaptive=True` 参数替代
+- **2026-04-04**: `run_variant` 新增 `verbose` 参数，允许实验脚本控制自己的输出格式
+- **2026-04-04**: 旧引擎文件（`backtest.py`, `backtest_m15.py`, `backtest_round2.py`）保留向后兼容，仍有 7 个脚本依赖它们，后续渐进清理
+
 ## 待办与未来方向
 
 - [x] ~~观察重构后系统运行 1-2 天，确认 position_tracker.py 持仓同步和平仓通知正常~~ → 发现并修复了 CLOSE_DETECTED 重复记录 bug
@@ -524,3 +614,6 @@
 - [ ] 历史交易记录无法补全因子快照，如需对历史做 IC 分析需写离线回算脚本（已有 backtest.py 框架可扩展）
 - [x] ~~gap_fill 策略回测 Sharpe -1.71，需研究是否调参优化或禁用~~ → 已禁用（两次独立回测 Sharpe -1.25/-1.71，实盘 0 次触发）
 - [x] ~~考虑在 ADX > 40 极端趋势环境下临时降低/暂停 M15 RSI 均值回归策略权重~~ → 已改为加入 EMA100 方向过滤（更精准，不会误杀顺势交易）
+- [ ] 渐进清理剩余 7 个旧引擎脚本（backtest_overfit_test, backtest_stress_test, backtest_trend_day, backtest_round3_combo, backtest_overnight, backtest_round2, backtest_verify_migration）
+- [ ] 引入宏观因子回测：经济日历事件标记作为第一个宏观因子纳入回测框架
+- [ ] DXY 日线作为日级别方向过滤（P6 策略的实盘验证版本）

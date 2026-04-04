@@ -19,53 +19,28 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import config
-from strategies.signals import get_orb_strategy, calc_rsi, calc_adx
+from backtest import BacktestEngine, DataBundle, calc_stats
+from backtest.runner import (
+    C12_KWARGS,
+    V3_REGIME,
+    add_atr_percentile,
+    prepare_indicators_custom,
+    load_m15,
+    load_h1_aligned,
+    H1_CSV_PATH,
+)
+from strategies.signals import prepare_indicators, get_orb_strategy
 import strategies.signals as signals_mod
-from backtest_m15 import (
-    load_m15, load_h1_aligned, build_h1_lookup,
-    calc_stats, M15_CSV_PATH, H1_CSV_PATH,
-)
-from backtest_round2 import Round2Engine
-from backtest_advanced import (
-    C12_KWARGS, RegimeEngine, prepare_indicators_custom,
-)
-
-V3_REGIME = {
-    'low': {'trail_act': 1.0, 'trail_dist': 0.35},
-    'normal': {'trail_act': 0.8, 'trail_dist': 0.25},
-    'high': {'trail_act': 0.6, 'trail_dist': 0.20},
-}
 
 
-def add_atr_percentile(h1_df):
-    if 'atr_percentile' not in h1_df.columns:
-        h1_df['atr_percentile'] = h1_df['ATR'].rolling(500, min_periods=50).apply(
-            lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
-        h1_df['atr_percentile'] = h1_df['atr_percentile'].fillna(0.5)
-    return h1_df
-
-
-def run_fixed(m15_df, h1_df, label, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
+def _run_bundle(bundle: DataBundle, label: str, regime_config=None, **kwargs):
+    get_orb_strategy().reset_daily()
     signals_mod._friday_close_price = None
     signals_mod._gap_traded_today = False
-    engine = Round2Engine(m15_df, h1_df, label=label, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    stats['h1_entries'] = engine.h1_entry_count
-    stats['m15_entries'] = engine.m15_entry_count
-    return stats
-
-
-def run_regime(m15_df, h1_df, label, regime_config, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    engine = RegimeEngine(m15_df, h1_df, regime_config=regime_config, label=label, **kwargs)
+    kw = dict(kwargs)
+    if regime_config is not None:
+        kw['regime_config'] = regime_config
+    engine = BacktestEngine(bundle.m15_df, bundle.h1_df, label=label, **kw)
     trades = engine.run()
     stats = calc_stats(trades, engine.equity_curve)
     stats['label'] = label
@@ -81,15 +56,11 @@ def prep_custom(m15_raw, h1_raw, kc_ema=20, kc_mult=1.5):
     return m15, h1
 
 
-def run_on_window(m15_df, h1_df, start, end, label, regime_config=None, **kwargs):
-    m15 = m15_df[(m15_df.index >= start) & (m15_df.index < end)]
-    h1 = h1_df[(h1_df.index >= start) & (h1_df.index < end)]
-    if len(m15) < 1000 or len(h1) < 200:
+def run_on_window(bundle: DataBundle, start: str, end: str, label, regime_config=None, **kwargs):
+    sub = bundle.slice(start, end)
+    if len(sub.m15_df) < 1000 or len(sub.h1_df) < 200:
         return None
-    if regime_config:
-        return run_regime(m15, h1, label, regime_config, **kwargs)
-    else:
-        return run_fixed(m15, h1, label, **kwargs)
+    return _run_bundle(sub, label, regime_config=regime_config, **kwargs)
 
 
 def print_results(results, title=""):
@@ -118,13 +89,15 @@ def main():
     m15_raw = m15_raw[m15_raw.index >= pd.Timestamp('2015-01-01', tz='UTC')]
     h1_raw = load_h1_aligned(H1_CSV_PATH, m15_raw.index[0])
 
-    from strategies.signals import prepare_indicators
     m15_default = prepare_indicators(m15_raw)
     h1_default = prepare_indicators(h1_raw)
     h1_default = add_atr_percentile(h1_default)
 
     print("  Preparing KC1.25+EMA30 indicators...", flush=True)
     m15_custom, h1_custom = prep_custom(m15_raw, h1_raw, kc_ema=30, kc_mult=1.25)
+
+    bundle_default = DataBundle(m15_default, h1_default)
+    bundle_custom = DataBundle(m15_custom, h1_custom)
 
     print(f"  M15: {len(m15_default)} bars, H1: {len(h1_default)} bars\n")
 
@@ -136,20 +109,17 @@ def main():
     print("=" * 100)
 
     configs = [
-        ("A: C12 Baseline", m15_default, h1_default, None),
-        ("B: C12 + Adaptive Trail", m15_default, h1_default, V3_REGIME),
-        ("C: C12 + KC1.25 + KC_EMA30", m15_custom, h1_custom, None),
-        ("D: Combo (Trail+KC1.25+EMA30)", m15_custom, h1_custom, V3_REGIME),
+        ("A: C12 Baseline", bundle_default, None),
+        ("B: C12 + Adaptive Trail", bundle_default, V3_REGIME),
+        ("C: C12 + KC1.25 + KC_EMA30", bundle_custom, None),
+        ("D: Combo (Trail+KC1.25+EMA30)", bundle_custom, V3_REGIME),
     ]
 
     results = []
-    for i, (label, m15, h1, regime) in enumerate(configs, 1):
+    for i, (label, bundle, regime) in enumerate(configs, 1):
         print(f"\n  [{i}/{len(configs)}] {label}", flush=True)
         t0 = time.time()
-        if regime:
-            stats = run_regime(m15, h1, label, regime, **C12_KWARGS)
-        else:
-            stats = run_fixed(m15, h1, label, **C12_KWARGS)
+        stats = _run_bundle(bundle, label, regime_config=regime, **C12_KWARGS)
         elapsed = time.time() - t0
         print(f"    {stats['n']} trades (H1={stats['h1_entries']}, M15={stats['m15_entries']}), "
               f"Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}, "
@@ -208,20 +178,20 @@ def main():
     ]
 
     fold_configs = {
-        "A: C12 Baseline": (m15_default, h1_default, None),
-        "D: Combo": (m15_custom, h1_custom, V3_REGIME),
+        "A: C12 Baseline": (bundle_default, None),
+        "D: Combo": (bundle_custom, V3_REGIME),
     }
 
     fold_results = []
     for fold_name, test_start, test_end in folds:
-        ts = pd.Timestamp(test_start, tz='UTC')
-        te = pd.Timestamp(test_end, tz='UTC')
         print(f"\n  {fold_name}: {test_start} ~ {test_end}", flush=True)
 
-        for cfg_name, (m15, h1, regime) in fold_configs.items():
-            stats = run_on_window(m15, h1, ts, te,
-                                  f"{cfg_name} [{fold_name}]",
-                                  regime_config=regime, **C12_KWARGS)
+        for cfg_name, (bundle, regime) in fold_configs.items():
+            stats = run_on_window(
+                bundle, test_start, test_end,
+                f"{cfg_name} [{fold_name}]",
+                regime_config=regime, **C12_KWARGS,
+            )
             if stats:
                 fold_results.append({
                     'fold': fold_name, 'test_start': test_start, 'test_end': test_end,
@@ -264,11 +234,14 @@ def main():
     years = range(2015, 2027)
     yearly_results = []
     for year in years:
-        ts = pd.Timestamp(f'{year}-01-01', tz='UTC')
-        te = pd.Timestamp(f'{year+1}-01-01', tz='UTC')
-        for cfg_name, (m15, h1, regime) in fold_configs.items():
-            stats = run_on_window(m15, h1, ts, te, f"{cfg_name} {year}",
-                                  regime_config=regime, **C12_KWARGS)
+        test_start = f'{year}-01-01'
+        test_end = f'{year+1}-01-01'
+        for cfg_name, (bundle, regime) in fold_configs.items():
+            stats = run_on_window(
+                bundle, test_start, test_end,
+                f"{cfg_name} {year}",
+                regime_config=regime, **C12_KWARGS,
+            )
             if stats:
                 yearly_results.append({
                     'year': year, 'config': cfg_name,

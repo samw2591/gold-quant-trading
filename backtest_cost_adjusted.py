@@ -16,39 +16,33 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import config
-from strategies.signals import get_orb_strategy, prepare_indicators
-import strategies.signals as signals_mod
-from backtest_m15 import (
-    load_m15, load_h1_aligned, MultiTimeframeEngine,
-    calc_stats, M15_CSV_PATH, H1_CSV_PATH,
+from strategies.signals import prepare_indicators
+
+from backtest import DataBundle, run_variant
+from backtest.runner import (
+    C12_KWARGS,
+    V3_REGIME,
+    TRUE_BASELINE_KWARGS,
+    add_atr_percentile,
+    prepare_indicators_custom,
+    load_m15,
+    load_h1_aligned,
+    H1_CSV_PATH,
 )
-from backtest_round2 import Round2Engine
-from backtest_advanced import (
-    C12_KWARGS, RegimeEngine, prepare_indicators_custom,
-)
-from backtest_combo_verify import V3_REGIME, add_atr_percentile
 
 RESULTS = {}
 
 
 def run_engine(m15_df, h1_df, label, regime_config=None, spread=0.0, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    if regime_config:
-        engine = RegimeEngine(m15_df, h1_df, regime_config=regime_config,
-                              label=label, spread_cost=spread, **kwargs)
-    else:
-        engine = Round2Engine(m15_df, h1_df, label=label,
-                              spread_cost=spread, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    stats['h1_entries'] = engine.h1_entry_count
-    stats['m15_entries'] = engine.m15_entry_count
-    return stats, trades
+    stats = run_variant(
+        DataBundle(m15_df, h1_df),
+        label,
+        verbose=False,
+        regime_config=regime_config,
+        spread_cost=spread,
+        **kwargs,
+    )
+    return stats, stats['_trades']
 
 
 def run_on_window(m15_df, h1_df, start, end, label, regime_config=None, spread=0.0, **kwargs):
@@ -56,68 +50,23 @@ def run_on_window(m15_df, h1_df, start, end, label, regime_config=None, spread=0
     h1 = h1_df[(h1_df.index >= start) & (h1_df.index < end)]
     if len(m15) < 1000 or len(h1) < 200:
         return None
-    stats, trades = run_engine(m15, h1, label, regime_config=regime_config, spread=spread, **kwargs)
+    stats, _ = run_engine(m15, h1, label, regime_config=regime_config, spread=spread, **kwargs)
     return stats
 
 
-class CooldownEngine(Round2Engine):
-    """Engine with configurable minimum gap between ANY entries (global dedup)."""
-
-    def __init__(self, m15_df, h1_df, min_entry_gap_hours=0, **kwargs):
-        super().__init__(m15_df, h1_df, **kwargs)
-        self.min_entry_gap_hours = min_entry_gap_hours
-        self.last_entry_time = None
-
-    def _process_signals(self, signals, bar_time, source='H1'):
-        if self.min_entry_gap_hours > 0 and self.last_entry_time is not None:
-            gap = (pd.Timestamp(bar_time) - self.last_entry_time).total_seconds() / 3600
-            if gap < self.min_entry_gap_hours:
-                return
-        old_count = len(self.trades) + len(self.positions)
-        super()._process_signals(signals, bar_time, source)
-        new_count = len(self.trades) + len(self.positions)
-        if new_count > old_count:
-            self.last_entry_time = pd.Timestamp(bar_time)
-
-
-class CooldownRegimeEngine(RegimeEngine):
-    """RegimeEngine with global entry gap."""
-
-    def __init__(self, m15_df, h1_df, min_entry_gap_hours=0, **kwargs):
-        super().__init__(m15_df, h1_df, **kwargs)
-        self.min_entry_gap_hours = min_entry_gap_hours
-        self.last_entry_time = None
-
-    def _process_signals(self, signals, bar_time, source='H1'):
-        if self.min_entry_gap_hours > 0 and self.last_entry_time is not None:
-            gap = (pd.Timestamp(bar_time) - self.last_entry_time).total_seconds() / 3600
-            if gap < self.min_entry_gap_hours:
-                return
-        old_count = len(self.trades) + len(self.positions)
-        super()._process_signals(signals, bar_time, source)
-        new_count = len(self.trades) + len(self.positions)
-        if new_count > old_count:
-            self.last_entry_time = pd.Timestamp(bar_time)
-
-
-def run_cooldown(m15_df, h1_df, label, gap_hours, regime_config=None, spread=0.0, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    if regime_config:
-        engine = CooldownRegimeEngine(m15_df, h1_df, min_entry_gap_hours=gap_hours,
-                                      regime_config=regime_config,
-                                      label=label, spread_cost=spread, **kwargs)
-    else:
-        engine = CooldownEngine(m15_df, h1_df, min_entry_gap_hours=gap_hours,
-                                label=label, spread_cost=spread, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    stats['h1_entries'] = engine.h1_entry_count
-    stats['m15_entries'] = engine.m15_entry_count
-    return stats, trades
+def run_cooldown(
+    m15_df, h1_df, label, gap_hours, regime_config=None, spread=0.0, **kwargs
+):
+    stats = run_variant(
+        DataBundle(m15_df, h1_df),
+        label,
+        verbose=False,
+        regime_config=regime_config,
+        spread_cost=spread,
+        min_entry_gap_hours=gap_hours,
+        **kwargs,
+    )
+    return stats, stats['_trades']
 
 
 def print_table(results, title=""):
@@ -153,11 +102,6 @@ def main():
     h1_custom = prepare_indicators_custom(h1_raw, kc_ema=30, kc_mult=1.25)
     h1_custom = add_atr_percentile(h1_custom)
 
-    TRUE_BASELINE = {
-        "trailing_activate_atr": 1.5, "trailing_distance_atr": 0.5,
-        "sl_atr_mult": 2.5, "tp_atr_mult": 3.0, "keltner_adx_threshold": 24,
-    }
-
     print(f"  M15: {len(m15_default)} bars, H1: {len(h1_default)} bars\n")
 
     # ══════════════════════════════════════════════════════════════
@@ -167,15 +111,12 @@ def main():
     print("  PHASE 1: Spread Sensitivity (5 configs x 4 spreads)")
     print("=" * 100)
 
-    orig_trail_act = config.TRAILING_ACTIVATE_ATR
-    orig_trail_dist = config.TRAILING_DISTANCE_ATR
-
     configs = [
-        ("True Baseline (orig params)", m15_default, h1_default, None, TRUE_BASELINE, True),
-        ("C12 (current live)", m15_default, h1_default, None, C12_KWARGS, False),
-        ("C12 + Adaptive Trail", m15_default, h1_default, V3_REGIME, C12_KWARGS, False),
-        ("C12 + KC1.25+EMA30", m15_custom, h1_custom, None, C12_KWARGS, False),
-        ("Combo (Trail+KC1.25+EMA30)", m15_custom, h1_custom, V3_REGIME, C12_KWARGS, False),
+        ("True Baseline (orig params)", m15_default, h1_default, None, TRUE_BASELINE_KWARGS),
+        ("C12 (current live)", m15_default, h1_default, None, C12_KWARGS),
+        ("C12 + Adaptive Trail", m15_default, h1_default, V3_REGIME, C12_KWARGS),
+        ("C12 + KC1.25+EMA30", m15_custom, h1_custom, None, C12_KWARGS),
+        ("Combo (Trail+KC1.25+EMA30)", m15_custom, h1_custom, V3_REGIME, C12_KWARGS),
     ]
 
     spreads = [0, 0.30, 0.50, 0.80]
@@ -183,17 +124,13 @@ def main():
 
     for spread in spreads:
         print(f"\n  --- Spread = ${spread:.2f} ---")
-        for cfg_name, m15, h1, regime, kwargs, force_baseline in configs:
+        for cfg_name, m15, h1, regime, kwargs in configs:
             label = f"{cfg_name} [sp={spread}]"
-            if force_baseline:
-                config.TRAILING_ACTIVATE_ATR = 1.5
-                config.TRAILING_DISTANCE_ATR = 0.5
-            else:
-                config.TRAILING_ACTIVATE_ATR = orig_trail_act
-                config.TRAILING_DISTANCE_ATR = orig_trail_dist
 
             t0 = time.time()
-            stats, trades = run_engine(m15, h1, label, regime_config=regime, spread=spread, **kwargs)
+            stats, trades = run_engine(
+                m15, h1, label, regime_config=regime, spread=spread, **kwargs
+            )
             elapsed = time.time() - t0
             ppt = stats['total_pnl'] / stats['n'] if stats['n'] > 0 else 0
             print(f"    {cfg_name:<40} N={stats['n']:>6}, Sharpe={stats['sharpe']:>6.2f}, "
@@ -206,9 +143,6 @@ def main():
                 'dd_pct': float(stats['max_dd_pct']), 'n': int(stats['n']),
                 'ppt': float(ppt),
             })
-
-    config.TRAILING_ACTIVATE_ATR = orig_trail_act
-    config.TRAILING_DISTANCE_ATR = orig_trail_dist
 
     print(f"\n  === Spread Sensitivity Summary ===")
     print(f"  {'Config':<40} {'sp=0':>8} {'sp=0.3':>8} {'sp=0.5':>8} {'sp=0.8':>8}")

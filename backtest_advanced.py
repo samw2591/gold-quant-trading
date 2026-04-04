@@ -10,52 +10,32 @@ Advanced Backtest Suite
 """
 import json
 import time
-import copy
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
 import config
-from strategies.signals import (
-    prepare_indicators, get_orb_strategy, scan_all_signals,
-    check_exit_signal, calc_auto_lot_size, check_m15_rsi_signal,
-    check_keltner_signal,
+from strategies.signals import prepare_indicators
+from backtest import DataBundle, run_variant
+from backtest.runner import (
+    C12_KWARGS,
+    load_m15,
+    load_h1_aligned,
+    add_atr_percentile,
+    prepare_indicators_custom,
+    H1_CSV_PATH,
 )
-import strategies.signals as signals_mod
-from backtest import Position, TradeRecord, _aggregate_daily_pnl
-from backtest_m15 import (
-    load_m15, load_h1_aligned, build_h1_lookup,
-    MultiTimeframeEngine, calc_stats,
-    M15_CSV_PATH, H1_CSV_PATH,
-)
-from backtest_round2 import Round2Engine
-
-C12_KWARGS = {
-    "trailing_activate_atr": 0.8,
-    "trailing_distance_atr": 0.25,
-    "sl_atr_mult": 3.5,
-    "tp_atr_mult": 5.0,
-    "keltner_adx_threshold": 18,
-}
 
 RESULTS = {}
 
 
 def run_engine(m15_df, h1_df, label, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    engine = Round2Engine(m15_df, h1_df, label=label, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    stats['h1_entries'] = engine.h1_entry_count
-    stats['m15_entries'] = engine.m15_entry_count
-    return stats, trades, engine.equity_curve
+    stats = run_variant(DataBundle(m15_df, h1_df), label, verbose=False, **kwargs)
+    trades = stats['_trades']
+    eq = stats['_equity_curve']
+    return stats, trades, eq
 
 
 # ══════════════════════════════════════════════════════════════
@@ -157,20 +137,11 @@ def test_monte_carlo(m15_df, h1_df, n_simulations=1000):
 # TEST 2: K-Fold Cross Validation
 # ══════════════════════════════════════════════════════════════
 
-def run_on_window(m15_df, h1_df, start, end, label, **kwargs):
-    m15 = m15_df[(m15_df.index >= start) & (m15_df.index < end)]
-    h1 = h1_df[(h1_df.index >= start) & (h1_df.index < end)]
-    if len(m15) < 1000 or len(h1) < 200:
+def run_on_window(data: DataBundle, start: str, end: str, label, **kwargs):
+    sliced = data.slice(start, end)
+    if len(sliced.m15_df) < 1000 or len(sliced.h1_df) < 200:
         return None
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    engine = Round2Engine(m15, h1, label=label, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    return stats
+    return run_variant(sliced, label, verbose=False, **kwargs)
 
 
 CONFIGS = {
@@ -180,7 +151,7 @@ CONFIGS = {
 }
 
 
-def test_kfold(m15_df, h1_df):
+def test_kfold(data: DataBundle):
     print("\n" + "=" * 90)
     print("  TEST 2: K-Fold Cross Validation (6 folds)")
     print("=" * 90)
@@ -197,11 +168,12 @@ def test_kfold(m15_df, h1_df):
     results = []
     for fold_name, test_start, test_end in folds:
         print(f"\n  {fold_name}: Test={test_start}~{test_end}", flush=True)
-        ts = pd.Timestamp(test_start, tz='UTC')
-        te = pd.Timestamp(test_end, tz='UTC')
 
         for cfg_name, cfg_kwargs in CONFIGS.items():
-            stats = run_on_window(m15_df, h1_df, ts, te, f"{cfg_name} [{fold_name}]", **cfg_kwargs)
+            stats = run_on_window(
+                data, test_start, test_end,
+                f"{cfg_name} [{fold_name}]", **cfg_kwargs,
+            )
             if stats:
                 results.append({
                     'fold': fold_name, 'test_start': test_start, 'test_end': test_end,
@@ -243,59 +215,6 @@ def test_kfold(m15_df, h1_df):
 # TEST 3: Regime Adaptive Parameters
 # ══════════════════════════════════════════════════════════════
 
-class RegimeEngine(Round2Engine):
-    """Engine that adapts parameters based on ATR percentile regime."""
-
-    def __init__(self, m15_df, h1_df, regime_config=None, label="", **kwargs):
-        super().__init__(m15_df, h1_df, label=label, **kwargs)
-        self.regime_config = regime_config or {}
-
-    def _check_exits(self, m15_window, h1_window, bar, bar_time):
-        if self.regime_config and h1_window is not None and len(h1_window) > 0:
-            atr_pct = float(h1_window.iloc[-1].get('atr_percentile', 0.5))
-            if not pd.isna(atr_pct):
-                regime = 'low' if atr_pct < 0.30 else ('high' if atr_pct > 0.70 else 'normal')
-                rc = self.regime_config.get(regime, {})
-                self.trailing_activate_atr_override = rc.get('trail_act', self.trailing_activate_atr_override)
-                self.trailing_distance_atr_override = rc.get('trail_dist', self.trailing_distance_atr_override)
-                self.sl_atr_mult = rc.get('sl', self.sl_atr_mult)
-        super()._check_exits(m15_window, h1_window, bar, bar_time)
-
-    def _check_h1_entries(self, h1_window, bar_time):
-        if self.regime_config and h1_window is not None and len(h1_window) > 0:
-            atr_pct = float(h1_window.iloc[-1].get('atr_percentile', 0.5))
-            if not pd.isna(atr_pct):
-                regime = 'low' if atr_pct < 0.30 else ('high' if atr_pct > 0.70 else 'normal')
-                rc = self.regime_config.get(regime, {})
-                if rc.get('disable_keltner', False):
-                    return
-                if rc.get('keltner_adx', 0) > 0:
-                    self.keltner_adx_threshold = rc['keltner_adx']
-        super()._check_h1_entries(h1_window, bar_time)
-
-    def _check_m15_entries(self, m15_window, h1_window, bar_time):
-        if self.regime_config and h1_window is not None and len(h1_window) > 0:
-            atr_pct = float(h1_window.iloc[-1].get('atr_percentile', 0.5))
-            if not pd.isna(atr_pct):
-                regime = 'low' if atr_pct < 0.30 else ('high' if atr_pct > 0.70 else 'normal')
-                rc = self.regime_config.get(regime, {})
-                if rc.get('disable_rsi', False):
-                    return
-        super()._check_m15_entries(m15_window, h1_window, bar_time)
-
-
-def run_regime(m15_df, h1_df, label, regime_config, **kwargs):
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-    engine = RegimeEngine(m15_df, h1_df, regime_config=regime_config, label=label, **kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    return stats
-
-
 def test_regime_adaptive(m15_df, h1_df):
     print("\n" + "=" * 90)
     print("  TEST 3: Regime Adaptive Parameters")
@@ -322,6 +241,7 @@ def test_regime_adaptive(m15_df, h1_df):
         }, C12_KWARGS),
     ]
 
+    bundle = DataBundle(m15_df, h1_df)
     results = []
     for i, (label, regime_cfg, base_kwargs) in enumerate(variants, 1):
         print(f"\n  [{i}/{len(variants)}] {label}", flush=True)
@@ -329,7 +249,10 @@ def test_regime_adaptive(m15_df, h1_df):
         if regime_cfg is None:
             stats, _, _ = run_engine(m15_df, h1_df, label, **base_kwargs)
         else:
-            stats = run_regime(m15_df, h1_df, label, regime_cfg, **base_kwargs)
+            stats = run_variant(
+                bundle, label, verbose=False,
+                regime_config=regime_cfg, **base_kwargs,
+            )
         elapsed = time.time() - t0
         print(f"    {stats['n']} trades, Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}, "
               f"MaxDD=${stats['max_dd']:.0f}, {elapsed:.0f}s")
@@ -359,154 +282,66 @@ def test_regime_adaptive(m15_df, h1_df):
 # TEST 4: New Parameter Exploration
 # ══════════════════════════════════════════════════════════════
 
-def prepare_indicators_custom(df, kc_ema=20, kc_mult=1.5, ema_trend=100):
-    """Recalculate indicators with custom parameters."""
-    from strategies.signals import calc_rsi, calc_adx
-    df = df.copy()
-    df['SMA50'] = df['Close'].rolling(50).mean()
-    df['EMA100'] = df['Close'].ewm(span=ema_trend).mean()
-    df['EMA9'] = df['Close'].ewm(span=9).mean()
-    df['EMA12'] = df['Close'].ewm(span=12).mean()
-    df['EMA21'] = df['Close'].ewm(span=21).mean()
-    df['EMA26'] = df['Close'].ewm(span=26).mean()
-    df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
-    df['KC_mid'] = df['Close'].ewm(span=kc_ema).mean()
-    df['KC_upper'] = df['KC_mid'] + kc_mult * df['ATR']
-    df['KC_lower'] = df['KC_mid'] - kc_mult * df['ATR']
-    df['MACD'] = df['EMA12'] - df['EMA26']
-    df['MACD_signal'] = df['MACD'].ewm(span=9).mean()
-    df['MACD_hist'] = df['MACD'] - df['MACD_signal']
-    df['RSI2'] = calc_rsi(df['Close'], 2)
-    df['RSI14'] = calc_rsi(df['Close'], 14)
-    df['ADX'] = calc_adx(df, 14)
-    df['Vol_MA20'] = df['Volume'].rolling(20).mean()
-    return df
-
-
-class ParamExploreEngine(Round2Engine):
-    """Engine with overridable RSI thresholds."""
-
-    def __init__(self, m15_df, h1_df, rsi_buy_threshold=15, rsi_sell_threshold=85,
-                 label="", **kwargs):
-        super().__init__(m15_df, h1_df, label=label, **kwargs)
-        self.rsi_buy_threshold = rsi_buy_threshold
-        self.rsi_sell_threshold = rsi_sell_threshold
-
-    def _check_m15_entries(self, m15_window, h1_window, bar_time):
-        if len(self.positions) >= self._max_pos:
-            return
-        if len(m15_window) < 105:
-            return
-
-        latest = m15_window.iloc[-1]
-        close = float(latest['Close'])
-        rsi2 = float(latest['RSI2'])
-        sma50 = float(latest['SMA50'])
-        ema100 = float(latest['EMA100'])
-        if pd.isna(rsi2) or pd.isna(sma50) or pd.isna(ema100):
-            return
-
-        h1_adx_val = 0
-        if h1_window is not None and len(h1_window) > 0:
-            h1_adx_val = float(h1_window.iloc[-1].get('ADX', 0))
-            if pd.isna(h1_adx_val):
-                h1_adx_val = 0
-
-        self.rsi_total_signals += 1
-
-        if self.rsi_adx_filter > 0 and h1_adx_val > self.rsi_adx_filter:
-            self.rsi_filtered_count += 1
-            return
-
-        atr_val = float(latest['ATR']) if not pd.isna(latest['ATR']) else 0
-        sl = round(atr_val * signals_mod.ATR_SL_MULTIPLIER, 2) if atr_val > 0 else 15
-        sl = max(signals_mod.ATR_SL_MIN, min(signals_mod.ATR_SL_MAX, sl))
-
-        sig = None
-        if rsi2 < self.rsi_buy_threshold and close > sma50 and close > ema100:
-            sig = {'strategy': 'm15_rsi', 'signal': 'BUY', 'close': close, 'sl': sl, 'tp': 0,
-                   'reason': f"RSI BUY: RSI2={rsi2:.1f}<{self.rsi_buy_threshold}"}
-        elif rsi2 > self.rsi_sell_threshold and close < sma50 and close < ema100:
-            sig = {'strategy': 'm15_rsi', 'signal': 'SELL', 'close': close, 'sl': sl, 'tp': 0,
-                   'reason': f"RSI SELL: RSI2={rsi2:.1f}>{self.rsi_sell_threshold}"}
-
-        if sig:
-            self._process_signals([sig], bar_time, source='M15')
-
-
-def run_param_explore(m15_raw, h1_raw, label, kc_ema=20, kc_mult=1.5, ema_trend=100,
+def run_param_explore(raw: DataBundle, label, kc_ema=20, kc_mult=1.5, ema_trend=100,
                       rsi_buy=15, rsi_sell=85, **engine_kwargs):
-    """Run with custom indicator parameters."""
     t0 = time.time()
     print(f"    Preparing indicators (KC_ema={kc_ema}, KC_mult={kc_mult}, EMA={ema_trend})...", end='', flush=True)
-    m15_df = prepare_indicators_custom(m15_raw, kc_ema=kc_ema, kc_mult=kc_mult, ema_trend=ema_trend)
-    h1_df = prepare_indicators_custom(h1_raw, kc_ema=kc_ema, kc_mult=kc_mult, ema_trend=ema_trend)
-    if 'atr_percentile' not in h1_df.columns:
-        h1_df['atr_percentile'] = h1_df['ATR'].rolling(500, min_periods=50).apply(
-            lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
-        h1_df['atr_percentile'] = h1_df['atr_percentile'].fillna(0.5)
+    m15_df = prepare_indicators_custom(
+        raw.m15_df, kc_ema=kc_ema, kc_mult=kc_mult, ema_trend=ema_trend,
+    )
+    h1_df = prepare_indicators_custom(
+        raw.h1_df, kc_ema=kc_ema, kc_mult=kc_mult, ema_trend=ema_trend,
+    )
+    h1_df = add_atr_percentile(h1_df)
     print(f" done ({time.time()-t0:.0f}s)")
 
-    orb = get_orb_strategy()
-    orb.reset_daily()
-    signals_mod._friday_close_price = None
-    signals_mod._gap_traded_today = False
-
-    engine = ParamExploreEngine(m15_df, h1_df, rsi_buy_threshold=rsi_buy,
-                                rsi_sell_threshold=rsi_sell, label=label, **engine_kwargs)
-    trades = engine.run()
-    stats = calc_stats(trades, engine.equity_curve)
-    stats['label'] = label
-    stats['h1_entries'] = engine.h1_entry_count
-    stats['m15_entries'] = engine.m15_entry_count
+    data = DataBundle(m15_df, h1_df)
+    stats = run_variant(
+        data, label, verbose=False,
+        rsi_buy_threshold=rsi_buy, rsi_sell_threshold=rsi_sell, **engine_kwargs,
+    )
     elapsed = time.time() - t0
-    print(f"    {stats['n']} trades (H1={engine.h1_entry_count}, M15={engine.m15_entry_count}), "
+    print(f"    {stats['n']} trades (H1={stats['h1_entries']}, M15={stats['m15_entries']}), "
           f"Sharpe={stats['sharpe']:.2f}, PnL=${stats['total_pnl']:.0f}, {elapsed:.0f}s")
     return stats
 
 
-def test_new_params(m15_raw, h1_raw):
+def test_new_params(raw: DataBundle):
     print("\n" + "=" * 90)
     print("  TEST 4: New Parameter Exploration")
     print("=" * 90)
 
     variants = []
 
-    # Baseline C12 with default indicators
     variants.append(("N00: C12 Baseline", {"kc_ema": 20, "kc_mult": 1.5, "ema_trend": 100,
-                                            "rsi_buy": 15, "rsi_sell": 85}))
+                                         "rsi_buy": 15, "rsi_sell": 85}))
 
-    # KC channel width
     for mult in [1.0, 1.25, 1.75, 2.0]:
         variants.append((f"N01: KC mult {mult}", {"kc_ema": 20, "kc_mult": mult, "ema_trend": 100,
-                                                   "rsi_buy": 15, "rsi_sell": 85}))
+                                                  "rsi_buy": 15, "rsi_sell": 85}))
 
-    # RSI thresholds
     for buy, sell in [(10, 90), (20, 80), (25, 75)]:
         variants.append((f"N02: RSI {buy}/{sell}", {"kc_ema": 20, "kc_mult": 1.5, "ema_trend": 100,
                                                      "rsi_buy": buy, "rsi_sell": sell}))
 
-    # EMA trend period
     for ema in [50, 150, 200]:
         variants.append((f"N03: EMA{ema}", {"kc_ema": 20, "kc_mult": 1.5, "ema_trend": ema,
                                              "rsi_buy": 15, "rsi_sell": 85}))
 
-    # KC EMA period
     for kc_ema in [15, 25, 30]:
         variants.append((f"N04: KC_EMA{kc_ema}", {"kc_ema": kc_ema, "kc_mult": 1.5, "ema_trend": 100,
-                                                    "rsi_buy": 15, "rsi_sell": 85}))
+                                                  "rsi_buy": 15, "rsi_sell": 85}))
 
-    # Best combo candidates
     variants.append(("N05: KC1.25+RSI20/80", {"kc_ema": 20, "kc_mult": 1.25, "ema_trend": 100,
                                                 "rsi_buy": 20, "rsi_sell": 80}))
     variants.append(("N06: KC1.75+EMA50", {"kc_ema": 20, "kc_mult": 1.75, "ema_trend": 50,
-                                            "rsi_buy": 15, "rsi_sell": 85}))
+                                           "rsi_buy": 15, "rsi_sell": 85}))
 
     results = []
     for i, (label, params) in enumerate(variants, 1):
         print(f"\n  [{i}/{len(variants)}] {label}", flush=True)
         kw = {k: v for k, v in params.items() if k in ('kc_ema', 'kc_mult', 'ema_trend', 'rsi_buy', 'rsi_sell')}
-        stats = run_param_explore(m15_raw, h1_raw, label, **kw, **C12_KWARGS)
+        stats = run_param_explore(raw, label, **kw, **C12_KWARGS)
         results.append({
             'label': label, 'sharpe': float(stats['sharpe']),
             'pnl': float(stats['total_pnl']), 'wr': float(stats['win_rate']),
@@ -572,27 +407,23 @@ def main():
     print("Preparing default indicators...")
     m15_df = prepare_indicators(m15_raw)
     h1_df = prepare_indicators(h1_raw)
-    if 'atr_percentile' not in h1_df.columns:
-        h1_df['atr_percentile'] = h1_df['ATR'].rolling(500, min_periods=50).apply(
-            lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False)
-        h1_df['atr_percentile'] = h1_df['atr_percentile'].fillna(0.5)
+    h1_df = add_atr_percentile(h1_df)
 
     print(f"M15: {len(m15_df)} bars, H1: {len(h1_df)} bars\n")
 
-    # Test 1: Monte Carlo
+    full_data = DataBundle(m15_df, h1_df)
+    raw_bundle = DataBundle(m15_raw, h1_raw)
+
     test_monte_carlo(m15_df, h1_df)
     save_results()
 
-    # Test 2: K-Fold
-    test_kfold(m15_df, h1_df)
+    test_kfold(full_data)
     save_results()
 
-    # Test 3: Regime Adaptive
     test_regime_adaptive(m15_df, h1_df)
     save_results()
 
-    # Test 4: New Parameters (uses raw data, recalculates indicators per variant)
-    test_new_params(m15_raw, h1_raw)
+    test_new_params(raw_bundle)
     save_results()
 
     elapsed = time.time() - t_start
