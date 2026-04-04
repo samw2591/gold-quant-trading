@@ -69,9 +69,7 @@ def load_h1_aligned(h1_path: Path, m15_start: pd.Timestamp) -> pd.DataFrame:
 def add_atr_percentile(h1_df: pd.DataFrame) -> pd.DataFrame:
     """Add rolling ATR percentile column if not present."""
     if 'atr_percentile' not in h1_df.columns:
-        h1_df['atr_percentile'] = h1_df['ATR'].rolling(500, min_periods=50).apply(
-            lambda x: pd.Series(x).rank(pct=True).iloc[-1], raw=False
-        )
+        h1_df['atr_percentile'] = h1_df['ATR'].rolling(500, min_periods=50).rank(pct=True)
         h1_df['atr_percentile'] = h1_df['atr_percentile'].fillna(0.5)
     return h1_df
 

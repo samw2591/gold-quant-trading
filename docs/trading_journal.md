@@ -659,6 +659,32 @@
 - [x] ~~P2: 动态点差模型~~ → `backtest/engine.py` 支持 fixed/atr_scaled/session_aware 三种点差模型
 - [x] ~~P3: 高级统计检验~~ → PSR/DSR/CSCV-PBO 已集成到 `backtest/stats.py`
 - [x] ~~P4: 宏观 Regime 自动识别~~ → `macro/regime_detector.py` 6种regime + 策略权重映射，已集成到回测引擎
-- [ ] 编写 `backtest_macro_regime.py` 验证宏观regime过滤对策略的实际影响
-- [ ] 编写 `backtest_statistical_validation.py` 对 C12/Combo 运行 CSCV/PBO 验证
-- [ ] 编写 `backtest_spread_model.py` 对比三种点差模型的回测差异
+- [x] ~~编写 `backtest_macro_regime.py` 验证宏观regime过滤对策略的实际影响~~ → 宏观过滤反而变差，Regime分析价值在诊断不在过滤
+- [x] ~~编写 `backtest_statistical_validation.py` 对 C12/Combo 运行 CSCV/PBO 验证~~ → PSR仅Adaptive通过，PBO=0.00零过拟合风险
+- [x] ~~编写 `backtest_spread_model.py` 对比三种点差模型的回测差异~~ → $0.30 vs $0.50差异巨大，Session-Aware最接近真实
+
+## P2/P3/P4 实验结果 (2026-04-04, 服务器运行)
+
+### Spread Model 结果
+- **点差是生死线**: C12裸策略在$0.50下Sharpe=-0.53(亏), $0.30下Sharpe=+0.73(赚)
+- **Adaptive+$0.30是最优组合**: Sharpe=1.79, 11年全正, MaxDD=$686
+- **Session-Aware比ATR-Scaled更合理**: Sharpe 1.49 vs 1.15 (base=$0.30)
+- **M15 RSI在任何点差下都亏**: $0.30亏$4,691, $0.50亏$9,292
+
+### Statistical Validation 结果
+- **PSR**: 12个变体中仅C12+Adaptive通过(PSR=0.9998, p=0.0002), 其余全FAIL
+- **DSR**: SR*=1.21(12次测试的运气上限), Adaptive的1.03未达标, 但$0.30点差下1.79可通过
+- **PBO = 0.00**: 70种组合零过拟合, IS-best=OOS-best在100%的分割中成立
+- **结论**: Adaptive不是过拟合，是真实的结构性优势（过滤M15 RSI亏损交易）
+
+### Macro Regime 结果
+- **宏观过滤净效果为负**: C12+Macro比C12裸更差(Sharpe -0.53→-0.60), Adaptive+Macro也变差(1.03→0.98)
+- **Regime诊断价值**: C12仅在risk_off(+$507)和liquidity_crisis(+$183)赚钱, 其余4种regime全亏
+- **根因**: 裸C12的亏损来自M15 RSI(-$9,292), 不是宏观环境; 宏观过滤砍掉了赚钱和亏钱的交易
+- **结论**: 宏观Regime暂不用于实盘过滤, 保留作为诊断工具和未来Regime-specific参数调整的基础
+
+### 综合决策
+- **实盘最优配置**: C12 + Adaptive (0.35/0.60), 已实装, 不需要改动
+- **M15 RSI**: 确认为净亏损源, 应优化或淘汰, 不是用门控间接关闭
+- **宏观过滤**: 暂不启用, regime_detector保留备用
+- **紧迫行动**: 确认EMX Pro实际点差(决定策略真实表现在Sharpe 1.03还是1.79)
