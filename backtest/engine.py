@@ -792,6 +792,9 @@ class BacktestEngine:
             if not mask.any():
                 return None
             h1_idx = mask.sum() - 1
+        h1_len = len(self.h1_df)
+        if h1_idx >= h1_len:
+            h1_idx = h1_len - 1
         start = max(0, h1_idx - self.H1_WINDOW + 1)
         return self.h1_df.iloc[start:h1_idx + 1]
 
