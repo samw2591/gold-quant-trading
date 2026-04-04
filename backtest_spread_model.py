@@ -28,8 +28,8 @@ def main():
     m15_raw = load_m15()
     h1_raw = load_h1_aligned(H1_CSV_PATH, m15_raw.index[0])
 
-    m15_df = prepare_indicators(m15_raw.copy(), timeframe='M15')
-    h1_df = prepare_indicators(h1_raw.copy(), timeframe='H1')
+    m15_df = prepare_indicators(m15_raw.copy())
+    h1_df = prepare_indicators(h1_raw.copy())
     h1_df = add_atr_percentile(h1_df)
 
     bundle = DataBundle(m15_df, h1_df)
