@@ -34,6 +34,14 @@
   - `config.py` 新增 `FRED_API_KEY`, `MACRO_ENABLED`, `MACRO_CACHE_TTL`, `MACRO_CACHE_PATH`
   - `requirements.txt` 新增 `fredapi`, `scipy`
   - `data/macro_history.csv` 已生成（2015-2026, 2935天×10列）
+- **2026-04-05**: **SL 4.5 ATR + Cooldown 30min 实装** (`config.py` + `strategies/signals.py` + `risk_manager.py` + `gold_trader.py`)
+  - `strategies/signals.py`: `ATR_SL_MULTIPLIER` 3.5 → **4.5**（回测: Sharpe 1.03→1.35, MaxDD $732→$559, 全维度改善）
+  - `config.py`: `COOLDOWN_BARS=3`(3h) → `COOLDOWN_MINUTES=30`(30min)（回测: Sharpe 1.03→1.17, 所有点差下均优于3h）
+  - `risk_manager.py`: `add_cooldown(hours)` → `add_cooldown(minutes)`, `timedelta(hours=)` → `timedelta(minutes=)`
+  - `backtest/runner.py`: `C12_KWARGS.sl_atr_mult` 3.5 → 4.5（同步回测预设）
+  - `backtest/engine.py`: fallback 改为 `config.COOLDOWN_MINUTES / 60`
+  - 全部 `.py` 文件中 `COOLDOWN_BARS` 引用已清零
+  - 已推送 GitHub（commit `379cb17`）
 - **2026-04-04**: `backtest_cost_adjusted.py` 迁移至统一包：`run_variant(DataBundle(...), ..., verbose=False, spread_cost=..., regime_config=..., min_entry_gap_hours=...)` 替代 `Round2Engine`/`RegimeEngine`/`CooldownEngine` 继承链；`TRUE_BASELINE_KWARGS`/`C12_KWARGS`/`V3_REGIME`/`load_m15`/`load_h1_aligned`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除对 `config` 追踪止损全局变量的临时修改。
 - **2026-04-04**: `backtest_advanced.py` 迁移至统一包：`DataBundle`、`run_variant(verbose=False)`（保留原控制台格式）、`C12_KWARGS`/`prepare_indicators_custom`/`add_atr_percentile` 自 `backtest.runner`；移除 `RegimeEngine`/`ParamExploreEngine`/`Round2Engine` 与本地 `prepare_indicators_custom`；K-Fold 用 `DataBundle.slice`；参数探索用 raw `DataBundle` + 每 variant 自定义指标（等同 `load_custom` 逻辑）。`backtest.runner.run_variant` 增加关键字参数 `verbose=True` 供静默调用。
 - **2026-04-04**: `backtest_combo_verify.py` 迁移至统一包：`BacktestEngine` + `DataBundle` + `calc_stats`，`C12_KWARGS`/`V3_REGIME`/`prepare_indicators_custom`/`add_atr_percentile`/`load_m15`/`load_h1_aligned` 自 `backtest.runner`；本地 `_run_bundle` 复现原 `run_fixed`/`run_regime` 的全局重置与打印格式（未用 `run_variant` 以免其自带输出覆盖 Phase1 行格式）。
@@ -83,6 +91,34 @@
     - 周一降仓：**不采纳**。虽然因子分析显示周一偏弱，但回测中 Sharpe 下降 0.07、PnL 减少 $871。2025-2026年周一反而是强日，该效应已反转
     - SELL仓位缩半：**值得考虑但需谨慎**。Sharpe +0.16 是最大提升，MaxDD 略降，但 PnL 减少 $209。本质是"少亏"而非"多赚"——SELL PnL 从 $1050 降到 $841，以牺牲做空利润换取更平滑净值。在当前"紧缩+通胀上升"下跌regime中可能反而不利
     - SELL ADX>=28：**不采纳**。效果几乎为零，还减少了 309 笔交易样本
+
+- **2026-04-05**: **点差研究终止决策** — 短期内不会更换交易商，点差问题不再作为研究方向。以当前交易商实际点差为既定条件，回测中仍保留 `spread_cost` 参数用于成本建模，但不再投入时间研究降低点差的方案（如换交易商、换账户类型等）
+
+## 被否决的优化方向 — 禁止重复研究 (2026-04-05 确认)
+
+> **硬约束**：以下方向已经过回测验证确认无效或有害，**不再投入时间重复研究**。
+> 未来新的优化方向必须与以下列表不重叠。如果某个新想法本质上是以下方向的变体，直接跳过。
+
+- **Combo (KC1.25+EMA30+Adaptive Trail)**: 无成本 Sharpe 3.46, $0.50 仅 0.35。增加 36% 交易量，成本吞噬利润
+- **降低交易频率 (min gap 2-8h)**: 全部变差。好信号被跳过，不是信号太多而是每笔太薄
+- **宏观 Regime 过滤**: Sharpe 下降 0.05。砍掉了赚钱和亏钱的交易
+- **日前趋势预判**: 准确率 ~55% ≈ 抛硬币。趋势日由事件驱动，技术指标无法预测
+- **周一降仓**: Sharpe -0.07。2025-2026 周一反而是强日，效应已反转
+- **RSI 参数调整 (阈值/方向/ADX/ATR)**: 整体 Sharpe 不变。Adaptive 下 RSI 仅 6 笔/11 年，已自然消亡
+- **ORB 缩短持仓**: 所有缩短方案都更差。当前框架下 ORB 需要长持仓才能盈亏平衡
+- **波动率过滤**: 跳过高波动 Sharpe 降到 0.79。高波动是主要利润来源
+- **禁用 SELL**: Sharpe 1.10(+0.07) 但 PnL -$2,127。下跌年份 SELL 是唯一利润来源
+- **Choppy 阈值调整**: range=0.000，完全无影响
+- **kc_only=0.65**: Sharpe 1.86 但是阈值悬崖。本质是关闭 M15 RSI，非渐进优化
+- **点差优化/换交易商**: 短期不换交易商，以当前点差为既定条件
+
+## 五日研究总结 — 核心认知 (2026-04-05)
+
+1. **交易成本是策略杀手**: 无成本 Sharpe 3.46 加 $0.50 点差后仅 0.35。所有回测必须包含成本
+2. **少交易比好参数更重要**: C12 无 Adaptive 15,770 笔 Sharpe -0.53; 加 Adaptive 7,365 笔 Sharpe 1.03。砍掉一半交易反而从亏到赚
+3. **利润来自少数大趋势日**: 25% 的趋势日贡献 +$17,593, 其余 75% 净亏 -$15,015。趋势日不可预测，但可通过盘中实时判断过滤震荡时段
+4. **追踪止盈是核心 alpha**: 5,542 笔 trailing +$41,088 (97.7%WR), 赢家快进快出(中位 1.5h), 输家拖很久(中位 11.5h)
+5. **过拟合风险低, 结构风险高**: PBO=0.00, 参数平滑, DSR 通过。真正风险是低波动盘整期持续数月小额亏损(1/3 半年窗口为负)
 
 ## 因子研究笔记
 
@@ -608,6 +644,23 @@
 - **C12 Adaptive (0.35/0.60) 已实装**（config.py `INTRADAY_TREND_ENABLED=True`），回测确认有效
 - Combo 配置 (0.40/0.65) 存在阈值悬崖风险，暂不实装，待进一步验证
 
+### 当前实盘参数汇总 (2026-04-05 更新)
+
+| 参数 | 值 | 来源 |
+|------|-----|------|
+| KC EMA | 20 | C12 默认 |
+| KC Multiplier | 1.5 | C12 默认 |
+| TrailAct | 1.0 | 旧默认 |
+| TrailDist | 0.3 | 旧默认 |
+| ADX 过滤 | 25 | 旧默认 |
+| **ATR_SL_MULTIPLIER** | **4.5** | Mega Grid + 带成本精调 (2026-04-05) |
+| TP ATR Multiplier | 3.0 | 默认 |
+| Choppy | 0.35 | Phase 4 |
+| **COOLDOWN_MINUTES** | **30** | 点差×冷却交叉测试 (2026-04-05) |
+| Adaptive Trend | 0.35/0.60 | Phase 5 |
+| Max Positions | 2 | 风控 |
+| Risk per Trade | $50 (2.5%) | 风控 |
+
 ### Phase 6: 细粒度阈值扫描结果 (2026-04-04, 服务器运行)
 
 - **2026-04-04**: `backtest_threshold_scan.py` kc_only 0.55→0.72 步长 0.01，Combo 配置 + $0.50 spread
@@ -697,6 +750,12 @@
 - [ ] 历史交易记录无法补全因子快照，如需对历史做 IC 分析需写离线回算脚本（已有 backtest.py 框架可扩展）
 - [x] ~~gap_fill 策略回测 Sharpe -1.71，需研究是否调参优化或禁用~~ → 已禁用（两次独立回测 Sharpe -1.25/-1.71，实盘 0 次触发）
 - [x] ~~考虑在 ADX > 40 极端趋势环境下临时降低/暂停 M15 RSI 均值回归策略权重~~ → 已改为加入 EMA100 方向过滤（更精准，不会误杀顺势交易）
+- [x] ~~SL ATR Multiplier 从 3.5 调整为 4.5~~ → 已实装, Sharpe +0.32, MaxDD -$173 (2026-04-05)
+- [x] ~~Cooldown 从 3h 改为 30min~~ → 已实装, COOLDOWN_BARS → COOLDOWN_MINUTES, 所有引擎文件同步 (2026-04-05)
+- [x] ~~确认 EMX Pro 实际点差~~ → 短期不换交易商，点差问题不再研究，以当前交易商实际点差为基准 (2026-04-05)
+- [ ] **中期**: 测试缩短最大持仓时间从 60 bars 到 24-32 bars（Timeout 60 bars 亏损 $12,287，占总损失最大项）
+- [ ] **中期**: 测试 Mega Grid 最优 T0.5/D0.15 在 $0.30/$0.50 带成本下的表现
+- [ ] **低优先**: 考虑连续 5+ SELL 后减仓（均值 -$0.07/笔，7+ SELL 后 -$0.34/笔）
 - [ ] 渐进清理剩余 7 个旧引擎脚本（backtest_overfit_test, backtest_stress_test, backtest_trend_day, backtest_round3_combo, backtest_overnight, backtest_round2, backtest_verify_migration）
 - [x] ~~引入宏观因子回测：经济日历事件标记作为第一个宏观因子纳入回测框架~~ → 已建立 `macro/` 数据管道（P1），DXY/VIX/Brent/US10Y + FRED(TIPS/US2Y/BEI/利差) 11年日线已下载
 - [ ] DXY 日线作为日级别方向过滤（P6 策略的实盘验证版本）— 数据管道+regime检测器已就绪
@@ -729,7 +788,8 @@
 - **结论**: 宏观Regime暂不用于实盘过滤, 保留作为诊断工具和未来Regime-specific参数调整的基础
 
 ### 综合决策
-- **实盘最优配置**: C12 + Adaptive (0.35/0.60), 已实装, 不需要改动
-- **M15 RSI**: 确认为净亏损源, 应优化或淘汰, 不是用门控间接关闭
+- **实盘最优配置 (2026-04-05 更新)**: C12 + Adaptive (0.35/0.60) + **SL 4.5 ATR** + **Cooldown 30min**, 已全部实装
+- **当前预期表现**: $0.50 点差 Sharpe ≈ 1.35, $0.30 点差 Sharpe ≈ 1.93, MaxDD ≈ $559
+- **M15 RSI**: Adaptive 下已自然消亡(6笔/11年), 保留代码不再优化
 - **宏观过滤**: 暂不启用, regime_detector保留备用
-- **紧迫行动**: 确认EMX Pro实际点差(决定策略真实表现在Sharpe 1.03还是1.79)
+- **点差决策**: 短期不换交易商，不再研究点差优化，以当前交易商为基准运行 (2026-04-05)
