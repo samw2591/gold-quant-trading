@@ -74,7 +74,7 @@ def add_atr_percentile(h1_df: pd.DataFrame) -> pd.DataFrame:
     return h1_df
 
 
-def prepare_indicators_custom(df: pd.DataFrame, kc_ema=20, kc_mult=1.5, ema_trend=100) -> pd.DataFrame:
+def prepare_indicators_custom(df: pd.DataFrame, kc_ema=25, kc_mult=1.2, ema_trend=100) -> pd.DataFrame:
     """Recalculate indicators with custom Keltner/EMA parameters."""
     df = df.copy()
     df['SMA50'] = df['Close'].rolling(50).mean()
@@ -133,7 +133,7 @@ class DataBundle:
         return cls(m15_df, h1_df)
 
     @classmethod
-    def load_custom(cls, kc_ema=20, kc_mult=1.5, ema_trend=100,
+    def load_custom(cls, kc_ema=25, kc_mult=1.2, ema_trend=100,
                     start: str = "2015-01-01", end: Optional[str] = None) -> 'DataBundle':
         """Load with custom indicator parameters."""
         print("\nLoading data...")
@@ -269,8 +269,13 @@ C12_KWARGS = {
     "trailing_activate_atr": 0.8,
     "trailing_distance_atr": 0.25,
     "sl_atr_mult": 4.5,
-    "tp_atr_mult": 5.0,
+    "tp_atr_mult": 8.0,
     "keltner_adx_threshold": 18,
+    "regime_config": {
+        'low': {'trail_act': 1.0, 'trail_dist': 0.35},
+        'normal': {'trail_act': 0.8, 'trail_dist': 0.25},
+        'high': {'trail_act': 0.6, 'trail_dist': 0.20},
+    },
 }
 
 V3_REGIME = {

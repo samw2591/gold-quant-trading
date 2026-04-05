@@ -69,9 +69,9 @@ def prepare_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['EMA21'] = df['Close'].ewm(span=21).mean()
     df['EMA26'] = df['Close'].ewm(span=26).mean()
     df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
-    df['KC_mid'] = df['Close'].ewm(span=20).mean()
-    df['KC_upper'] = df['KC_mid'] + 1.5 * df['ATR']
-    df['KC_lower'] = df['KC_mid'] - 1.5 * df['ATR']
+    df['KC_mid'] = df['Close'].ewm(span=25).mean()
+    df['KC_upper'] = df['KC_mid'] + 1.2 * df['ATR']
+    df['KC_lower'] = df['KC_mid'] - 1.2 * df['ATR']
     df['MACD'] = df['EMA12'] - df['EMA26']
     df['MACD_signal'] = df['MACD'].ewm(span=9).mean()
     df['MACD_hist'] = df['MACD'] - df['MACD_signal']
@@ -89,7 +89,7 @@ ADX_TREND_THRESHOLD = 18    # R3组合回测最优: ADX18 Sharpe +0.09, 组合Sh
 ATR_SL_MULTIPLIER = 4.5     # Mega Grid验证: SL 4.5ATR 全维度改善, Sharpe 1.03→1.35, MaxDD $732→$559 (3.5→4.5)
 ATR_SL_MIN = 10
 ATR_SL_MAX = 50
-ATR_TP_MULTIPLIER = 5.0     # R3组合回测: TP 5.0ATR 有追踪止盈时给利润更多空间 (3.0→5.0)
+ATR_TP_MULTIPLIER = 8.0     # EXP06验证: TP触发率仅1.4%, 放宽到8.0让追踪止盈决定出场, Sharpe 1.52→1.56 (5.0→8.0)
 
 
 def _calc_atr_stop(df: pd.DataFrame) -> float:

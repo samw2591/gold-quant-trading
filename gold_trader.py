@@ -302,7 +302,7 @@ class GoldTrader:
                 if exit_sig:
                     reason = exit_sig
 
-            # 2. Keltner Trailing Stop
+            # 2. Keltner Trailing Stop (V3 ATR Regime adaptive)
             if not reason and strategy == 'keltner' and config.TRAILING_STOP_ENABLED:
                 atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
                 if atr > 0 and open_price > 0:
@@ -311,8 +311,20 @@ class GoldTrader:
                     else:
                         float_profit = open_price - current_price
 
-                    activate_threshold = atr * config.TRAILING_ACTIVATE_ATR
-                    trail_distance = atr * config.TRAILING_DISTANCE_ATR
+                    trail_act_mult = config.TRAILING_ACTIVATE_ATR
+                    trail_dist_mult = config.TRAILING_DISTANCE_ATR
+                    if config.V3_ATR_REGIME_ENABLED:
+                        atr_series = df['ATR'].dropna()
+                        if len(atr_series) >= 50:
+                            atr_pct = (atr_series.iloc[-50:] < atr).mean()
+                            if atr_pct > 0.70:
+                                trail_act_mult = 0.6
+                                trail_dist_mult = 0.20
+                            elif atr_pct < 0.30:
+                                trail_act_mult = 1.0
+                                trail_dist_mult = 0.35
+                    activate_threshold = atr * trail_act_mult
+                    trail_distance = atr * trail_dist_mult
 
                     if float_profit >= activate_threshold:
                         extreme = track.get('extreme_price', current_price)
