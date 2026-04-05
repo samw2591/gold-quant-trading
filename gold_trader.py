@@ -365,7 +365,7 @@ class GoldTrader:
                     self.tracker.update_pnl(profit)
                     self.risk.update_daily_pnl(profit)
                     if profit < 0:
-                        self.risk.add_cooldown(strategy, config.COOLDOWN_BARS)
+                        self.risk.add_cooldown(strategy, config.COOLDOWN_MINUTES)
 
                     if track_key in self.tracker.tracking:
                         del self.tracker.tracking[track_key]

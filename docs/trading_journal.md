@@ -635,6 +635,51 @@
 - **2026-04-04**: `run_variant` 新增 `verbose` 参数，允许实验脚本控制自己的输出格式
 - **2026-04-04**: 旧引擎文件（`backtest.py`, `backtest_m15.py`, `backtest_round2.py`）保留向后兼容，仍有 7 个脚本依赖它们，后续渐进清理
 
+## Mega Grid 搜索与参数精调 (2026-04-05)
+
+- **2026-04-05**: **Mega Grid Search** (`backtest_mega_grid.py`, 1440 组合, 4.4 小时)
+  - 搜索维度: TrailAct [0.5-1.0] × TrailDist [0.15-0.35] × ADX [15-21] × SL [2.5-4.0] × Choppy [0.3-0.4]
+  - 最优: T0.5/D0.15/A19/SL4.0/C0.4, Sharpe **3.36** (无成本), PnL $17,197, MaxDD $467, WR 85.3%
+  - DSR=0.975 通过, PBO=0.00 零过拟合, IS-best OOS rank mean=8.5
+  - 敏感性: TrailDist CLIFF(2.03), TrailAct CLIFF(0.73), SL CLIFF(0.77), ADX moderate(0.21), Choppy zero(0.00)
+  - **注意**: 无成本结果, 9498笔×$1.35≈$12,822成本, 未做带成本验证
+- **2026-04-05**: **RSI 全面扫描** (`backtest_rsi_optimization.py`, 18 变体)
+  - C12+Adaptive 框架下 RSI 仅 6 笔/11年, 所有变体 Sharpe 完全一致(1.03), MaxDD 完全一致($732)
+  - 无论收紧阈值、只做多、加 ADX/ATR 过滤, 对整体结果影响在小数点第三位以后
+  - **结论**: RSI 在当前框架下已自然消亡, 保留代码但不再优化
+- **2026-04-05**: **ORB 持仓时间扫描** (`backtest_orb_scan.py`, 8 变体)
+  - hold=4(60min) ORB PnL=-$277, hold=24(360min) ORB PnL=+$2, 单调递增
+  - 缩短持仓时间反而更差, 与之前 M15 回测(无 Adaptive)结论相反
+  - **结论**: ORB 持仓时间保持默认(无限制/24 bars), 不改动
+- **2026-04-05**: **Walk-Forward 18 窗口验证** (`backtest_walkforward.py`)
+  - 一致性 18/18 (100%), C12+Adaptive 在所有窗口都是最优
+  - OOS 平均 Sharpe=0.75 ($0.50 点差), 负 OOS 窗口 6/18 (低波动盘整期)
+  - 最强 OOS: 2020H1(+2.39), 2023H1(+2.34), 2025H1(+2.10)
+- **2026-04-05**: **SL 精调** (Top Combo 测试, 3 变体, $0.50 点差 + Adaptive)
+  - SL=4.5: Sharpe **1.35**, PnL $6,721, MaxDD **$559** — **全维度优于当前 SL=3.5**
+  - SL=4.0: Sharpe 1.34, PnL $6,839, MaxDD $647
+  - SL=5.0: Sharpe 1.29, PnL $6,200, MaxDD $553
+  - **SL=4.5 已实装**: Sharpe +0.32, MaxDD -$173, 12/12年全正
+- **2026-04-05**: **点差×冷却期交叉测试** (`backtest_spread_cooldown_cross.py`, 20 变体)
+  - 最优: $0.30/cd=30min/Adaptive, Sharpe **1.93**, PnL $10,958, MaxDD $696
+  - Cooldown 30min 在所有点差下均优于 3h: $0.30 下 +0.14 Sharpe, $0.50 下 +0.14 Sharpe
+  - 冷却期粒度扫描确认 15-20min 等效(1 根 M15 bar), 30-40min 等效(2 根 M15 bar)
+  - **Cooldown 30min 已实装**: COOLDOWN_BARS(3h) → COOLDOWN_MINUTES(30min)
+- **2026-04-05**: **持仓时间分析** (`backtest_hold_time_analysis.py`)
+  - 前 2h 贡献 +$18,979 (345% of total), 4h+ 净亏 -$16,280
+  - Trailing 5,542笔 +$41,088 (97.7%WR, avg 11 bars) — 核心利润引擎
+  - Timeout:60 769笔 -$12,287 (2.0%WR) — 最大单项亏损源
+  - 赢家中位持仓 6 bars(1.5h), 输家中位 46 bars(11.5h), 相关系数-0.376
+- **2026-04-05**: **波动率 Regime 分析** (`backtest_volatility_regime.py`)
+  - Keltner 在所有4个波动率环境下均盈利, Very High(>75%) Sharpe 1.57 最强
+  - 任何波动率过滤都让结果变差, 不需要干预
+  - ATR 与 PnL 相关系数 0.011, 无预测力
+- **2026-04-05**: **BUY vs SELL 分析** (`backtest_direction_bias.py`)
+  - BUY Sharpe 1.10 > SELL 0.77, 但 SELL 贡献 $2,127(39%), 不应禁用
+  - 纽约时段 BUY 是甜蜜点($1.46/trade), Late NY SELL 更好($1.16/trade)
+  - 连续 5+ SELL 后平均每笔-$0.07, 7+ SELL 后-$0.34(做空趋势持续性弱)
+  - ORB SELL 亏损(-$157), 但样本不足以做方向过滤
+
 ## 待办与未来方向
 
 - [x] ~~观察重构后系统运行 1-2 天，确认 position_tracker.py 持仓同步和平仓通知正常~~ → 发现并修复了 CLOSE_DETECTED 重复记录 bug
@@ -642,7 +687,7 @@
 - [ ] Telegram Token 从代码移到 .env 文件（用户暂缓）
 - [x] ~~IC 报告积累数据后进行第一次因子有效性评估~~ → 已用 factor_scanner.py 完成首次离线全量扫描（27因子×3窗口=81次检验）
 - [x] ~~将 M15 RSI ADX>40 过滤实装到实盘~~ → 已实装到 config.py + signals.py + gold_trader.py (v8)
-- [ ] 考虑将 ORB max_hold_bars 从 6H1(24 M15) 缩短到 3H1(12 M15)，M15 回测验证 ORB 从 -$139 扭亏为 +$0.55 (Sharpe +0.14)
+- [x] ~~考虑将 ORB max_hold_bars 缩短~~ → C12+Adaptive 框架下 ORB 默认(24 bars)最优，缩短反而更差(持仓越长 PnL 单调递增)
 - [ ] 根据 IC 扫描结果，研究 day_of_week 周内择时策略（IC=+0.033，WF=100%，最稳定因子之一）
 - [ ] 评估 P5_volume_breakout 是否继续保留（volume_ratio IC≈0，预测力不足）
 - [ ] 模拟盘 P4/P5/P6 积累 20+ 笔后评估是否推进实盘（P4 重点观察震荡/下跌市表现）

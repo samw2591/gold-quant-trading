@@ -39,7 +39,7 @@ MACRO_CSV = Path("data/macro_history.csv")
 C12_BASE = {
     "trailing_activate_atr": 0.8,
     "trailing_distance_atr": 0.25,
-    "sl_atr_mult": 3.5,
+    "sl_atr_mult": 4.5,
     "tp_atr_mult": 5.0,
     "keltner_adx_threshold": 18,
     "spread_cost": SPREAD,

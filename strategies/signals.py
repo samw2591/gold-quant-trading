@@ -86,7 +86,7 @@ def prepare_indicators(df: pd.DataFrame) -> pd.DataFrame:
 # 常量
 # ═══════════════════════════════════════════════════════════════
 ADX_TREND_THRESHOLD = 18    # R3组合回测最优: ADX18 Sharpe +0.09, 组合Sharpe 2.54 (24→18)
-ATR_SL_MULTIPLIER = 3.5     # R3组合回测: SL 3.5ATR 减少假突破被震出, 组合Sharpe 2.54 (2.5→3.5)
+ATR_SL_MULTIPLIER = 4.5     # Mega Grid验证: SL 4.5ATR 全维度改善, Sharpe 1.03→1.35, MaxDD $732→$559 (3.5→4.5)
 ATR_SL_MIN = 10
 ATR_SL_MAX = 50
 ATR_TP_MULTIPLIER = 5.0     # R3组合回测: TP 5.0ATR 有追踪止盈时给利润更多空间 (3.0→5.0)

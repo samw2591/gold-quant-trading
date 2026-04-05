@@ -98,7 +98,7 @@ class PositionTracker:
                 if risk_manager:
                     risk_manager.update_daily_pnl(last_profit)
                     if last_profit < 0:
-                        risk_manager.add_cooldown(strategy, config.COOLDOWN_BARS)
+                        risk_manager.add_cooldown(strategy, config.COOLDOWN_MINUTES)
 
                 trade = {
                     'action': 'CLOSE_DETECTED', 'ticket': int(ticket_key),

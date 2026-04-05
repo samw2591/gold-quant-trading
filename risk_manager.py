@@ -81,10 +81,10 @@ class RiskManager:
                 del self.cooldown_until[strategy]
         return False
 
-    def add_cooldown(self, strategy: str, hours: int):
+    def add_cooldown(self, strategy: str, minutes: int):
         """为策略设置冷却期"""
-        self.cooldown_until[strategy] = datetime.now() + timedelta(hours=hours)
-        log.info(f"     ❄️ {strategy} 进入冷却期，{hours}小时后才可开仓")
+        self.cooldown_until[strategy] = datetime.now() + timedelta(minutes=minutes)
+        log.info(f"     ❄️ {strategy} 进入冷却期，{minutes}分钟后才可开仓")
 
     # ── 日内状态持久化 ──
 

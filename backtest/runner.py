@@ -268,7 +268,7 @@ def run_kfold(data: DataBundle, engine_kwargs: Dict, n_folds: int = 6,
 C12_KWARGS = {
     "trailing_activate_atr": 0.8,
     "trailing_distance_atr": 0.25,
-    "sl_atr_mult": 3.5,
+    "sl_atr_mult": 4.5,
     "tp_atr_mult": 5.0,
     "keltner_adx_threshold": 18,
 }

@@ -442,9 +442,9 @@ class MultiTimeframeEngine:
 
         if pnl < 0:
             self.daily_loss_count += 1
-            cooldown_hours = config.COOLDOWN_BARS
+            cooldown_minutes = config.COOLDOWN_MINUTES
             self.cooldown_until[pos.strategy] = (
-                pd.Timestamp(exit_time) + pd.Timedelta(hours=cooldown_hours)
+                pd.Timestamp(exit_time) + pd.Timedelta(minutes=cooldown_minutes)
             )
 
     def _calc_unrealized(self, current_price: float) -> float:

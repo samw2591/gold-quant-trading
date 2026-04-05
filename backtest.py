@@ -333,8 +333,8 @@ class BacktestEngine:
 
         if pnl < 0:
             self.daily_loss_count += 1
-            cooldown_hours = config.COOLDOWN_BARS
-            self.cooldown_until[pos.strategy] = pd.Timestamp(exit_time) + pd.Timedelta(hours=cooldown_hours)
+            cooldown_minutes = config.COOLDOWN_MINUTES
+            self.cooldown_until[pos.strategy] = pd.Timestamp(exit_time) + pd.Timedelta(minutes=cooldown_minutes)
 
     def _calc_unrealized_pnl(self, current_price: float) -> float:
         total = 0.0

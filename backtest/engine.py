@@ -81,7 +81,7 @@ class BacktestEngine:
       - sl_atr_mult / tp_atr_mult: override signal SL/TP with ATR multiples
       - keltner_adx_threshold: override Keltner ADX entry filter
       - max_positions: override config.MAX_POSITIONS
-      - cooldown_hours: override config.COOLDOWN_BARS
+      - cooldown_hours: override config.COOLDOWN_MINUTES (in hours)
       - regime_config: ATR-percentile based parameter adaptation
       - intraday_adaptive / choppy_threshold / kc_only_threshold: trend gating
       - min_entry_gap_hours: global entry cooldown
@@ -694,7 +694,7 @@ class BacktestEngine:
 
         if pnl < 0:
             self.daily_loss_count += 1
-            hours = self._cooldown_hours_override or config.COOLDOWN_BARS
+            hours = self._cooldown_hours_override or (config.COOLDOWN_MINUTES / 60)
             self.cooldown_until[pos.strategy] = (
                 pd.Timestamp(exit_time) + pd.Timedelta(hours=hours)
             )
