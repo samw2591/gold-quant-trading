@@ -1,18 +1,13 @@
 {
-  "timestamp": "2026-04-06T21:53:20.760188",
-  "dxy": 99.97,
+  "timestamp": "2026-04-06T22:53:48.612845",
+  "dxy": 99.99,
   "dxy_prev": 100.03,
-  "dxy_change_pct": -0.05,
+  "dxy_change_pct": -0.04,
   "dxy_sma20": 99.69,
-  "vix": 24.17,
-  "vix_prev": 23.87,
-  "vix_change_pct": 1.26,
-  "vix_percentile": 0.65,
-  "brent": 109.63,
+  "brent": 110.1,
   "brent_prev": 109.03,
-  "brent_change_pct": 0.55,
+  "brent_change_pct": 0.98,
   "us10y": 4.34,
   "us10y_prev": 4.31,
-  "us10y_change_pct": 0.51,
-  "vix_regime": "normal"
+  "us10y_change_pct": 0.51
 }
