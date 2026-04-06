@@ -34,7 +34,7 @@ from backtest import DataBundle, run_variant, calc_stats
 from backtest.engine import BacktestEngine
 from backtest.runner import (
     C12_KWARGS, load_m15, load_h1_aligned, prepare_indicators_custom,
-    add_atr_percentile, run_kfold
+    add_atr_percentile, run_kfold, H1_CSV_PATH
 )
 
 SPREAD = 0.50
@@ -48,15 +48,9 @@ print("=" * 70)
 
 # ── Load data ──────────────────────────────────────────────────
 
-print("\nLoading data...")
 t0 = time.time()
-m15_df = load_m15()
-h1_df = load_h1_aligned(m15_df)
-h1_df = prepare_indicators_custom(h1_df, kc_span=25, kc_mult=1.2)
-h1_df = add_atr_percentile(h1_df)
-data = DataBundle(m15_df=m15_df, h1_df=h1_df)
-print(f"  M15: {len(m15_df)} bars, H1: {len(h1_df)} bars")
-print(f"  Range: {m15_df.index[0]} → {m15_df.index[-1]}")
+data = DataBundle.load_custom(kc_ema=25, kc_mult=1.2)
+print(f"  Range: {data.m15_df.index[0]} to {data.m15_df.index[-1]}")
 print(f"  Load time: {time.time()-t0:.1f}s")
 
 
@@ -90,17 +84,18 @@ for chop in choppy_values:
         stats = run_variant(data, label, verbose=False, **kwargs)
         stats['choppy'] = chop
         stats['kc_only'] = kco
+        ppt = stats['total_pnl'] / stats['n'] if stats['n'] > 0 else 0
         part1_results.append(stats)
-        print(f"  {label}: N={stats['n_trades']:,}  Sh={stats['sharpe']:.2f}  "
-              f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_drawdown']:,.0f}  "
-              f"$/t=${stats.get('pnl_per_trade',0):.2f}")
+        print(f"  {label}: N={stats['n']:,}  Sh={stats['sharpe']:.2f}  "
+              f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_dd']:,.0f}  "
+              f"$/t=${ppt:.2f}")
 
 # Baseline for comparison
 baseline_stats = run_variant(data, "BASELINE (0.35/0.60)", verbose=False, **BASE_KWARGS)
 baseline_stats['choppy'] = 0.35
 baseline_stats['kc_only'] = 0.60
-print(f"\n  BASELINE (0.35/0.60): N={baseline_stats['n_trades']:,}  Sh={baseline_stats['sharpe']:.2f}  "
-      f"PnL=${baseline_stats['total_pnl']:,.0f}  MaxDD=${baseline_stats['max_drawdown']:,.0f}")
+print(f"\n  BASELINE (0.35/0.60): N={baseline_stats['n']:,}  Sh={baseline_stats['sharpe']:.2f}  "
+      f"PnL=${baseline_stats['total_pnl']:,.0f}  MaxDD=${baseline_stats['max_dd']:,.0f}")
 
 # Rank
 part1_results.sort(key=lambda x: x['sharpe'], reverse=True)
@@ -109,7 +104,7 @@ for i, r in enumerate(part1_results[:5]):
     delta = r['sharpe'] - baseline_stats['sharpe']
     print(f"    #{i+1} chop={r['choppy']:.2f}/kco={r['kc_only']:.2f}: "
           f"Sh={r['sharpe']:.2f} ({delta:+.2f})  "
-          f"N={r['n_trades']:,}  PnL=${r['total_pnl']:,.0f}  MaxDD=${r['max_drawdown']:,.0f}")
+          f"N={r['n']:,}  PnL=${r['total_pnl']:,.0f}  MaxDD=${r['max_dd']:,.0f}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -200,9 +195,10 @@ for wb in warmup_values:
     stats['warmup_bars'] = wb
     part2_results.append(stats)
     delta = stats['sharpe'] - baseline_stats['sharpe']
-    print(f"  {label}: N={stats['n_trades']:,}  Sh={stats['sharpe']:.2f} ({delta:+.2f})  "
-          f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_drawdown']:,.0f}  "
-          f"$/t=${stats.get('pnl_per_trade',0):.2f}")
+    ppt = stats['total_pnl'] / stats['n'] if stats['n'] > 0 else 0
+    print(f"  {label}: N={stats['n']:,}  Sh={stats['sharpe']:.2f} ({delta:+.2f})  "
+          f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_dd']:,.0f}  "
+          f"$/t=${ppt:.2f}")
 
 # Restore
 BacktestEngine._update_intraday_score = _original_update
@@ -235,8 +231,8 @@ for chop, kco in top_chop:
         stats['warmup_bars'] = wb
         part3_results.append(stats)
         delta = stats['sharpe'] - baseline_stats['sharpe']
-        print(f"  {label}: N={stats['n_trades']:,}  Sh={stats['sharpe']:.2f} ({delta:+.2f})  "
-              f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_drawdown']:,.0f}")
+        print(f"  {label}: N={stats['n']:,}  Sh={stats['sharpe']:.2f} ({delta:+.2f})  "
+              f"PnL=${stats['total_pnl']:,.0f}  MaxDD=${stats['max_dd']:,.0f}")
 
 BacktestEngine._update_intraday_score = _original_update
 
@@ -246,8 +242,8 @@ print("\n  TOP 5 COMBINED:")
 for i, r in enumerate(part3_results[:5]):
     delta = r['sharpe'] - baseline_stats['sharpe']
     print(f"    #{i+1} chop={r['choppy']:.2f}/kco={r['kc_only']:.2f}/warmup={r['warmup_bars']}: "
-          f"Sh={r['sharpe']:.2f} ({delta:+.2f})  N={r['n_trades']:,}  "
-          f"PnL=${r['total_pnl']:,.0f}  MaxDD=${r['max_drawdown']:,.0f}")
+          f"Sh={r['sharpe']:.2f} ({delta:+.2f})  N={r['n']:,}  "
+          f"PnL=${r['total_pnl']:,.0f}  MaxDD=${r['max_dd']:,.0f}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -315,7 +311,7 @@ for name, kwargs, wb in all_candidates:
     for fold in range(n_folds):
         start = data.m15_df.index[0] + pd.Timedelta(days=fold * fold_days)
         end = start + pd.Timedelta(days=fold_days)
-        fold_data = data.slice(start, end)
+        fold_data = data.slice(str(start), str(end))
         if fold_data.m15_df is None or len(fold_data.m15_df) < 100:
             continue
         fold_stats = run_variant(fold_data, f"{name}_F{fold+1}", verbose=False, **kwargs)
@@ -418,7 +414,7 @@ print("=" * 70)
 
 print(f"\nBASELINE: choppy=0.35/kc_only=0.60, warmup=0")
 print(f"  Sharpe={baseline_stats['sharpe']:.2f}  PnL=${baseline_stats['total_pnl']:,.0f}  "
-      f"MaxDD=${baseline_stats['max_drawdown']:,.0f}  N={baseline_stats['n_trades']:,}")
+      f"MaxDD=${baseline_stats['max_dd']:,.0f}  N={baseline_stats['n']:,}")
 
 print(f"\nPART 1 BEST (threshold only):")
 if part1_results:
@@ -478,11 +474,16 @@ print(f"\nTotal runtime: {elapsed/60:.1f} minutes")
 print(f"Finished: {datetime.now()}")
 
 # Save results
+def _serializable(d):
+    """Filter out non-serializable items from stats dict."""
+    skip_types = (pd.DataFrame, pd.Series, list)
+    return {k: v for k, v in d.items() if k not in ('_trades', '_equity_curve') and not isinstance(v, skip_types)}
+
 results = {
-    'baseline': {k: v for k, v in baseline_stats.items() if not isinstance(v, (pd.DataFrame, pd.Series))},
-    'part1_top5': [{k: v for k, v in r.items() if not isinstance(v, (pd.DataFrame, pd.Series))} for r in part1_results[:5]],
-    'part2': [{k: v for k, v in r.items() if not isinstance(v, (pd.DataFrame, pd.Series))} for r in part2_results],
-    'part3_top5': [{k: v for k, v in r.items() if not isinstance(v, (pd.DataFrame, pd.Series))} for r in part3_results[:5]],
+    'baseline': _serializable(baseline_stats),
+    'part1_top5': [_serializable(r) for r in part1_results[:5]],
+    'part2': [_serializable(r) for r in part2_results],
+    'part3_top5': [_serializable(r) for r in part3_results[:5]],
     'kfold': {name: {k: v for k, v in res.items()} for name, res in kfold_results.items()},
 }
 out_path = os.path.join(os.path.dirname(__file__), 'data', 'exp29_results.json')

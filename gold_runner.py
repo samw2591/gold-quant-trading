@@ -202,6 +202,14 @@ def main():
                         log.info("📊 IC 因子监控报告已发送")
                     except Exception as e:
                         log.warning(f"IC报告生成失败 (不影响交易): {e}")
+
+                    # 模拟盘分策略日报
+                    try:
+                        paper_summary = paper.get_summary()
+                        log.info(f"\n{paper_summary}")
+                        notifier.send_telegram(paper_summary)
+                    except Exception as e:
+                        log.debug(f"模拟盘摘要失败: {e}")
                 
                 signal_scanned_today = False
                 last_date = today

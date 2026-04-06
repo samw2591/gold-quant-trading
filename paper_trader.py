@@ -32,7 +32,8 @@ class PaperPosition:
     """模拟持仓"""
     def __init__(self, strategy: str, direction: str, entry_price: float,
                  sl: float, tp: float, lots: float, reason: str,
-                 factors: Optional[Dict] = None):
+                 factors: Optional[Dict] = None,
+                 trailing_activate: float = 0, trailing_distance: float = 0):
         self.strategy = strategy
         self.direction = direction
         self.entry_price = entry_price
@@ -45,6 +46,10 @@ class PaperPosition:
         self.bars_held = 0
         self.max_favorable = 0.0  # MFE
         self.max_adverse = 0.0    # MAE
+        self.trailing_activate = trailing_activate
+        self.trailing_distance = trailing_distance
+        self.trailing_active = False
+        self.trailing_stop_price = 0.0
 
     def update(self, high: float, low: float, close: float) -> Optional[Dict]:
         """
@@ -54,18 +59,25 @@ class PaperPosition:
         self.bars_held += 1
 
         if self.direction == 'BUY':
-            pnl = close - self.entry_price
             self.max_favorable = max(self.max_favorable, high - self.entry_price)
             self.max_adverse = max(self.max_adverse, self.entry_price - low)
 
-            # 止损
             if low <= self.entry_price - self.sl:
                 return self._close(-self.sl, 'sl')
-            # 止盈
             if self.tp > 0 and high >= self.entry_price + self.tp:
                 return self._close(self.tp, 'tp')
+
+            # Trailing stop
+            if self.trailing_activate > 0 and self.trailing_distance > 0:
+                if not self.trailing_active and self.max_favorable >= self.trailing_activate:
+                    self.trailing_active = True
+                    self.trailing_stop_price = high - self.trailing_distance
+                if self.trailing_active:
+                    self.trailing_stop_price = max(self.trailing_stop_price, high - self.trailing_distance)
+                    if low <= self.trailing_stop_price:
+                        pnl = self.trailing_stop_price - self.entry_price
+                        return self._close(pnl, 'trailing')
         else:
-            pnl = self.entry_price - close
             self.max_favorable = max(self.max_favorable, self.entry_price - low)
             self.max_adverse = max(self.max_adverse, high - self.entry_price)
 
@@ -73,6 +85,17 @@ class PaperPosition:
                 return self._close(-self.sl, 'sl')
             if self.tp > 0 and low <= self.entry_price - self.tp:
                 return self._close(self.tp, 'tp')
+
+            # Trailing stop
+            if self.trailing_activate > 0 and self.trailing_distance > 0:
+                if not self.trailing_active and self.max_favorable >= self.trailing_activate:
+                    self.trailing_active = True
+                    self.trailing_stop_price = low + self.trailing_distance
+                if self.trailing_active:
+                    self.trailing_stop_price = min(self.trailing_stop_price, low + self.trailing_distance)
+                    if high >= self.trailing_stop_price:
+                        pnl = self.entry_price - self.trailing_stop_price
+                        return self._close(pnl, 'trailing')
 
         return None
 
@@ -188,11 +211,15 @@ class PaperTrader:
                 lots=p.get('lots', 0.01),
                 reason=p.get('reason', ''),
                 factors=p.get('factors', {}),
+                trailing_activate=p.get('trailing_activate', 0),
+                trailing_distance=p.get('trailing_distance', 0),
             )
             pos.entry_time = p.get('entry_time', '')
             pos.bars_held = p.get('bars_held', 0)
             pos.max_favorable = p.get('max_favorable', 0)
             pos.max_adverse = p.get('max_adverse', 0)
+            pos.trailing_active = p.get('trailing_active', False)
+            pos.trailing_stop_price = p.get('trailing_stop_price', 0.0)
             positions.append(pos)
         if positions:
             log.info(f"  📝 恢复{len(positions)}笔模拟持仓")
@@ -214,6 +241,10 @@ class PaperTrader:
                 'bars_held': pos.bars_held,
                 'max_favorable': pos.max_favorable,
                 'max_adverse': pos.max_adverse,
+                'trailing_activate': pos.trailing_activate,
+                'trailing_distance': pos.trailing_distance,
+                'trailing_active': pos.trailing_active,
+                'trailing_stop_price': pos.trailing_stop_price,
             })
         self._save_json(self.positions_file, data)
 
@@ -359,6 +390,8 @@ class PaperTrader:
                 sl=sl, tp=tp, lots=lots,
                 reason=sig.get('reason', name),
                 factors=factors,
+                trailing_activate=sig.get('trailing_activate', 0),
+                trailing_distance=sig.get('trailing_distance', 0),
             )
             self.positions.append(pos)
             self._save_positions()
@@ -400,13 +433,24 @@ class PaperTrader:
         result['mode'] = 'paper'
         self.trades.append(result)
 
-        # 更新统计
+        # 更新总统计
         self.state['trade_count'] += 1
         self.state['total_pnl'] = round(self.state['total_pnl'] + result['pnl'], 2)
         if result['pnl'] > 0:
             self.state['wins'] += 1
         else:
             self.state['losses'] += 1
+
+        # 更新分策略统计
+        strat = result.get('strategy', '?')
+        by_strat = self.state.setdefault('by_strategy', {})
+        s = by_strat.setdefault(strat, {'n': 0, 'pnl': 0.0, 'wins': 0, 'losses': 0})
+        s['n'] += 1
+        s['pnl'] = round(s['pnl'] + result['pnl'], 2)
+        if result['pnl'] > 0:
+            s['wins'] += 1
+        else:
+            s['losses'] += 1
 
         # 保存
         self._save_json(self.trades_file, self.trades)
@@ -418,16 +462,27 @@ class PaperTrader:
                  f"持仓{result['bars_held']}根 MFE=${result['mfe']:.1f}")
 
     def get_summary(self) -> str:
-        """获取模拟盘摘要"""
+        """获取模拟盘摘要（分策略统计）"""
         s = self.state
         total = s['trade_count']
         if total == 0:
             return "📝 模拟盘: 暂无交易"
 
-        winrate = 100 * s['wins'] / total if total > 0 else 0
-        return (f"📝 模拟盘: {total}笔交易 | "
-                f"PnL ${s['total_pnl']:+.2f} | "
-                f"胜率 {winrate:.0f}%")
+        by_strat: Dict[str, Dict] = {}
+        for t in self.trades:
+            name = t.get('strategy', '?')
+            if name not in by_strat:
+                by_strat[name] = {'n': 0, 'pnl': 0.0, 'wins': 0}
+            by_strat[name]['n'] += 1
+            by_strat[name]['pnl'] += t.get('pnl', 0)
+            if t.get('pnl', 0) > 0:
+                by_strat[name]['wins'] += 1
+
+        lines = [f"📝 模拟盘汇总: {total}笔 PnL ${s['total_pnl']:+.2f}"]
+        for name, st in sorted(by_strat.items()):
+            wr = 100 * st['wins'] / st['n'] if st['n'] > 0 else 0
+            lines.append(f"  {name}: {st['n']}笔 ${st['pnl']:+.2f} 胜率{wr:.0f}%")
+        return "\n".join(lines)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -674,5 +729,62 @@ def setup_paper_strategies(paper: PaperTrader):
         'timeframe': 'H1',
         'max_hold_bars': 8,
         'max_positions': 1,
+        'enabled': True,
+    })
+
+    # ── 策略P7: Mega Trail (T0.5/D0.15) ──
+    # EXP32 冠军: 与实盘相同的 Keltner 信号，但追踪止盈更紧更快
+    # 回测 11 年: Sharpe 7.66 vs 当前 4.41, K-Fold 6/6 折全赢, 逐年 10/12 赢
+    # 核心差异: Trail Activate 0.8→0.5 ATR, Trail Distance 0.25→0.15 ATR
+    from strategies.signals import check_keltner_signal
+
+    def mega_trail_signal(df):
+        if len(df) < 105:
+            return None
+        row = df.iloc[-1]
+        atr = float(row.get('ATR', 0))
+        if pd.isna(atr) or atr <= 0:
+            return None
+
+        sig = check_keltner_signal(df)
+        if not sig:
+            return None
+
+        direction = sig.get('signal', '')
+        if direction not in ('BUY', 'SELL'):
+            return None
+
+        sl = round(atr * 4.5, 2)
+        tp = round(atr * 8.0, 2)
+
+        # V3 ATR Regime: adjust trailing by volatility
+        atr_series = df['ATR'].dropna()
+        atr_pct = 0.5
+        if len(atr_series) >= 50:
+            atr_pct = float((atr_series.iloc[-50:] < atr).mean())
+
+        if atr_pct < 0.30:
+            trail_act = round(atr * 0.7, 2)
+            trail_dist = round(atr * 0.25, 2)
+        elif atr_pct > 0.70:
+            trail_act = round(atr * 0.4, 2)
+            trail_dist = round(atr * 0.10, 2)
+        else:
+            trail_act = round(atr * 0.5, 2)
+            trail_dist = round(atr * 0.15, 2)
+
+        return {
+            'signal': direction,
+            'sl': sl, 'tp': tp,
+            'trailing_activate': trail_act,
+            'trailing_distance': trail_dist,
+            'reason': f"P7 Mega: {sig.get('reason', direction)} T={trail_act:.1f}/D={trail_dist:.1f} ATR%={atr_pct:.0%}",
+        }
+
+    paper.register_strategy('P7_mega_trail', {
+        'signal_func': mega_trail_signal,
+        'timeframe': 'H1',
+        'max_hold_bars': 15,
+        'max_positions': 2,
         'enabled': True,
     })

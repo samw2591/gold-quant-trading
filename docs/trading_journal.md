@@ -1034,3 +1034,25 @@
 **Part 4 K-Fold**: 3 个最佳组合 × 6 折 = 全部 TIE（0/6 折赢）
 
 **结论**: ❌ **不实装任何额外防御**。策略的内建防御（V3 + Adaptive + Cooldown 30min）已充分，额外防御要么零效果要么有害。手动 VIX>40 减仓保留作极端应急操作
+
+## EXP30/31/32 实验总结 (2026-04-05)
+
+### EXP30: 缩短 Keltner 最大持仓时间
+- Hold=20 bars (5h) 为最佳: Sharpe 4.99 (+0.58), K-Fold 5/6 折赢
+- 缩短持仓让 Timeout 退出亏损更小，整体风险降低
+
+### EXP31: EMA100 斜率过滤
+- ❌ **完全无效** — `skipped_ema_slope = 0`，Keltner 自带 ADX+EMA 趋势过滤已覆盖
+
+### EXP32: Mega Trail T0.5/D0.15 验证
+- 🏆 **压倒性优胜**: Sharpe 7.66 vs 4.41, PnL $54,488 vs $31,457
+- K-Fold 6/6 折全赢, 逐年 10/12 赢, S4 阴跌从 -0.08 升至 +4.08
+- 更紧更快的追踪 → 更多 trailing 出场, 更少 SL 和 Timeout
+- **决定**: 注册为 P7_mega_trail 模拟盘策略观察
+
+### P7_mega_trail 模拟盘注册 (2026-04-05)
+- 使用实盘相同的 Keltner 4 阶段信号 + Mega 追踪参数 (T0.5/D0.15)
+- V3 ATR Regime 适配: 低波 T0.7/D0.25, 正常 T0.5/D0.15, 高波 T0.4/D0.10
+- PaperPosition 新增 trailing stop 机制（之前只支持 SL/TP）
+- max_hold_bars=15, max_positions=2
+- 观察目标: 实盘环境下 trailing 触发频率、MFE/MAE、与实盘 Keltner 的对比

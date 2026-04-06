@@ -204,6 +204,7 @@ def run_variant(data: DataBundle, label: str, *, verbose: bool = True, **engine_
     stats['m15_entries'] = engine.m15_entry_count
     stats['skipped_choppy'] = engine.skipped_choppy
     stats['skipped_neutral_m15'] = engine.skipped_neutral_m15
+    stats['skipped_ema_slope'] = getattr(engine, 'skipped_ema_slope', 0)
     stats['elapsed_s'] = round(elapsed, 1)
     stats['_trades'] = trades
     stats['_equity_curve'] = engine.equity_curve

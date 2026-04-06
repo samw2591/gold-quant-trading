@@ -128,6 +128,10 @@ class BacktestEngine:
         rsi_sell_threshold: float = 0,
         # ORB
         orb_max_hold_m15: int = 0,
+        # Keltner max hold override (in M15 bars, 0 = use config default)
+        keltner_max_hold_m15: int = 0,
+        # EMA slope filter: block BUY when EMA100 slope < 0 over N bars
+        block_buy_ema_slope: int = 0,
         # Lot sizing
         atr_regime_lots: bool = False,
         # Transaction cost
@@ -194,6 +198,8 @@ class BacktestEngine:
 
         # ORB
         self._orb_max_hold_m15 = orb_max_hold_m15
+        self._keltner_max_hold_m15 = keltner_max_hold_m15
+        self._block_buy_ema_slope = block_buy_ema_slope
 
         # Lots
         self._atr_regime_lots = atr_regime_lots
@@ -230,6 +236,7 @@ class BacktestEngine:
         self.m15_entry_count = 0
         self.skipped_choppy = 0
         self.skipped_neutral_m15 = 0
+        self.skipped_ema_slope = 0
 
     # ── Main loop ─────────────────────────────────────────────
 
@@ -386,6 +393,8 @@ class BacktestEngine:
                     max_hold = 15
                 elif pos.strategy == 'orb' and self._orb_max_hold_m15 > 0:
                     max_hold = self._orb_max_hold_m15
+                elif pos.strategy == 'keltner' and self._keltner_max_hold_m15 > 0:
+                    max_hold = self._keltner_max_hold_m15
                 else:
                     max_hold_h1 = config.STRATEGIES.get(pos.strategy, {}).get('max_hold_bars', 15)
                     max_hold = max_hold_h1 * 4
@@ -447,6 +456,17 @@ class BacktestEngine:
 
         if not signals:
             return
+
+        # EMA slope filter: block BUY when EMA100 is declining
+        if self._block_buy_ema_slope > 0 and h1_window is not None and len(h1_window) >= self._block_buy_ema_slope:
+            ema_now = float(h1_window.iloc[-1].get('EMA100', 0))
+            ema_prev = float(h1_window.iloc[-self._block_buy_ema_slope].get('EMA100', 0))
+            if ema_now < ema_prev:
+                signals = [s for s in signals if s.get('direction') != 'BUY']
+                if not signals:
+                    self.skipped_ema_slope += 1
+                    return
+
         self._process_signals(signals, bar_time, source='H1')
 
     # ── M15 Entries ───────────────────────────────────────────
