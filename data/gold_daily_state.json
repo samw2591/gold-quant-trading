@@ -1,19 +1,19 @@
 {
-  "date": "2026-04-06",
-  "pnl": -46.47,
-  "loss_count": 1,
+  "date": "2026-04-07",
+  "pnl": 0.0,
+  "loss_count": 0,
   "macro_sentiment": {
     "label": "BULLISH",
-    "score": 0.2571,
-    "confidence": 0.3856,
+    "score": 0.3,
+    "confidence": 0.45,
     "keyword_score": 1.0,
-    "finbert_score": -0.1017,
-    "vader_score": 0.0395,
+    "finbert_score": -0.0331,
+    "vader_score": 0.0827,
     "direction_bias": "BUY",
-    "news_summary": "\u5206\u6790194\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.26)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, April 6: Gold strengthens after improved jobs report and mixed war news - Yahoo Finance | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold Price Today on April 06, 2026 - USA Today"
+    "news_summary": "\u5206\u6790178\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u770b\u6da8(\u5f97\u52060.30)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, April 6: Gold strengthens after improved jobs report and mixed war news - Yahoo Finance | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Today on April 06, 2026 - USA Today"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-06T14:58:04.158055",
+    "timestamp": "2026-04-06T15:58:24.924870",
     "dxy": 100.03,
     "dxy_prev": 99.65,
     "dxy_change_pct": 0.38,

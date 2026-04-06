@@ -41,20 +41,34 @@
       "orb_n": 0,
       "orb_pnl": 0,
       "equity": 2237.83
+    },
+    {
+      "date": "2026-04-06",
+      "pnl": -46.47,
+      "trades": 1,
+      "wins": 0,
+      "losses": 1,
+      "kc_n": 1,
+      "kc_pnl": -46.47,
+      "rsi_n": 0,
+      "rsi_pnl": 0,
+      "orb_n": 0,
+      "orb_pnl": 0,
+      "equity": 2191.36
     }
   ],
   "summary": {
-    "observation_days": 2,
-    "total_trades": 0,
+    "observation_days": 3,
+    "total_trades": 1,
     "total_wins": 0,
-    "total_losses": 0,
-    "cum_pnl": 0.0,
-    "cum_win_rate": 0,
+    "total_losses": 1,
+    "cum_pnl": -46.47,
+    "cum_win_rate": 0.0,
     "cum_rr": 0.0,
-    "cum_kc_pnl": 0,
+    "cum_kc_pnl": -46.47,
     "cum_rsi_pnl": 0,
     "cum_orb_pnl": 0,
-    "last_updated": "2026-04-06 00:01:59.371115"
+    "last_updated": "2026-04-07 00:00:26.083870"
   },
   "alerts": []
 }

@@ -113,5 +113,15 @@
         "pnl": -46.47
       }
     }
+  },
+  {
+    "date": "2026-04-07",
+    "equity": 2191.36,
+    "total_pnl": 191.36,
+    "daily_pnl": 0.0,
+    "daily_trades": 0,
+    "daily_wins": 0,
+    "daily_losses": 0,
+    "strategies": {}
   }
 ]
