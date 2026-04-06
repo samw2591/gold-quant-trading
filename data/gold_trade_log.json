@@ -1391,5 +1391,16 @@
       "atr_percentile": 0.02
     },
     "time": "2026-04-06T17:05:59.962052"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16421250,
+    "strategy": "keltner",
+    "direction": "BUY",
+    "entry_price": 4701.33,
+    "lots": 0.01,
+    "profit": -46.94,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-07T01:13:57.895671"
   }
 ]
