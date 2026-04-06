@@ -4,16 +4,16 @@
   "loss_count": 1,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": -0.0575,
-    "confidence": 0.0863,
+    "score": 0.2197,
+    "confidence": 0.3296,
     "keyword_score": 1.0,
-    "finbert_score": -0.3186,
-    "vader_score": 0.1035,
+    "finbert_score": -0.2007,
+    "vader_score": 0.1,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790196\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.06)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: FXStreet\u2019s data shows gold prices in India declined, with Monday\u2019s figures reflecting a drop overall - VT Markets | Gold Sees Historic Volatility as Market Weighs Rates and Inflation - Investing.com | XAU/USD: Gold Prices Inch Higher as Traders Await Iran Details, US Inflation Print - TradingView"
+    "news_summary": "\u5206\u6790199\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.22)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold price today, Monday, April 6: Gold strengthens after improved jobs report and mixed war news - Yahoo Finance | Will gold price now head towards $4800 or slip below $4500 and silver move to reach $80 or fall near $60? - The Economic Times | Gold Price Under Pressure: Navigating the Dual Threat of Rising Rates and a Stronger Dollar - CryptoRank"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-06T10:51:19.073853",
+    "timestamp": "2026-04-06T11:51:31.207526",
     "dxy": 100.03,
     "dxy_prev": 99.65,
     "dxy_change_pct": 0.38,
