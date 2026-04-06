@@ -34,6 +34,12 @@
   - `config.py` 新增 `FRED_API_KEY`, `MACRO_ENABLED`, `MACRO_CACHE_TTL`, `MACRO_CACHE_PATH`
   - `requirements.txt` 新增 `fredapi`, `scipy`
   - `data/macro_history.csv` 已生成（2015-2026, 2935天×10列）
+- **2026-04-05**: **日内亏损递减手数上限** (`config.py` + `risk_manager.py` + `gold_trader.py`)
+  - 替代旧的 `get_lot_scale()` 缩减系数（0→1.0, 1→0.7, 2→0.5...），改为直接控制手数上限
+  - `MAX_LOT_SIZE` 0.03 → **0.05**（绝对安全上限）
+  - `MAX_LOT_CAP_BY_LOSSES`: 0笔亏损→**0.05**(ATR自由计算), 1笔→**0.03**, 2笔→**0.02**, 3笔+→**0.01**
+  - `risk_manager.get_lot_scale()` → `get_max_lot_cap()`，返回当前允许的最大手数而非缩减比例
+  - ATR 自动调仓（`calc_auto_lot_size`）仍然生效，`get_max_lot_cap()` 是硬上限
 - **2026-04-05**: **SL 4.5 ATR + Cooldown 30min 实装** (`config.py` + `strategies/signals.py` + `risk_manager.py` + `gold_trader.py`)
   - `strategies/signals.py`: `ATR_SL_MULTIPLIER` 3.5 → **4.5**（回测: Sharpe 1.03→1.35, MaxDD $732→$559, 全维度改善）
   - `config.py`: `COOLDOWN_BARS=3`(3h) → `COOLDOWN_MINUTES=30`(30min)（回测: Sharpe 1.03→1.17, 所有点差下均优于3h）
@@ -111,6 +117,7 @@
 - **Choppy 阈值调整**: range=0.000，完全无影响
 - **kc_only=0.65**: Sharpe 1.86 但是阈值悬崖。本质是关闭 M15 RSI，非渐进优化
 - **点差优化/换交易商**: 短期不换交易商，以当前点差为既定条件
+- **事件日防御("带伞策略")**: EXP28 穷举 11 把伞×3 触发器×6 折验证，全部无效或有害。V3+Adaptive+Cooldown 已是充分防御
 
 ## 五日研究总结 — 核心认知 (2026-04-05)
 
@@ -177,6 +184,7 @@
 - JSON 文件写入必须用原子操作（`tempfile` + `os.replace`），否则进程崩溃会导致数据损坏
 - `strategies/signals.py` 中统一 `import config` 时，`_gap_cfg.` 和 `_scan_cfg.` 的前缀替换会误伤，需要逐个确认
 - PowerShell 不支持 bash heredoc 语法，git commit 消息需要用单行
+- **2026-04-05 服务器测试最佳实践**: 远程服务器不一定有 jupyter/nbformat，默认用独立 `.py` 脚本测试。流程：①本地写 `run_expXX.py`（`sys.path.insert(0, ...)` 指向项目根目录）→ ②推送 GitHub → ③服务器 `git pull && python -u run_expXX.py 2>&1 | tee logs/expXX.log`。`-u` 确保 print 实时输出，`tee` 同时显示和保存日志。不再使用 `jupyter nbconvert --execute`
 - **CLOSE_DETECTED 重复检测**：MT4 桥接文件读写竞争可能导致持仓短暂"消失"又重现，`sync_positions` 会误判为平仓并重复计入 PnL。已加入 `_ticket_already_closed()` 防重复机制
 - **模拟盘 P5/P6 零触发**：P5 的 tick volume 放量 1.5x 阈值过严（MT4 tick volume 波动模式不同于真实成交量）；P6 的 13-16 时间窗口仅覆盖 4 根 H1 K 线，叠加 EMA 交叉条件后触发概率极低
 - **市场分析必须先查日历再归因**：分析金价大跌时只搜了"为什么跌"，遗漏了当天Liberation Day关税生效这一已知事件。教训：①盘前/分析前先确认当日经济日历和政策事件（关税、FOMC、非农等）；②大跌通常是多因素共振，找到一个原因后必须继续问"还有什么"；③异常数据（如原油-14.5%）要从多角度解释，不能单因素归因就满足；④搜索要多角度——不仅搜"为什么跌"，还要搜"今天有什么事件"
@@ -201,6 +209,15 @@
   - 首次测试: 30 个活跃市场, 风险指数=28.8 (LOW), 黄金情绪增量=+0.095
   - 5 分钟缓存，不阻塞主交易循环
   - 灵感来源: pizzint.watch "Nothing Ever Happens Index"（基于 Polymarket 的地缘风险聚合指标）
+- **2026-04-05**: **Polymarket 监控 v2 — 接入 pizzint.watch NEH API** (`sentiment/polymarket_monitor.py`)
+  - 数据源从 Gamma API 14 关键词搜索改为 pizzint.watch `/api/neh-index/doomsday` 端点
+  - NEH API 返回 ~35 个专家 curated 的地缘政治市场（覆盖 americas/middle_east/europe/asia/global）
+  - API 调用从 14 次降为 1 次，数据质量更高（人工精选 basket vs 关键词搜索噪声）
+  - 保留黄金方向性判断：自动按关键词分类 bullish/bearish，pizzint.watch 不提供此功能
+  - 新增三层权重：区域权重（中东×1.5, 亚太×1.3）× 关键词加成（invade×1.5, tariff×0.8）× 交易量权重
+  - 接口完全向后兼容：`get_risk_index()` 返回格式不变，`sentiment_engine.py` 无需修改
+  - 测试: 35 个市场, 风险指数=13.6 (LOW), 冠军="入侵伊朗 57.5%"
+  - 风险指数从旧版 32 降至 13.6：旧版等权平均被低质量搜索结果抬高，新版加权更精确
 
 ## 系统Bug修复记录
 
@@ -660,6 +677,8 @@
 | Adaptive Trend | 0.35/0.60 | Phase 5 |
 | Max Positions | 2 | 风控 |
 | Risk per Trade | $50 (2.5%) | 风控 |
+| **MAX_LOT_SIZE** | **0.05** | 绝对安全上限 |
+| **亏损递减上限** | 0→0.05(ATR自由), 1→0.03, 2→0.02, 3+→0.01 | 替代旧 lot_scale 缩减 |
 
 ### Phase 6: 细粒度阈值扫描结果 (2026-04-04, 服务器运行)
 
@@ -756,7 +775,7 @@
 - [ ] **中期**: 测试缩短最大持仓时间从 60 bars 到 24-32 bars（Timeout 60 bars 亏损 $12,287，占总损失最大项）
 - [ ] **中期**: 测试 Mega Grid 最优 T0.5/D0.15 在 $0.30/$0.50 带成本下的表现
 - [ ] **低优先**: 考虑连续 5+ SELL 后减仓（均值 -$0.07/笔，7+ SELL 后 -$0.34/笔）
-- [ ] 渐进清理剩余 7 个旧引擎脚本（backtest_overfit_test, backtest_stress_test, backtest_trend_day, backtest_round3_combo, backtest_overnight, backtest_round2, backtest_verify_migration）
+- [x] ~~渐进清理剩余 7 个旧引擎脚本~~ → 2026-04-05 已删除全部 7 个（共 ~3055 行），无外部依赖，git 历史可恢复
 - [x] ~~引入宏观因子回测：经济日历事件标记作为第一个宏观因子纳入回测框架~~ → 已建立 `macro/` 数据管道（P1），DXY/VIX/Brent/US10Y + FRED(TIPS/US2Y/BEI/利差) 11年日线已下载
 - [ ] DXY 日线作为日级别方向过滤（P6 策略的实盘验证版本）— 数据管道+regime检测器已就绪
 - [x] ~~注册 FRED API key 并配置到环境变量，补全 TIPS 10Y/US2Y/2-10利差/BEI 5Y 数据~~ → 已完成，18列数据全部下载
@@ -766,6 +785,10 @@
 - [x] ~~编写 `backtest_macro_regime.py` 验证宏观regime过滤对策略的实际影响~~ → 宏观过滤反而变差，Regime分析价值在诊断不在过滤
 - [x] ~~编写 `backtest_statistical_validation.py` 对 C12/Combo 运行 CSCV/PBO 验证~~ → PSR仅Adaptive通过，PBO=0.00零过拟合风险
 - [x] ~~编写 `backtest_spread_model.py` 对比三种点差模型的回测差异~~ → $0.30 vs $0.50差异巨大，Session-Aware最接近真实
+- [x] ~~**EXP28**: 事件日防御("带伞策略")穷举验证~~ → 全部防御无效或有害，不实装。V3+Adaptive+Cooldown 已充分
+- [x] ~~根据 EXP28 结果决定是否实装事件日自动防御机制~~ → 否决，内建防御已够
+- [ ] **阴跌缓解**: 测试 EMA100 斜率为负时禁止做多（针对 S4 慢跌场景）
+- [ ] **阴跌缓解**: 测试周度累计回撤超阈值自动减仓到 MaxPos=1
 
 ## P2/P3/P4 实验结果 (2026-04-04, 服务器运行)
 
@@ -955,3 +978,59 @@
    - 如果伊朗宣布停火 → 盘中观察, 若连续 3 笔止损考虑手动暂停 1-2 小时
    - 如果出现流动性危机(VIX>40) → 考虑手动改 `MAX_POSITIONS=1` 临时减仓
    - 关税新闻不需特殊处理(S6 证明策略在鞭打行情中依然盈利)
+
+## EXP28 事件日防御测试 — "带伞策略" (2026-04-05)
+
+### 设计动机
+
+- 核心问题: 能否在高影响事件前预设防御参数("伞"), 事件发生则减少回撤, 不发生则零代价?
+- 灵感: "明天可能下雨 → 提前带伞 → 下雨打伞，不下雨也没损失"
+- 关键约束: **外部信息（新闻/VIX变化）有延迟**，金价往往率先反应，等看到新闻已经滞后
+
+### 信息延迟问题
+
+- **2026-04-05 认知更新**: 信息传导链 — T+0 内部人/算法 → T+5min 路透彭博 → T+15min 新闻 → T+30min+ 我们的舆情/VIX
+- 所以用"新闻"或"VIX变化"触发防御 = 雨停了再打伞
+- **EXP28 设计了三层触发器对比延迟影响**: `oracle_event`(后验), `prev_day`(滞后1天), `prev_day+VIX>25`(状态驱动，不受延迟影响)
+- **最快的信号是价格本身** — 策略已有的 V3 ATR Regime、Intraday Trend Gating、ATR自适应止损都是零延迟的价格驱动防御
+
+### 阴跌场景深度分析 (S4)
+
+- **2026-04-05 认知更新**: 阴跌不是"无解"，而是趋势跟踪策略的结构性弱点
+- S4 数据解剖: 6个月397笔，胜率65%仍亏$525 — 问题是23笔止损(-$1056)吃掉了160笔trailing(+$1087)的利润
+- 阴跌特征: 波动率低 + 方向一致 = 假突破频繁 + 追踪止盈没空间
+- **正确应对: 不是让策略在阴跌中赚钱（会破坏趋势市优势），而是"少亏就是赢"**
+- 可能的缓解方向: ①连续亏损熔断加强 ②周度回撤监控自动减仓 ③EMA100斜率为负时禁止做多
+
+### 测试框架
+
+| Part | 内容 | 目的 |
+|---|---|---|
+| Part 1 | 事件日标注 | 极端波动日(range>2×ATR)、大幅单边(|ret|>1.5%)、VIX飙升(>15%)，构建无前瞻触发信号 |
+| Part 2 | 全量代价穷举 | 11把伞(MaxPos=1/Choppy↑/Cooldown↑/SL↑/Trail松紧/No_V3)的11年Sharpe/PnL代价 |
+| Part 3 | 混合回测 | 非事件日默认参数 + 事件日防御参数，测"只在需要时打伞"的效果 |
+| Part 4 | K-Fold验证 | 6折验证最佳伞+触发器组合的稳定性 |
+
+- 脚本: `run_exp28.py` (独立 .py，不依赖 jupyter)
+- 结果: `data/exp28_shield_results.json`
+
+### EXP28 结果 (2026-04-05, 服务器运行完成)
+
+- **Baseline**: N=10050, Sharpe=2.16, PnL=$12,845, MaxDD=$461
+
+**Part 1 事件日分类**:
+  - 极端波动日(range>2×ATR) 占 76.1%（几乎每天都是"事件日"）
+  - 事件日内 0 笔交易被单独归类，所有交易都在"正常日"
+  - 触发器覆盖 76% 的交易日 → hybrid 等于全量，Part 3 全部 [SAME]
+
+**Part 2 全量防御排名**:
+  - **免费(无损)**: Choppy 0.40-0.50、Trail tight/loose — 全部 Sharpe +0.00（无效果）
+  - **近乎免费**: MaxPos=1 Sharpe +0.01, SL=5.5 Sharpe +0.03, SL=6.0 Sharpe +0.07
+  - **有害**: Cooldown=60min -0.10, Cooldown=120min -0.23, No_V3 -0.28
+  - **V3 确认**: 关闭 V3 Sharpe 从 2.16 降到 1.88（-$2,032），V3 是真实结构性 alpha
+
+**Part 3 Hybrid**: 15 个组合×3 触发器 = 全部 [SAME]（触发器覆盖率太高导致无差异）
+
+**Part 4 K-Fold**: 3 个最佳组合 × 6 折 = 全部 TIE（0/6 折赢）
+
+**结论**: ❌ **不实装任何额外防御**。策略的内建防御（V3 + Adaptive + Cooldown 30min）已充分，额外防御要么零效果要么有害。手动 VIX>40 减仓保留作极端应急操作

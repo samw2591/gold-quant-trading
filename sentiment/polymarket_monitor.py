@@ -1,19 +1,19 @@
 """
-Polymarket 地缘政治风险监控
-============================
-通过 Polymarket Gamma API (免认证) 追踪高影响力地缘政治事件的
-发生概率，聚合为一个 0-100 的风险指数。
+Polymarket 地缘政治风险监控 (v2 — NEH API)
+=============================================
+通过 pizzint.watch 的 NEH (Nothing Ever Happens) API 获取经过专家筛选的
+地缘政治预测市场数据，计算综合风险指数和黄金方向性影响。
 
-类似 pizzint.watch 的 "Nothing Ever Happens Index"，但直接集成到
-我们的舆情系统中。
+v1 使用 14 个关键词搜索 Polymarket，v2 改为接入 pizzint.watch 的 curated
+basket（~34 个精选市场），数据质量更高，API 调用从 14 次降为 1 次。
 
-数据源: https://gamma-api.polymarket.com/markets
-文档: https://docs.polymarket.com/developers/gamma-markets-api
+数据源: https://www.pizzint.watch/api/neh-index/doomsday
+原始数据: Polymarket prediction markets
 
 核心逻辑:
-  - 维护一组与黄金/避险相关的 Polymarket 搜索关键词
-  - 每次调用获取相关市场的最新概率
-  - 按影响力加权，计算综合地缘风险指数 (0-100)
+  - 一次 API 调用获取全部 curated 地缘市场及其实时概率
+  - 按事件类型自动判断对黄金的影响方向 (bullish/bearish)
+  - 加权聚合为综合风险指数 (0-100)
   - 0-30: 低风险   30-60: 中风险   60-85: 高风险   85-100: 极端风险
 """
 
@@ -25,42 +25,44 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-GAMMA_API_BASE = "https://gamma-api.polymarket.com"
+NEH_API_URL = "https://www.pizzint.watch/api/neh-index/doomsday"
 REQUEST_TIMEOUT = 15
 
-# ═══════════════════════════════════════════════════════════════
-# 追踪的地缘政治主题及其对黄金的影响权重
-# ═══════════════════════════════════════════════════════════════
+# 区域权重：中东和亚太冲突对黄金影响更大
+REGION_WEIGHT = {
+    "middle_east": 1.5,
+    "asia": 1.3,
+    "europe": 1.2,
+    "americas": 1.0,
+    "global": 1.0,
+}
 
-GEOPOLITICAL_QUERIES = [
-    # (搜索关键词, 黄金影响权重, 概率方向: "yes_bullish"=YES发生利多黄金, "yes_bearish"=YES发生利空)
-    ("invade Iran", 3.0, "yes_bullish"),
-    ("Iran war", 3.0, "yes_bullish"),
-    ("Iran strike", 2.5, "yes_bullish"),
-    ("China Taiwan", 3.0, "yes_bullish"),
-    ("NATO", 2.5, "yes_bullish"),
-    ("nuclear", 2.5, "yes_bullish"),
-    ("World War", 3.0, "yes_bullish"),
-    ("military action", 2.0, "yes_bullish"),
-    ("government shutdown", 1.5, "yes_bullish"),
-    ("recession", 2.0, "yes_bullish"),
-    ("rate cut", 1.5, "yes_bullish"),
-    ("ceasefire", 1.5, "yes_bearish"),
-    ("tariff", 1.5, "yes_bullish"),
-    ("sanctions", 1.5, "yes_bullish"),
+# 关键词 → 黄金影响方向和额外权重加成
+# "bullish": 事件发生利多黄金（战争/冲突/危机）
+# "bearish": 事件发生利空黄金（和平/降级/停火）
+_BULLISH_KEYWORDS = [
+    ("invade", 1.5), ("war", 1.5), ("strike", 1.3), ("attack", 1.3),
+    ("military", 1.2), ("clash", 1.2), ("nuclear", 1.5), ("nato", 1.3),
+    ("draft", 1.0), ("escalat", 1.3), ("blockade", 1.3), ("conflict", 1.2),
+    ("ground operation", 1.2), ("insurrection", 1.0), ("capture", 1.0),
+    ("sanction", 1.0), ("tariff", 0.8), ("recession", 1.0), ("shutdown", 0.8),
+    ("regime fall", 1.2), ("canal", 0.8),
 ]
 
-SEARCH_API = f"{GAMMA_API_BASE}/public-search"
+_BEARISH_KEYWORDS = [
+    ("ceasefire", 1.3), ("peace", 1.3), ("de-escalat", 1.3),
+    ("deal", 1.0), ("negotiat", 1.0), ("withdraw", 1.0),
+]
 
 
 class PolymarketMonitor:
-    """从 Polymarket 获取地缘政治风险指数。"""
+    """从 pizzint.watch NEH API 获取地缘政治风险指数。"""
 
     def __init__(self):
         self._session = requests.Session()
         self._session.headers.update({
             'Accept': 'application/json',
-            'User-Agent': 'GoldQuantTrader/1.0',
+            'User-Agent': 'GoldQuantTrader/2.0',
         })
         self._cache: Dict = {}
         self._cache_ts: float = 0
@@ -74,7 +76,7 @@ class PolymarketMonitor:
                 "risk_index": float (0-100),
                 "risk_level": str ("LOW"/"MEDIUM"/"HIGH"/"EXTREME"),
                 "top_risks": [{"question": str, "probability": float, "weight": float}, ...],
-                "gold_sentiment_boost": float (-0.3 to +0.3, 可叠加到舆情分数),
+                "gold_sentiment_boost": float (-0.3 to +0.3),
                 "market_count": int,
                 "error": str or None,
             }
@@ -83,14 +85,19 @@ class PolymarketMonitor:
         if self._cache and (now - self._cache_ts) < self._cache_ttl:
             return self._cache
 
-        markets = self._fetch_relevant_markets()
-        if markets is None:
-            return self._error_result("API 请求失败")
+        raw = self._fetch_neh_markets()
+        if raw is None:
+            return self._error_result("NEH API 请求失败")
 
-        if not markets:
+        markets = raw.get("markets", [])
+        low_volume = raw.get("lowVolume", [])
+        all_markets = markets + low_volume
+
+        if not all_markets:
             return self._default_result()
 
-        risk_index, top_risks, sentiment_boost = self._compute_index(markets)
+        enriched = self._enrich_markets(all_markets)
+        risk_index, top_risks, sentiment_boost = self._compute_index(enriched)
         risk_level = self._classify_risk(risk_index)
 
         result = {
@@ -98,283 +105,119 @@ class PolymarketMonitor:
             "risk_level": risk_level,
             "top_risks": top_risks[:5],
             "gold_sentiment_boost": round(sentiment_boost, 3),
-            "market_count": len(markets),
+            "market_count": len(all_markets),
             "error": None,
         }
 
         self._cache = result
         self._cache_ts = now
+        logger.info(
+            f"[Polymarket/NEH] {len(all_markets)} 个市场, "
+            f"风险指数 {risk_index:.1f} ({risk_level}), "
+            f"冠军: {top_risks[0]['question'][:50]}... ({top_risks[0]['probability']:.0f}%)"
+            if top_risks else
+            f"[Polymarket/NEH] {len(all_markets)} 个市场, 无高风险事件"
+        )
         return result
 
-    def _fetch_relevant_markets(self) -> Optional[List[Dict]]:
-        """通过 /public-search 端点搜索地缘政治相关市场。"""
-        all_markets = []
-        seen_ids = set()
+    def _fetch_neh_markets(self) -> Optional[Dict]:
+        """从 pizzint.watch NEH API 获取 curated 市场数据。"""
+        try:
+            resp = self._session.get(NEH_API_URL, timeout=REQUEST_TIMEOUT)
+            if resp.status_code != 200:
+                logger.warning(f"[Polymarket/NEH] API 返回 {resp.status_code}")
+                return None
+            return resp.json()
+        except requests.RequestException as e:
+            logger.warning(f"[Polymarket/NEH] 请求失败: {e}")
+            return None
 
-        for query, weight, direction in GEOPOLITICAL_QUERIES:
-            try:
-                resp = self._session.get(
-                    SEARCH_API,
-                    params={"q": query, "limit_per_type": "5"},
-                    timeout=REQUEST_TIMEOUT,
-                )
+    def _enrich_markets(self, markets: List[Dict]) -> List[Dict]:
+        """为每个市场添加黄金方向性判断和权重。"""
+        enriched = []
+        for mkt in markets:
+            label = mkt.get("label", "")
+            price = mkt.get("price", 0)
+            region = mkt.get("region", "global")
+            volume = mkt.get("volume", 0)
 
-                if resp.status_code != 200:
-                    continue
-
-                data = resp.json()
-                events = data.get("events", [])
-
-                for event in events:
-                    for mkt in event.get("markets", []):
-                        # 跳过已关闭的市场
-                        if mkt.get("closed"):
-                            continue
-
-                        mkt_id = mkt.get("id") or mkt.get("condition_id", "")
-                        if not mkt_id or mkt_id in seen_ids:
-                            continue
-
-                        # 只保留概率在 0.02-0.98 之间的活跃市场
-                        prob = self._extract_yes_probability(mkt)
-                        if prob is None or prob <= 0.02 or prob >= 0.98:
-                            continue
-
-                        # 过滤已基本确定的日级市场
-                        if self._is_stale_daily_market(mkt):
-                            continue
-
-                        seen_ids.add(mkt_id)
-                        question = (mkt.get("question") or "").lower()
-                        actual_weight, actual_dir = self._refine_weight_direction(
-                            question, weight, direction
-                        )
-                        mkt["_weight"] = actual_weight
-                        mkt["_direction"] = actual_dir
-                        mkt["_query"] = query
-                        all_markets.append(mkt)
-
-            except requests.RequestException as e:
-                logger.debug(f"[Polymarket] 查询 '{query}' 失败: {e}")
+            if price <= 0.01 or price >= 0.99:
                 continue
 
-        # 去重: 同一主题的日级市场只保留概率最高的一个
-        deduped = self._dedup_daily_markets(all_markets)
-        logger.info(f"[Polymarket] 获取到 {len(all_markets)} 个市场, 去重后 {len(deduped)} 个")
-        return deduped
+            direction, kw_boost = self._classify_gold_direction(label)
+            region_w = REGION_WEIGHT.get(region, 1.0)
+            vol_w = min(1.5, max(0.5, (volume / 500_000) ** 0.3)) if volume > 0 else 0.5
+            weight = region_w * kw_boost * vol_w
+
+            enriched.append({
+                "question": label,
+                "probability": price,
+                "weight": weight,
+                "direction": direction,
+                "region": region,
+                "volume": volume,
+            })
+        return enriched
 
     @staticmethod
-    def _dedup_daily_markets(markets: List[Dict]) -> List[Dict]:
-        """同一主题的日级市场 (April 4/5/6/7...) 只保留最接近 50% 的一个。
+    def _classify_gold_direction(label: str) -> Tuple[str, float]:
+        """根据市场标题判断对黄金的影响方向和权重加成。"""
+        q = label.lower()
 
-        这避免了 "Iran military action on April 4/5/6/7" 四个市场分别计入、
-        导致单一事件被 4x 权重放大的问题。
-        """
-        import re
-
-        clusters: Dict[str, List[Dict]] = {}
-        non_daily = []
-
-        date_pattern = re.compile(
-            r'\b(?:on|by)\s+(\w+)\s+\d{1,2},?\s+2026'
-        )
-
-        for mkt in markets:
-            question = mkt.get("question", "")
-            match = date_pattern.search(question)
-            if match:
-                # 去掉日期部分作为聚类 key
-                base = date_pattern.sub("DATE", question).strip()
-                clusters.setdefault(base, []).append(mkt)
-            else:
-                non_daily.append(mkt)
-
-        # 每个聚类只保留概率最接近 0.5 的市场（信息量最大）
-        for base, group in clusters.items():
-            if len(group) <= 1:
-                non_daily.extend(group)
-            else:
-                best = min(
-                    group,
-                    key=lambda m: abs(
-                        (PolymarketMonitor._static_extract_yes_prob(m) or 0.5) - 0.5
-                    ),
-                )
-                non_daily.append(best)
-
-        return non_daily
-
-    def _refine_weight_direction(
-        self, question: str, default_weight: float, default_dir: str
-    ) -> Tuple[float, str]:
-        """根据问题文本微调权重和方向。
-
-        关键原则:
-        - "yes_bullish" = 事件发生利多黄金 (战争/危机/衰退)
-        - "yes_bearish" = 事件发生利空黄金 (和平/降息/好转)
-        """
-        q = question.lower()
-
-        # 和平/缓和类: YES发生 = 利空黄金 (减少避险需求)
-        bearish_kw = ["ceasefire", "peace deal", "de-escalat", "nuclear deal"]
-        for kw in bearish_kw:
+        for kw, boost in _BEARISH_KEYWORDS:
             if kw in q:
-                return default_weight, "yes_bearish"
+                return "yes_bearish", boost
 
-        # 冲突/危机类: YES发生 = 利多黄金 (增加避险需求)
-        bullish_kw = [
-            "invade", "war", "strike", "attack", "military",
-            "nuclear strike", "clash", "blockade", "escalat", "conflict",
-            "recession", "shutdown", "default", "tariff", "sanction",
-            "withdraw from nato", "leave nato",
-        ]
-        for kw in bullish_kw:
+        for kw, boost in _BULLISH_KEYWORDS:
             if kw in q:
-                return default_weight, "yes_bullish"
+                return "yes_bullish", boost
 
-        return default_weight, default_dir
-
-    @staticmethod
-    def _is_stale_daily_market(mkt: Dict) -> bool:
-        """过滤掉即将到期的日级市场 (概率极端 = 已基本确定)。"""
-        question = (mkt.get("question") or "").lower()
-        import re
-        # 匹配 "on April 2, 2026" 或 "by March 29, 2026" 等精确日期
-        date_pattern = r'(?:on|by)\s+\w+\s+\d{1,2},?\s+2026'
-        if re.search(date_pattern, question):
-            prob = PolymarketMonitor._static_extract_yes_prob(mkt)
-            if prob is not None and (prob > 0.90 or prob < 0.10):
-                return True
-        return False
-
-    @staticmethod
-    def _static_extract_yes_prob(mkt: Dict) -> Optional[float]:
-        """静态版本的概率提取。"""
-        tokens = mkt.get("tokens")
-        if tokens and isinstance(tokens, list):
-            for token in tokens:
-                outcome = (token.get("outcome") or "").lower()
-                if outcome == "yes":
-                    price = token.get("price")
-                    if price is not None:
-                        return float(price)
-        prices_str = mkt.get("outcomePrices")
-        if prices_str:
-            try:
-                import json
-                prices = json.loads(prices_str) if isinstance(prices_str, str) else prices_str
-                if isinstance(prices, list) and len(prices) >= 1:
-                    return float(prices[0])
-            except (ValueError, TypeError):
-                pass
-        return None
-
-    def _infer_weight_direction(self, question: str) -> Tuple[float, str]:
-        """根据问题文本推断影响权重和方向。"""
-        q = question.lower()
-
-        # 利多黄金的事件（战争、危机、衰退）
-        bullish_keywords = {
-            "invade": 3.0, "war": 3.0, "strike": 2.5, "attack": 2.5,
-            "nuclear": 3.0, "conflict": 2.5, "military": 2.0,
-            "recession": 2.0, "default": 2.0, "shutdown": 1.5,
-            "tariff": 1.5, "sanction": 1.5, "crisis": 2.0,
-            "escalat": 2.5,
-        }
-        for kw, w in bullish_keywords.items():
-            if kw in q:
-                return w, "yes_bullish"
-
-        # 利空黄金的事件（和平、降级）
-        bearish_keywords = {
-            "ceasefire": 1.5, "peace": 1.5, "de-escalat": 1.5,
-            "deal": 1.0, "negotiat": 1.0,
-        }
-        for kw, w in bearish_keywords.items():
-            if kw in q:
-                return w, "yes_bearish"
-
-        return 1.0, "yes_bullish"
+        return "yes_bullish", 1.0
 
     def _compute_index(self, markets: List[Dict]) -> Tuple[float, List[Dict], float]:
         """计算综合风险指数和黄金情绪增量。"""
         risk_contributions = []
 
         for mkt in markets:
-            question = mkt.get("question") or "Unknown"
-            weight = mkt.get("_weight", 1.0)
-            direction = mkt.get("_direction", "yes_bullish")
+            prob = mkt["probability"]
+            weight = mkt["weight"]
+            direction = mkt["direction"]
 
-            # 获取 YES 概率
-            prob = self._extract_yes_probability(mkt)
-            if prob is None:
-                continue
-
-            # 根据方向调整: yes_bullish → 概率越高风险越大
-            # yes_bearish → 概率越高风险越小（和平是好事）
             if direction == "yes_bearish":
                 risk_contribution = (1.0 - prob) * weight
-                sentiment_contribution = -(prob * weight)  # 和平利空黄金
+                sentiment_contribution = -(prob * weight)
             else:
                 risk_contribution = prob * weight
-                sentiment_contribution = prob * weight  # 冲突利多黄金
+                sentiment_contribution = prob * weight
 
             risk_contributions.append({
-                "question": question[:80],
+                "question": mkt["question"][:80],
                 "probability": round(prob * 100, 1),
-                "weight": weight,
+                "weight": round(weight, 2),
                 "risk_contribution": risk_contribution,
                 "sentiment_contribution": sentiment_contribution,
                 "direction": direction,
+                "region": mkt["region"],
             })
 
         if not risk_contributions:
             return 0.0, [], 0.0
 
-        # 风险指数: 加权平均概率 × 100
         total_weight = sum(r["weight"] for r in risk_contributions)
         weighted_risk = sum(r["risk_contribution"] for r in risk_contributions)
         risk_index = (weighted_risk / total_weight) * 100 if total_weight > 0 else 0
 
-        # 黄金情绪增量: 映射到 -0.3 ~ +0.3
         weighted_sentiment = sum(r["sentiment_contribution"] for r in risk_contributions)
         avg_sentiment = weighted_sentiment / total_weight if total_weight > 0 else 0
         sentiment_boost = max(-0.3, min(0.3, avg_sentiment * 0.5))
 
-        # 按风险贡献排序
-        top_risks = sorted(risk_contributions, key=lambda x: abs(x["risk_contribution"]), reverse=True)
+        top_risks = sorted(
+            risk_contributions,
+            key=lambda x: abs(x["risk_contribution"]),
+            reverse=True,
+        )
 
         return min(100, risk_index), top_risks, sentiment_boost
-
-    def _extract_yes_probability(self, mkt: Dict) -> Optional[float]:
-        """从市场数据中提取 YES 概率。"""
-        # 方式1: tokens 数组中的 price
-        tokens = mkt.get("tokens")
-        if tokens and isinstance(tokens, list):
-            for token in tokens:
-                outcome = (token.get("outcome") or "").lower()
-                if outcome == "yes":
-                    price = token.get("price")
-                    if price is not None:
-                        return float(price)
-
-        # 方式2: outcomePrices 字符串
-        prices_str = mkt.get("outcomePrices")
-        if prices_str:
-            try:
-                import json
-                prices = json.loads(prices_str) if isinstance(prices_str, str) else prices_str
-                if isinstance(prices, list) and len(prices) >= 1:
-                    return float(prices[0])
-            except (ValueError, TypeError, json.JSONDecodeError):
-                pass
-
-        # 方式3: bestBid
-        best_bid = mkt.get("bestBid")
-        if best_bid is not None:
-            return float(best_bid)
-
-        return None
 
     @staticmethod
     def _classify_risk(index: float) -> str:

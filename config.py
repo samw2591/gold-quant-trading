@@ -37,7 +37,9 @@ RSI_ADX_BLOCK_THRESHOLD = 40  # H1 ADX > 40 时禁止 M15 RSI 开仓 (M15回测:
 RISK_PER_TRADE = 50       # 每笔交易最大风险金额 (2.5%×$2000=$50)
 AUTO_LOT_SIZING = True    # 是否启用ATR自动调仓 (True=根据ATR调整手数, False=固定LOT_SIZE)
 MIN_LOT_SIZE = 0.01       # 最小手数
-MAX_LOT_SIZE = 0.03       # 最大手数 (本金$2000, 保守控制)
+MAX_LOT_SIZE = 0.05       # 绝对安全上限 (防止极端 ATR 下手数失控)
+# 日内亏损递减手数上限: 0笔亏损→ATR自由计算(上限0.05), 1笔→0.03, 2笔→0.02, 3笔+→0.01
+MAX_LOT_CAP_BY_LOSSES = {0: 0.05, 1: 0.03, 2: 0.02, 3: 0.01}
 
 # ── ORB策略参数 ──
 ORB_ENABLED = True                # 是否启用NY开盘区间突破策略

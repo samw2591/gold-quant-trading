@@ -62,13 +62,15 @@ class RiskManager:
             log.info(f"     📊 日内亏损第{self.daily_loss_count}笔 (上限{config.DAILY_MAX_LOSSES}笔)")
         self._save_daily_state()
 
-    # ── 日内自适应仓位缩减 ──
+    # ── 日内亏损递减手数上限 ──
 
-    LOSS_LOT_SCALE = {0: 1.0, 1: 0.7, 2: 0.5, 3: 0.3, 4: 0.1}
-
-    def get_lot_scale(self) -> float:
-        """根据日内亏损笔数返回仓位缩减系数 (回测验证: Sharpe +6.3%, MaxDD -14.4%)"""
-        return self.LOSS_LOT_SCALE.get(self.daily_loss_count, 0.1)
+    def get_max_lot_cap(self) -> float:
+        """根据日内亏损笔数返回当前允许的最大手数上限
+        0笔亏损→0.04, 1笔→0.03, 2笔→0.02, 3笔+→0.01
+        """
+        cap_map = config.MAX_LOT_CAP_BY_LOSSES
+        cap = cap_map.get(self.daily_loss_count, config.MIN_LOT_SIZE)
+        return cap
 
     # ── 冷却期 ──
 

@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD 量化交易系统 — 研究仪表盘</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d29;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #9ca3af;
+    --gold: #f59e0b;
+    --gold-dim: #b45309;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1d29 0%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--gold), #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 32px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .tab.active {
+    color: var(--gold);
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  .container { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 1200px) { .grid-3 { grid-template-columns: 1fr 1fr; } .grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 768px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .container { padding: 16px; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card h3 {
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .stat-value.gold { color: var(--gold); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.blue { color: var(--blue); }
+  .chart-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .chart-container h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; height: 320px; }
+  .chart-wrap.tall { height: 420px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  td { color: var(--text); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-gold { background: rgba(245,158,11,0.15); color: var(--gold); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .badge-muted { background: rgba(156,163,175,0.15); color: var(--muted); }
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-item {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 2px solid var(--bg);
+  }
+  .tl-date {
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tl-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tl-desc {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .insight-box {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .insight-box h4 {
+    color: var(--gold);
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  .insight-box p {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .flow-node {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .flow-arrow { color: var(--muted); font-size: 18px; }
+  .rejected-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .rejected-tag {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: rgba(239,68,68,0.1);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>XAUUSD 量化交易研究仪表盘</h1>
+    <div class="subtitle">2026-04-02 ~ 2026-04-05 · 5 天密集研究 · 30+ 实验 · 最终实盘配置验证</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showSection('overview')">总览</div>
+  <div class="tab" onclick="showSection('evolution')">参数进化</div>
+  <div class="tab" onclick="showSection('experiments')">实验矩阵</div>
+  <div class="tab" onclick="showSection('cost')">成本分析</div>
+  <div class="tab" onclick="showSection('stress')">压力测试</div>
+  <div class="tab" onclick="showSection('rejected')">否决清单</div>
+  <div class="tab" onclick="showSection('timeline')">时间线</div>
+</div>
+
+<div class="container">
+
+<!-- ===== OVERVIEW ===== -->
+<div id="overview" class="section active">
+  <div class="grid-4">
+    <div class="card">
+      <h3>最终 Sharpe (sp=$0.50)</h3>
+      <div class="stat-value gold">1.35</div>
+      <div class="stat-label">SL4.5 + Cooldown30min + V3 + Adaptive</div>
+    </div>
+    <div class="card">
+      <h3>最终 Sharpe (sp=$0.30)</h3>
+      <div class="stat-value green">1.93</div>
+      <div class="stat-label">低点差下表现更强</div>
+    </div>
+    <div class="card">
+      <h3>最大回撤</h3>
+      <div class="stat-value blue">$559</div>
+      <div class="stat-label">11年回测 MaxDD 仅 28% 本金</div>
+    </div>
+    <div class="card">
+      <h3>破产概率</h3>
+      <div class="stat-value green">0.0%</div>
+      <div class="stat-label">Monte Carlo 1000 次模拟</div>
+    </div>
+  </div>
+  <div class="grid-4">
+    <div class="card">
+      <h3>实验总数</h3>
+      <div class="stat-value" style="color: var(--purple);">30+</div>
+      <div class="stat-label">EXP01-EXP28 + 独立测试</div>
+    </div>
+    <div class="card">
+      <h3>否决方案</h3>
+      <div class="stat-value red">14</div>
+      <div class="stat-label">经回测验证无效或有害</div>
+    </div>
+    <div class="card">
+      <h3>实装改动</h3>
+      <div class="stat-value green">8</div>
+      <div class="stat-label">通过 K-Fold 验证的改动</div>
+    </div>
+    <div class="card">
+      <h3>清理代码</h3>
+      <div class="stat-value" style="color: var(--cyan);">~3,055</div>
+      <div class="stat-label">删除旧脚本行数</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-container">
+      <h3>Sharpe 进化路径</h3>
+      <div class="chart-wrap"><canvas id="chartSharpeEvolution"></canvas></div>
+    </div>
+    <div class="chart-container">
+      <h3>关键指标对比：初始 vs 最终</h3>
+      <div class="chart-wrap"><canvas id="chartRadar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <h4>五日研究核心认知</h4>
+    <p>
+      1. <strong>交易成本是策略杀手</strong> — 无成本 Sharpe 3.46 加 $0.50 点差后仅 0.35，所有回测必须包含成本<br>
+      2. <strong>少交易比好参数更重要</strong> — Adaptive 砍掉一半交易，从亏到赚<br>
+      3. <strong>利润来自少数大趋势日</strong> — 25% 趋势日贡献 +$17,593，其余 75% 净亏<br>
+      4. <strong>追踪止盈是核心 alpha</strong> — 5,542 笔 trailing +$41,088 (97.7% WR)<br>
+      5. <strong>过拟合风险低，结构风险高</strong> — PBO=0.00，真正风险是低波动盘整期
+    </p>
+  </div>
+</div>
+
+<!-- ===== EVOLUTION ===== -->
+<div id="evolution" class="section">
+  <div class="chart-container">
+    <h3>参数进化路径 — 每次改动的 Sharpe 变化 (sp=$0.50)</h3>
+    <div class="chart-wrap tall"><canvas id="chartParamEvolution"></canvas></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <h3>实装参数变更记录</h3>
+    <table>
+      <tr><th>日期</th><th>参数</th><th>之前</th><th>之后</th><th>Sharpe 变化</th><th>依据</th></tr>
+      <tr><td>04-02</td><td>Trailing Activate</td><td>2.5 ATR</td><td>1.5 ATR</td><td style="color:var(--green)">+0.24</td><td>追踪止盈 A/B 测试</td></tr>
+      <tr><td>04-02</td><td>RSI ADX 过滤</td><td>无</td><td>ADX>40 阻止 RSI</td><td style="color:var(--green)">+0.21</td><td>M15 多时间框架回测</td></tr>
+      <tr><td>04-03</td><td>Trail Act / Dist</td><td>1.5 / 0.5</td><td>0.8 / 0.25</td><td style="color:var(--green)">+1.35</td><td>Round 2 精调 22 变体</td></tr>
+      <tr><td>04-03</td><td>SL / TP / ADX</td><td>2.5 / 3.0 / 24</td><td>3.5 / 5.0 / 18</td><td style="color:var(--green)">+0.80</td><td>R3 组合 16 变体</td></tr>
+      <tr><td>04-04</td><td>Intraday Adaptive</td><td>关闭</td><td>0.35/0.60</td><td style="color:var(--green)">+1.56</td><td>Phase 5 盘中自适应</td></tr>
+      <tr><td>04-05</td><td>KC EMA / Mult</td><td>20 / 1.5</td><td>25 / 1.2</td><td style="color:var(--green)">+0.32</td><td>EXP13 K-Fold 4/6 折</td></tr>
+      <tr><td>04-05</td><td>V3 ATR Regime</td><td>关闭</td><td>启用</td><td style="color:var(--green)">+0.33</td><td>EXP07 K-Fold 6/6 折全赢</td></tr>
+      <tr><td>04-05</td><td>SL ATR / Cooldown</td><td>3.5 / 3h</td><td>4.5 / 30min</td><td style="color:var(--green)">+0.32</td><td>Mega Grid + 交叉测试</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>当前实盘参数汇总</h3>
+    <table>
+      <tr><th>参数</th><th>值</th><th>说明</th></tr>
+      <tr><td>KC EMA 周期</td><td><strong>25</strong></td><td>通道中轨平滑度</td></tr>
+      <tr><td>KC 乘数</td><td><strong>1.2</strong></td><td>通道宽度</td></tr>
+      <tr><td>Trail Activate</td><td><strong>1.0 ATR</strong></td><td>追踪止盈激活门槛（旧默认）</td></tr>
+      <tr><td>Trail Distance</td><td><strong>0.3 ATR</strong></td><td>追踪止盈距离（旧默认）</td></tr>
+      <tr><td>SL</td><td><strong>4.5 ATR</strong></td><td>止损倍数</td></tr>
+      <tr><td>TP</td><td><strong>8.0 ATR</strong></td><td>止盈倍数（极少触发）</td></tr>
+      <tr><td>ADX 过滤</td><td><strong>25</strong></td><td>趋势强度门槛（旧默认）</td></tr>
+      <tr><td>Cooldown</td><td><strong>30 min</strong></td><td>止损后冷却期</td></tr>
+      <tr><td>Adaptive Trend</td><td><strong>0.35 / 0.60</strong></td><td>盘中趋势门控</td></tr>
+      <tr><td>V3 ATR Regime</td><td><strong>启用</strong></td><td>波动率自适应追踪</td></tr>
+      <tr><td>Max Positions</td><td><strong>2</strong></td><td>最大同时持仓</td></tr>
+      <tr><td>亏损递减上限</td><td><strong>0→0.05, 1→0.03, 2→0.02, 3+→0.01</strong></td><td>日内手数上限递减</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===== EXPERIMENTS ===== -->
+<div id="experiments" class="section">
+  <div class="chart-container">
+    <h3>26 个大规模并行实验 Sharpe 排名 (AutoDL 22核服务器)</h3>
+    <div class="chart-wrap tall"><canvas id="chartExpRanking"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>实验分类统计</h3>
+      <table>
+        <tr><th>类别</th><th>实验数</th><th>实装</th><th>否决</th></tr>
+        <tr><td>参数优化</td><td>10</td><td>4</td><td>6</td></tr>
+        <tr><td>时间/时段</td><td>4</td><td>0</td><td>4</td></tr>
+        <tr><td>风控/资金</td><td>3</td><td>1</td><td>2</td></tr>
+        <tr><td>策略诊断</td><td>5</td><td>0</td><td>—</td></tr>
+        <tr><td>综合验证</td><td>4</td><td>3</td><td>1</td></tr>
+        <tr><td>事件日防御</td><td>1</td><td>0</td><td>1</td></tr>
+        <tr><td style="font-weight:700">合计</td><td style="font-weight:700">27</td><td style="color:var(--green);font-weight:700">8</td><td style="color:var(--red);font-weight:700">14</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>K-Fold 验证结果</h3>
+      <table>
+        <tr><th>配置</th><th>赢折数</th><th>Avg Sharpe</th><th>结果</th></tr>
+        <tr><td>V3 ATR Regime</td><td>6/6</td><td>+0.33</td><td><span class="badge badge-green">通过</span></td></tr>
+        <tr><td>KC25/M1.2</td><td>4/6</td><td>+0.31</td><td><span class="badge badge-green">通过</span></td></tr>
+        <tr><td>C12 Adaptive</td><td>4/6</td><td>1.34</td><td><span class="badge badge-green">通过</span></td></tr>
+        <tr><td>Combo 三合一</td><td>6/6</td><td>3.66</td><td><span class="badge badge-gold">无成本</span></td></tr>
+        <tr><td>EMA150</td><td>—</td><td>—</td><td><span class="badge badge-red">崩溃</span></td></tr>
+        <tr><td>时段过滤</td><td>2/6</td><td>—</td><td><span class="badge badge-red">否决</span></td></tr>
+        <tr><td>EXP28 防御</td><td>0/6</td><td>TIE</td><td><span class="badge badge-red">否决</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <h3>出场机制利润贡献分解</h3>
+    <div class="chart-wrap"><canvas id="chartExitBreakdown"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== COST ===== -->
+<div id="cost" class="section">
+  <div class="chart-container">
+    <h3>点差敏感度 — 各配置在不同点差下的 Sharpe</h3>
+    <div class="chart-wrap tall"><canvas id="chartSpreadSensitivity"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-container">
+      <h3>交易成本吞噬利润</h3>
+      <div class="chart-wrap"><canvas id="chartCostImpact"></canvas></div>
+    </div>
+    <div class="chart-container">
+      <h3>日内利润密度 — 持仓时间 vs 利润</h3>
+      <div class="chart-wrap"><canvas id="chartProfitDensity"></canvas></div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <h4>成本是最大的策略杀手</h4>
+    <p>
+      Combo 三合一（无成本 Sharpe 3.46）在 $0.50 点差下仅 0.35，交易成本吃掉 93% 利润。<br>
+      当前实盘 C12+Adaptive 配置是在成本约束下的最优解：减少 53% 的交易量（15770→7365），<br>
+      让单笔利润 $0.14→$0.75，Sharpe 从 -0.53→1.35。<strong>少交易比好参数更重要。</strong>
+    </p>
+  </div>
+</div>
+
+<!-- ===== STRESS ===== -->
+<div id="stress" class="section">
+  <div class="chart-container">
+    <h3>宏观情景压力测试 (EXP27) — Sharpe 分布</h3>
+    <div class="chart-wrap"><canvas id="chartStressScenarios"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-container">
+      <h3>情景 PnL 分解 (BUY vs SELL)</h3>
+      <div class="chart-wrap"><canvas id="chartStressPnL"></canvas></div>
+    </div>
+    <div class="chart-container">
+      <h3>趋势日 vs 普通日 vs 震荡日</h3>
+      <div class="chart-wrap"><canvas id="chartRegimePnL"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <h3>情景风险矩阵</h3>
+    <table>
+      <tr><th>情景</th><th>代理时段</th><th>N</th><th>Sharpe</th><th>PnL</th><th>MaxDD</th><th>风险</th></tr>
+      <tr><td>S1 伊朗战争升级</td><td>2020-01~02</td><td>148</td><td style="color:var(--green)">+6.59</td><td>+$423</td><td>$86</td><td><span class="badge badge-green">LOW</span></td></tr>
+      <tr><td>S2 伊朗停火暴跌</td><td>2026-03</td><td>32</td><td style="color:var(--red)">-2.24</td><td>-$78</td><td>$289</td><td><span class="badge badge-red">EXTREME</span></td></tr>
+      <tr><td>S3 流动性危机</td><td>2020-03</td><td>38</td><td style="color:var(--red)">-5.83</td><td>-$112</td><td>$198</td><td><span class="badge badge-red">EXTREME</span></td></tr>
+      <tr><td>S4 央行抛售阴跌</td><td>2022-09~11</td><td>397</td><td style="color:var(--red)">-3.08</td><td>-$525</td><td>$549</td><td><span class="badge badge-red">EXTREME</span></td></tr>
+      <tr><td>S5 央行囤积慢牛</td><td>2024-02~04</td><td>10</td><td style="color:var(--red)">-11.75</td><td>-$67</td><td>$78</td><td><span class="badge badge-red">EXTREME</span></td></tr>
+      <tr><td>S6 关税双向鞭打</td><td>2025-04</td><td>51</td><td style="color:var(--green)">+7.62</td><td>+$165</td><td>$99</td><td><span class="badge badge-green">LOW</span></td></tr>
+    </table>
+  </div>
+
+  <div class="insight-box">
+    <h4>策略是高波动趋势追随者</h4>
+    <p>
+      在有方向的大波动中表现优异 (S1/S6 Sharpe 6-7)，但在低波动 (S5) 和持续单边阴跌 (S4) 中亏损。<br>
+      <strong>策略需要波动率，不需要方向。</strong>V3 ATR Regime 在 4/6 情景中胜出，维持启用。
+    </p>
+  </div>
+</div>
+
+<!-- ===== REJECTED ===== -->
+<div id="rejected" class="section">
+  <div class="card" style="margin-bottom:20px">
+    <h3>已否决的优化方向 — 经回测验证无效或有害</h3>
+    <table>
+      <tr><th>方向</th><th>核心结论</th><th>Sharpe 影响</th><th>状态</th></tr>
+      <tr><td>Combo (KC1.25+EMA30+Adaptive Trail)</td><td>无成本 Sharpe 3.46, 加 $0.50 仅 0.35, 增加 36% 交易量</td><td style="color:var(--red)">成本杀死</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>降低交易频率 (min gap 2-8h)</td><td>好信号被跳过, 不是信号太多而是每笔太薄</td><td style="color:var(--red)">全部更差</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>宏观 Regime 过滤</td><td>砍掉了赚钱和亏钱的交易, 净效果为负</td><td style="color:var(--red)">-0.05</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>日前趋势预判</td><td>准确率 ~55% ≈ 抛硬币, 趋势日由事件驱动</td><td style="color:var(--muted)">无效</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>周一降仓</td><td>2025-2026 周一反而是强日, 效应已反转</td><td style="color:var(--red)">-0.07</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>RSI 参数调整</td><td>Adaptive 下 RSI 仅 6 笔/11年, 已自然消亡</td><td style="color:var(--muted)">0</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>ORB 缩短持仓</td><td>缩短方案全部更差, ORB 需要长持仓</td><td style="color:var(--red)">更差</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>波动率过滤</td><td>高波动是主要利润来源, 跳过反而亏</td><td style="color:var(--red)">-0.21</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>禁用 SELL</td><td>PnL -$2,127, SELL 是下跌年唯一利润来源</td><td style="color:var(--muted)">+0.07</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>Choppy 阈值调整</td><td>range=0.000, 完全无影响</td><td style="color:var(--muted)">0</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>kc_only=0.65</td><td>本质是关闭 M15 RSI, 阈值悬崖</td><td style="color:var(--gold)">+0.83</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>EMA150 趋势过滤</td><td>Fold4 崩溃至 5 笔 Sharpe=-13.56</td><td style="color:var(--red)">不稳定</td><td><span class="badge badge-red">否决</span></td></tr>
+      <tr><td>点差优化/换交易商</td><td>短期不换, 以当前条件为基准</td><td style="color:var(--muted)">—</td><td><span class="badge badge-muted">暂缓</span></td></tr>
+      <tr><td>事件日防御 ("带伞策略")</td><td>EXP28: 11把伞×3触发器, 全部无效或有害</td><td style="color:var(--red)">0 或更差</td><td><span class="badge badge-red">否决</span></td></tr>
+    </table>
+  </div>
+
+  <div class="chart-container">
+    <h3>否决方案的 Sharpe 影响可视化</h3>
+    <div class="chart-wrap"><canvas id="chartRejected"></canvas></div>
+  </div>
+</div>
+
+<!-- ===== TIMELINE ===== -->
+<div id="timeline" class="section">
+  <div class="card">
+    <h3>五日研究时间线</h3>
+    <div class="timeline" style="margin-top:16px">
+      <div class="tl-item">
+        <div class="tl-date">2026-04-02 (Day 1) — 基础建设</div>
+        <div class="tl-title">架构重构 + 回测框架 + 因子扫描</div>
+        <div class="tl-desc">
+          gold_trader.py 拆分为 4 模块 | 新建离线回测框架 backtest.py |
+          factor_scanner.py 首次全量 IC 扫描（27因子×3窗口）|
+          M15 多时间框架回测 | 追踪止盈 A/B 测试 → Trail 1.5 ATR |
+          RSI ADX>40 过滤实装 | 实盘确认总盈利 $330.72 (16.5%)
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2026-04-03 (Day 2) — 参数精调</div>
+        <div class="tl-title">Round 2/3 组合搜索 + 过拟合检测 + 高级套件</div>
+        <div class="tl-desc">
+          Round 2: 22 变体精调 → Trail 0.8/0.25 | R3: 16 变体 → 冠军 C12 Sharpe 2.54 |
+          过拟合检测: WF 4窗口全正, PBO=0, 参数平滑 |
+          高级套件: Monte Carlo + K-Fold + Regime 自适应 + 新参数探索 |
+          V3 Adaptive Trail Sharpe 2.90 | 压力测试发现成本问题
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2026-04-04 (Day 3) — 成本与自适应</div>
+        <div class="tl-title">成本调整回测 + 趋势日研究 + 盘中自适应 + 框架统一</div>
+        <div class="tl-desc">
+          成本回测: $0.50 下只有 Combo 勉强存活 (Sharpe 0.35) |
+          趋势日研究: 25% 趋势日贡献全部利润 | 日前预判不可行 |
+          盘中自适应: C12+Adaptive Sharpe -0.53→1.03 |
+          回测框架统一重构: 15 个脚本 → backtest/ 包 |
+          宏观数据管道: macro/ 包 + FRED API
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2026-04-05 (Day 4-5) — 大规模验证 + 最终实装</div>
+        <div class="tl-title">26个并行实验 + Mega Grid + 最终参数实装</div>
+        <div class="tl-desc">
+          AutoDL 22核: EXP01-EXP26 并行 | Mega Grid 1440 组合 |
+          SL 精调: 4.5 ATR Sharpe +0.32 | Cooldown 30min 全点差最优 |
+          V3 ATR Regime K-Fold 6/6 全赢 | KC25/M1.2 K-Fold 4/6 |
+          EXP27 宏观情景压力测试 | EXP28 事件日防御否决 |
+          日内亏损递减手数上限 | Polymarket v2 NEH API 接入 |
+          清理 7 个旧脚本 (~3055 行)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:20px">
+    <div class="card">
+      <h3>代码变更统计</h3>
+      <table>
+        <tr><th>指标</th><th>数量</th></tr>
+        <tr><td>新建/重构模块</td><td>12 个</td></tr>
+        <tr><td>回测脚本</td><td>15+ 个</td></tr>
+        <tr><td>统一回测包 (backtest/)</td><td>4 个核心文件</td></tr>
+        <tr><td>宏观数据包 (macro/)</td><td>3 个文件</td></tr>
+        <tr><td>舆情子系统 (sentiment/)</td><td>6 个文件</td></tr>
+        <tr><td>单元测试</td><td>42 个</td></tr>
+        <tr><td>清理旧代码</td><td>~3,055 行</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>待办事项</h3>
+      <table>
+        <tr><th>优先级</th><th>任务</th><th>状态</th></tr>
+        <tr><td><span class="badge badge-gold">中期</span></td><td>缩短 max_hold 60→24-32 bars</td><td><span class="badge badge-blue">待测</span></td></tr>
+        <tr><td><span class="badge badge-gold">中期</span></td><td>Mega Grid T0.5/D0.15 带成本验证</td><td><span class="badge badge-blue">待测</span></td></tr>
+        <tr><td><span class="badge badge-muted">低</span></td><td>连续 5+ SELL 后减仓</td><td><span class="badge badge-blue">待测</span></td></tr>
+        <tr><td><span class="badge badge-muted">低</span></td><td>EMA100 斜率阴跌缓解</td><td><span class="badge badge-blue">待测</span></td></tr>
+        <tr><td><span class="badge badge-gold">观察</span></td><td>舆情系统 4/30 评估</td><td><span class="badge badge-gold">等待</span></td></tr>
+        <tr><td><span class="badge badge-gold">观察</span></td><td>Polymarket 相关性评估</td><td><span class="badge badge-gold">等待</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- container -->
+
+<script>
+const COLORS = {
+  gold: '#f59e0b', green: '#22c55e', red: '#ef4444',
+  blue: '#3b82f6', purple: '#a855f7', cyan: '#06b6d4',
+  muted: '#6b7280', border: '#2a2d3a', card: '#1a1d29'
+};
+
+Chart.defaults.color = '#9ca3af';
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "'Inter', 'Segoe UI', system-ui, sans-serif";
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===== Sharpe Evolution (Overview) =====
+new Chart(document.getElementById('chartSharpeEvolution'), {
+  type: 'line',
+  data: {
+    labels: ['原始基准', 'Trail 1.5', '+ADX40过滤', 'Trail 0.8/0.25', '+SL3.5/TP5/ADX18', '+Adaptive', '+KC25/M1.2', '+V3 Regime', '+SL4.5/CD30m'],
+    datasets: [{
+      label: '无成本 Sharpe',
+      data: [0.53, 0.77, 0.97, 1.74, 2.54, 2.54, 2.86, 3.19, 3.36],
+      borderColor: COLORS.purple,
+      backgroundColor: 'rgba(168,85,247,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 5,
+      pointBackgroundColor: COLORS.purple
+    }, {
+      label: '$0.50 点差 Sharpe',
+      data: [null, null, null, null, -0.53, 1.03, 1.03, 1.03, 1.35],
+      borderColor: COLORS.gold,
+      backgroundColor: 'rgba(245,158,11,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 5,
+      pointBackgroundColor: COLORS.gold,
+      borderDash: [5,5]
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y: { title: { display: true, text: 'Sharpe Ratio' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      x: { ticks: { maxRotation: 45 } }
+    }
+  }
+});
+
+// ===== Radar (Overview) =====
+new Chart(document.getElementById('chartRadar'), {
+  type: 'radar',
+  data: {
+    labels: ['Sharpe', '胜率', '风险控制\n(1-MaxDD%)', '单笔利润', '稳定性\n(正年份%)', 'K-Fold\n通过率'],
+    datasets: [{
+      label: '初始 (04-02)',
+      data: [0.53/3, 49.6/100, (1-835/3000)*100/100, 0.14/1, 7/12, 0.5],
+      borderColor: COLORS.muted,
+      backgroundColor: 'rgba(107,114,128,0.1)',
+      pointBackgroundColor: COLORS.muted,
+    }, {
+      label: '最终 (04-05)',
+      data: [1.35/3, 72/100, (1-559/3000)*100/100, 0.75/1, 11/12, 4/6],
+      borderColor: COLORS.gold,
+      backgroundColor: 'rgba(245,158,11,0.1)',
+      pointBackgroundColor: COLORS.gold,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      r: {
+        beginAtZero: true,
+        max: 1,
+        ticks: { display: false },
+        grid: { color: 'rgba(255,255,255,0.08)' },
+        angleLines: { color: 'rgba(255,255,255,0.08)' },
+        pointLabels: { font: { size: 11 } }
+      }
+    }
+  }
+});
+
+// ===== Param Evolution (Evolution tab) =====
+new Chart(document.getElementById('chartParamEvolution'), {
+  type: 'bar',
+  data: {
+    labels: [
+      'Trail 1.5 ATR\n(04-02)',
+      'ADX>40 过滤\n(04-02)',
+      'Trail 0.8/0.25\n(04-03)',
+      'SL3.5+TP5+ADX18\n(04-03)',
+      'Adaptive 0.35/0.60\n(04-04)',
+      'KC25/M1.2\n(04-05)',
+      'V3 ATR Regime\n(04-05)',
+      'SL4.5+CD30min\n(04-05)'
+    ],
+    datasets: [{
+      label: 'Sharpe 增量',
+      data: [0.24, 0.21, 1.35, 0.80, 1.56, 0.32, 0.33, 0.32],
+      backgroundColor: [
+        COLORS.green, COLORS.green,
+        COLORS.gold, COLORS.gold,
+        COLORS.blue,
+        COLORS.purple, COLORS.purple, COLORS.purple
+      ],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `Sharpe +${ctx.parsed.x.toFixed(2)}` } }
+    },
+    scales: {
+      x: { title: { display: true, text: 'Sharpe 增量' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  }
+});
+
+// ===== Experiment Ranking =====
+const expLabels = [
+  'Trail 网格 ($0.30)', 'V3 Regime', 'KC25/M1.2', 'EMA150', 'SL×Trail',
+  'ADX=18', 'KC max_hold', 'TP=8.0', 'Adaptive 0.35/0.60',
+  'ORB', 'Walk-Forward', 'Monte Carlo', '时段择时', '星期几', 'RSI 优化'
+];
+const expSharpes = [4.50, 1.85, 1.84, 1.65, 2.39, 2.27, 1.55, 1.56, 1.52, 1.54, 0.75, 0, 0, 0, 1.03];
+const expColors = expLabels.map((l,i) => {
+  if (['V3 Regime','KC25/M1.2','TP=8.0','Adaptive 0.35/0.60'].includes(l.split(' ($')[0])) return COLORS.green;
+  if (['EMA150','时段择时','星期几','RSI 优化'].includes(l)) return COLORS.red;
+  if (l.includes('Monte Carlo') || l.includes('Walk-Forward')) return COLORS.blue;
+  return COLORS.gold;
+});
+new Chart(document.getElementById('chartExpRanking'), {
+  type: 'bar',
+  data: {
+    labels: expLabels,
+    datasets: [{ label: 'Sharpe', data: expSharpes, backgroundColor: expColors, borderRadius: 4 }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ctx.parsed.x === 0 ? '诊断工具' : `Sharpe ${ctx.parsed.x.toFixed(2)}` } }
+    },
+    scales: { x: { grid: { color: 'rgba(255,255,255,0.05)' } } }
+  }
+});
+
+// ===== Exit Breakdown =====
+new Chart(document.getElementById('chartExitBreakdown'), {
+  type: 'bar',
+  data: {
+    labels: ['Trailing\n(5542笔)', 'TP\n(极少触发)', 'SL\n(止损)', 'Timeout\n(1138笔)'],
+    datasets: [{
+      label: 'PnL ($)',
+      data: [41088, 500, -14500, -14962],
+      backgroundColor: [COLORS.green, COLORS.cyan, COLORS.red, '#dc2626'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `$${ctx.parsed.y.toLocaleString()}` } }
+    },
+    scales: {
+      y: { title: { display: true, text: 'PnL ($)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  }
+});
+
+// ===== Spread Sensitivity =====
+new Chart(document.getElementById('chartSpreadSensitivity'), {
+  type: 'line',
+  data: {
+    labels: ['$0.00', '$0.30', '$0.50', '$0.80'],
+    datasets: [
+      { label: 'True Baseline', data: [0.53, -1.04, -2.14, -3.67], borderColor: COLORS.muted, tension: 0.3, pointRadius: 4 },
+      { label: 'C12 (当前参数)', data: [2.54, 0.73, -0.53, -2.37], borderColor: COLORS.blue, tension: 0.3, pointRadius: 4 },
+      { label: 'C12+Adaptive (实盘)', data: [2.54, 1.79, 1.03, -0.5], borderColor: COLORS.gold, tension: 0.3, pointRadius: 5, borderWidth: 3 },
+      { label: 'C12+Adpt+SL4.5+CD30m', data: [3.36, 1.93, 1.35, -0.3], borderColor: COLORS.green, tension: 0.3, pointRadius: 5, borderWidth: 3 },
+      { label: 'Combo 三合一', data: [3.46, 1.65, 0.35, -1.56], borderColor: COLORS.purple, tension: 0.3, pointRadius: 4, borderDash: [5,5] },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+      annotation: {
+        annotations: {
+          zeroline: { type: 'line', yMin: 0, yMax: 0, borderColor: 'rgba(255,255,255,0.2)', borderDash: [6,3] }
+        }
+      }
+    },
+    scales: {
+      y: { title: { display: true, text: 'Sharpe Ratio' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      x: { title: { display: true, text: '单笔点差成本' } }
+    }
+  }
+});
+
+// ===== Cost Impact =====
+new Chart(document.getElementById('chartCostImpact'), {
+  type: 'doughnut',
+  data: {
+    labels: ['净利润 ($0.50)', '交易成本'],
+    datasets: [{
+      data: [2578, 24482],
+      backgroundColor: [COLORS.green, COLORS.red],
+      borderColor: COLORS.card,
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => `$${ctx.parsed.toLocaleString()} (${(ctx.parsed/(2578+24482)*100).toFixed(0)}%)` } }
+    }
+  }
+});
+
+// ===== Profit Density =====
+new Chart(document.getElementById('chartProfitDensity'), {
+  type: 'bar',
+  data: {
+    labels: ['0-2h', '2-4h', '4-8h', '8-16h', '16h+'],
+    datasets: [{
+      label: '$/trade',
+      data: [4.80, 1.20, -0.30, -1.50, -2.80],
+      backgroundColor: ctx => ctx.parsed.y >= 0 ? COLORS.green : COLORS.red,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { title: { display: true, text: '$/trade' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      x: { title: { display: true, text: '持仓时间' } }
+    }
+  }
+});
+
+// ===== Stress Scenarios =====
+new Chart(document.getElementById('chartStressScenarios'), {
+  type: 'bar',
+  data: {
+    labels: ['S1 伊朗升级', 'S2 停火暴跌', 'S3 流动性危机', 'S4 央行抛售', 'S5 慢牛', 'S6 关税鞭打'],
+    datasets: [{
+      label: 'Sharpe',
+      data: [6.59, -2.24, -5.83, -3.08, -11.75, 7.62],
+      backgroundColor: [COLORS.green, COLORS.red, COLORS.red, COLORS.red, '#991b1b', COLORS.green],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { title: { display: true, text: 'Sharpe Ratio' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  }
+});
+
+// ===== Stress PnL BUY vs SELL =====
+new Chart(document.getElementById('chartStressPnL'), {
+  type: 'bar',
+  data: {
+    labels: ['S1 升级', 'S2 暴跌', 'S3 危机', 'S4 抛售', 'S5 慢牛', 'S6 鞭打'],
+    datasets: [
+      { label: 'BUY PnL', data: [337, -15, -50, -159, -9, 226], backgroundColor: COLORS.green, borderRadius: 4 },
+      { label: 'SELL PnL', data: [86, -63, -62, -367, -58, -60], backgroundColor: COLORS.red, borderRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'top' } },
+    scales: { y: { title: { display: true, text: 'PnL ($)' }, grid: { color: 'rgba(255,255,255,0.05)' } } }
+  }
+});
+
+// ===== Regime PnL =====
+new Chart(document.getElementById('chartRegimePnL'), {
+  type: 'bar',
+  data: {
+    labels: ['趋势日\n(25%)', '普通日\n(50%)', '震荡日\n(25%)'],
+    datasets: [
+      { label: 'PnL ($)', data: [17593, -5203, -9812], backgroundColor: [COLORS.green, COLORS.gold, COLORS.red], borderRadius: 6 },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { title: { display: true, text: 'PnL ($)' }, grid: { color: 'rgba(255,255,255,0.05)' } } }
+  }
+});
+
+// ===== Rejected =====
+new Chart(document.getElementById('chartRejected'), {
+  type: 'bar',
+  data: {
+    labels: [
+      'Combo+成本', '降频率', '宏观过滤', '日前预判',
+      '周一降仓', 'RSI调参', 'ORB缩短', '波动率过滤',
+      '禁SELL', 'Choppy', 'kc_only=0.65', 'EMA150', '事件日防御'
+    ],
+    datasets: [{
+      label: 'Sharpe 影响',
+      data: [-3.11, -0.21, -0.05, 0, -0.07, 0, -0.14, -0.21, 0.07, 0, 0.83, -13.56, 0],
+      backgroundColor: ctx => {
+        const v = ctx.parsed.y;
+        if (v > 0.5) return COLORS.gold;
+        if (v > 0) return 'rgba(245,158,11,0.5)';
+        if (v === 0) return COLORS.muted;
+        return COLORS.red;
+      },
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          afterLabel: ctx => {
+            const notes = [
+              '成本吃掉93%利润', '好信号被跳过', '净效果为负', '准确率≈抛硬币',
+              '效应已反转', '已自然消亡', '需要长持仓', '高波动是利润源',
+              'PnL-$2127', '零影响', '阈值悬崖/硬开关', 'Fold4崩溃', '内建防御已够'
+            ];
+            return notes[ctx.dataIndex] || '';
+          }
+        }
+      }
+    },
+    scales: {
+      y: { title: { display: true, text: 'Sharpe 影响' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      x: { ticks: { maxRotation: 45 } }
+    }
+  }
+});
+</script>
+</body>
+</html>
