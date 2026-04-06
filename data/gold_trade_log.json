@@ -1320,5 +1320,35 @@
     "profit": -42.91,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
     "time": "2026-04-02T22:16:53.279480"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "keltner",
+    "direction": "SELL",
+    "lots": 0.01,
+    "price": 4611.19,
+    "sl_pips": 50,
+    "tp_pips": 276.57,
+    "reason": "Keltner\u505a\u7a7a: \u4ef7\u683c4611.19 < \u4e0b\u8f684619.20 (ADX=26.4)",
+    "sentiment_score": 0.3692,
+    "lot_multiplier": 1.0,
+    "factors": {
+      "RSI14": 40.5341,
+      "RSI2": 5.9364,
+      "ADX": 26.4335,
+      "ATR": 34.5707,
+      "MACD_hist": 2.1241,
+      "EMA9": 4648.7984,
+      "EMA21": 4657.8893,
+      "EMA100": 4624.1666,
+      "KC_upper": 4702.1682,
+      "KC_lower": 4619.1985,
+      "Volume": 5442.0,
+      "Vol_MA20": 16263.0,
+      "kc_breakout_strength": -2.6317,
+      "volume_ratio": 0.3346,
+      "atr_percentile": 0.58
+    },
+    "time": "2026-04-06T07:27:23.089518"
   }
 ]
