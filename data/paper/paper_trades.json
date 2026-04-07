@@ -467,5 +467,41 @@
     "mfe": 27.17,
     "mae": 8.34,
     "mode": "paper"
+  },
+  {
+    "strategy": "P4_atr_regime",
+    "direction": "BUY",
+    "entry_price": 4674.39,
+    "exit_price": 4676.59,
+    "sl": 35,
+    "tp": 61.76,
+    "lots": 0.01,
+    "pnl": 2.2,
+    "pnl_points": 2.2,
+    "exit_reason": "timeout",
+    "reason": "P4 \u6b63\u5e38\u52a8\u91cf\u505a\u591a: EMA9>21, MACD>0, ATR%=30%",
+    "factors": {
+      "RSI14": 54.4988,
+      "RSI2": 63.0728,
+      "ADX": 13.417,
+      "ATR": 24.7021,
+      "MACD_hist": 3.007,
+      "EMA9": 4662.0139,
+      "EMA21": 4659.4986,
+      "EMA100": 4644.5268,
+      "KC_upper": 4689.3023,
+      "KC_lower": 4630.0172,
+      "Volume": 151.0,
+      "Vol_MA20": 11736.15,
+      "kc_breakout_strength": -0.6037,
+      "volume_ratio": 0.0129,
+      "atr_percentile": 0.3
+    },
+    "entry_time": "2026-04-07T18:01:55.935046",
+    "exit_time": "2026-04-07T18:07:56.541740",
+    "bars_held": 12,
+    "mfe": 4.71,
+    "mae": 7.5,
+    "mode": "paper"
   }
 ]

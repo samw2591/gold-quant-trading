@@ -4,16 +4,16 @@
   "loss_count": 1,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": 0.1984,
-    "confidence": 0.2976,
+    "score": 0.2113,
+    "confidence": 0.3169,
     "keyword_score": 1.0,
-    "finbert_score": -0.226,
-    "vader_score": 0.0567,
+    "finbert_score": -0.2024,
+    "vader_score": 0.0626,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790195\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.20)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold rate down 6% since the beginning of US-Iran war: Is yellow metal losing its safe-haven appeal? - Mint | Antam Gold Prices Rise Amid Conflict - Gotrade"
+    "news_summary": "\u5206\u6790203\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u52060.21)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Wells Fargo resets gold price target for the rest of 2026 - MSN | Gold Price Analysis April 2026: Geopolitical Risks Impacting Trends - European Business Magazine | Gold rate down 6% since the beginning of US-Iran war: Is yellow metal losing its safe-haven appeal? - Mint"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-07T09:58:20.465960",
+    "timestamp": "2026-04-07T10:58:32.444287",
     "dxy": 99.98,
     "dxy_prev": 100.03,
     "dxy_change_pct": -0.05,

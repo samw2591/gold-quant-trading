@@ -1,0 +1,176 @@
+{
+  "timestamp": "2026-04-07 18:42:37.106233",
+  "atr_study": {
+    "mean_atr_pips": 12.67274180192233,
+    "median_atr_pips": 11.564833777291275,
+    "daily_range_mean": 67.19989335443091,
+    "adx_mean": 33.49980873958489,
+    "adx_pct_above_18": 0.913256351039261
+  },
+  "keltner_results": [
+    {
+      "n": 1427,
+      "sharpe": 1.59,
+      "total_pnl": 1682.96,
+      "max_dd": 403.19,
+      "dd_pct": 20.2,
+      "win_rate": 75.1,
+      "avg_pnl": 1.18,
+      "label": "KC Gold-params"
+    },
+    {
+      "n": 1398,
+      "sharpe": 1.55,
+      "total_pnl": 1399.05,
+      "max_dd": 362.61,
+      "dd_pct": 18.1,
+      "win_rate": 75.6,
+      "avg_pnl": 1.0,
+      "label": "KC SL=6.0 TP=10.0"
+    },
+    {
+      "n": 1500,
+      "sharpe": 1.59,
+      "total_pnl": 1721.55,
+      "max_dd": 392.3,
+      "dd_pct": 19.6,
+      "win_rate": 75.2,
+      "avg_pnl": 1.15,
+      "label": "KC mult=1.0"
+    },
+    {
+      "n": 1319,
+      "sharpe": 1.35,
+      "total_pnl": 1418.03,
+      "max_dd": 392.79,
+      "dd_pct": 19.6,
+      "win_rate": 74.8,
+      "avg_pnl": 1.08,
+      "label": "KC mult=1.5"
+    },
+    {
+      "n": 1068,
+      "sharpe": 2.02,
+      "total_pnl": 1818.36,
+      "max_dd": 261.17,
+      "dd_pct": 13.1,
+      "win_rate": 76.1,
+      "avg_pnl": 1.7,
+      "label": "KC mult=2.0"
+    },
+    {
+      "n": 1455,
+      "sharpe": 1.61,
+      "total_pnl": 1718.46,
+      "max_dd": 465.03,
+      "dd_pct": 23.3,
+      "win_rate": 75.3,
+      "avg_pnl": 1.18,
+      "label": "KC ADX>=15"
+    },
+    {
+      "n": 1404,
+      "sharpe": 1.66,
+      "total_pnl": 1729.38,
+      "max_dd": 325.06,
+      "dd_pct": 16.3,
+      "win_rate": 75.2,
+      "avg_pnl": 1.23,
+      "label": "KC ADX>=20"
+    },
+    {
+      "n": 1294,
+      "sharpe": 1.49,
+      "total_pnl": 1466.19,
+      "max_dd": 405.61,
+      "dd_pct": 20.3,
+      "win_rate": 75.0,
+      "avg_pnl": 1.13,
+      "label": "KC ADX>=25"
+    },
+    {
+      "n": 1427,
+      "sharpe": 1.59,
+      "total_pnl": 1682.96,
+      "max_dd": 403.19,
+      "dd_pct": 20.2,
+      "win_rate": 75.1,
+      "avg_pnl": 1.18,
+      "label": "KC Mega Trail(0.5/0.15)"
+    },
+    {
+      "n": 1430,
+      "sharpe": 3.57,
+      "total_pnl": 3958.51,
+      "max_dd": 360.16,
+      "dd_pct": 18.0,
+      "win_rate": 75.2,
+      "avg_pnl": 2.77,
+      "label": "KC No-spread (theoretical)"
+    }
+  ],
+  "orb_results": [
+    {
+      "n": 1802,
+      "sharpe": 0.07,
+      "total_pnl": 90.8,
+      "max_dd": 1014.98,
+      "dd_pct": 50.7,
+      "win_rate": 66.1,
+      "avg_pnl": 0.05,
+      "label": "ORB London(8 UTC)"
+    },
+    {
+      "n": 1736,
+      "sharpe": 0.46,
+      "total_pnl": 631.47,
+      "max_dd": 635.31,
+      "dd_pct": 31.8,
+      "win_rate": 68.0,
+      "avg_pnl": 0.36,
+      "label": "ORB NY(14 UTC)"
+    },
+    {
+      "n": 1802,
+      "sharpe": 0.07,
+      "total_pnl": 90.8,
+      "max_dd": 1014.98,
+      "dd_pct": 50.7,
+      "win_rate": 66.1,
+      "avg_pnl": 0.05,
+      "label": "ORB London+NY"
+    }
+  ],
+  "mr_results": [
+    {
+      "n": 335,
+      "sharpe": -1.39,
+      "total_pnl": -539.3,
+      "max_dd": 921.89,
+      "dd_pct": 46.1,
+      "win_rate": 52.8,
+      "avg_pnl": -1.61,
+      "label": "RSI2 15/85 only"
+    },
+    {
+      "n": 236,
+      "sharpe": -0.75,
+      "total_pnl": -217.09,
+      "max_dd": 556.47,
+      "dd_pct": 27.8,
+      "win_rate": 55.1,
+      "avg_pnl": -0.92,
+      "label": "RSI2 10/90 only"
+    },
+    {
+      "n": 1654,
+      "sharpe": 1.36,
+      "total_pnl": 1890.82,
+      "max_dd": 582.38,
+      "dd_pct": 29.1,
+      "win_rate": 71.4,
+      "avg_pnl": 1.14,
+      "label": "KC + RSI2 15/85"
+    }
+  ]
+}
