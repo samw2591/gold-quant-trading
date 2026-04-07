@@ -1,19 +1,19 @@
 {
-  "date": "2026-04-07",
-  "pnl": -46.94,
-  "loss_count": 1,
+  "date": "2026-04-08",
+  "pnl": 0.0,
+  "loss_count": 0,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": -0.0701,
-    "confidence": 0.1051,
+    "score": -0.0478,
+    "confidence": 0.0717,
     "keyword_score": 1.0,
-    "finbert_score": -0.3441,
-    "vader_score": 0.138,
+    "finbert_score": -0.3046,
+    "vader_score": 0.1026,
     "direction_bias": null,
-    "news_summary": "\u5206\u6790218\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.07)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of April 7, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Price Today on April 07, 2026 - USA Today"
+    "news_summary": "\u5206\u6790197\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.05)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 14/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Current price of gold as of April 7, 2026 - Fortune | Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - litefinance.org | Gold Price Today on April 07, 2026 - usatoday.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-07T14:52:58.314461",
+    "timestamp": "2026-04-07T15:53:18.910827",
     "dxy": 99.98,
     "dxy_prev": 100.03,
     "dxy_change_pct": -0.05,

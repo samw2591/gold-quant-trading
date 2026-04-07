@@ -724,5 +724,42 @@
     "mfe": 29.04,
     "mae": 3.36,
     "mode": "paper"
+  },
+  {
+    "strategy": "P4_atr_regime",
+    "direction": "SELL",
+    "symbol": "XAUUSD.mx",
+    "entry_price": 4632.56,
+    "exit_price": 4629.25,
+    "sl": 35,
+    "tp": 71.15,
+    "lots": 0.01,
+    "pnl": 3.31,
+    "pnl_points": 3.31,
+    "exit_reason": "timeout",
+    "reason": "P4 \u6b63\u5e38\u52a8\u91cf\u505a\u7a7a: EMA9<21, MACD<0, ATR%=58%",
+    "factors": {
+      "RSI14": 42.8376,
+      "RSI2": 8.4191,
+      "ADX": 15.9805,
+      "ATR": 28.4593,
+      "MACD_hist": -2.1424,
+      "EMA9": 4645.3984,
+      "EMA21": 4651.2793,
+      "EMA100": 4644.3012,
+      "KC_upper": 4686.6216,
+      "KC_lower": 4618.3193,
+      "Volume": 137.0,
+      "Vol_MA20": 12586.25,
+      "kc_breakout_strength": -1.8996,
+      "volume_ratio": 0.0109,
+      "atr_percentile": 0.6
+    },
+    "entry_time": "2026-04-07T23:01:40.009314",
+    "exit_time": "2026-04-07T23:07:41.705987",
+    "bars_held": 12,
+    "mfe": 7.64,
+    "mae": 3.8,
+    "mode": "paper"
   }
 ]

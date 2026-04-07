@@ -1,13 +1,13 @@
 {
-  "date": "2026-04-07T00:00:26.744005",
+  "date": "2026-04-08T00:00:22.619275",
   "live": {
     "status": "insufficient_data",
-    "trade_count": 4,
+    "trade_count": 5,
     "min_required": 20
   },
   "paper": {
     "status": "insufficient_data",
-    "trade_count": 2,
+    "trade_count": 11,
     "min_required": 20
   }
 }
