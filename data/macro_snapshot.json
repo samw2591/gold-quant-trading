@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-07T20:53:27.612542",
+  "timestamp": "2026-04-07T21:54:01.043833",
   "dxy": 99.64,
   "dxy_prev": 99.98,
   "dxy_change_pct": -0.34,
@@ -8,9 +8,9 @@
   "vix_prev": 24.17,
   "vix_change_pct": 6.66,
   "vix_percentile": 0.79,
-  "brent": 105.26,
+  "brent": 105.47,
   "brent_prev": 109.77,
-  "brent_change_pct": -4.11,
+  "brent_change_pct": -3.92,
   "us10y": 4.34,
   "us10y_prev": 4.34,
   "us10y_change_pct": 0.18,
