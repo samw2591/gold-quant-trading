@@ -1,13 +1,13 @@
 {
-  "total_pnl": -65.2,
-  "trade_count": 28,
-  "wins": 14,
+  "total_pnl": -39.46,
+  "trade_count": 29,
+  "wins": 15,
   "losses": 14,
   "by_strategy": {
     "P4_atr_regime": {
-      "n": 7,
-      "pnl": -17.73,
-      "wins": 3,
+      "n": 8,
+      "pnl": 8.01,
+      "wins": 4,
       "losses": 4
     }
   }
