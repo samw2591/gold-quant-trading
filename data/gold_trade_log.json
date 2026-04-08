@@ -1525,5 +1525,35 @@
     "profit": -18.54,
     "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
     "time": "2026-04-08T23:26:15.431871"
+  },
+  {
+    "action": "OPEN",
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "lots": 0.01,
+    "price": 4761.39,
+    "sl_pips": 50,
+    "tp_pips": 100,
+    "reason": "M15 RSI\u505a\u7a7a: RSI(2)=86.2 > 85, \u8d85\u4e70\u56de\u843d (EMA100=4764)",
+    "sentiment_score": 0.3775,
+    "lot_multiplier": 1.0,
+    "factors": {
+      "RSI14": 41.2096,
+      "RSI2": 86.2338,
+      "ADX": 31.0463,
+      "ATR": 15.5314,
+      "MACD_hist": -2.5006,
+      "EMA9": 4762.1591,
+      "EMA21": 4774.0047,
+      "EMA100": 4763.6765,
+      "KC_upper": 4795.1948,
+      "KC_lower": 4757.9194,
+      "Volume": 1840.0,
+      "Vol_MA20": 4923.6,
+      "kc_breakout_strength": -2.1765,
+      "volume_ratio": 0.3737,
+      "atr_percentile": 0.86
+    },
+    "time": "2026-04-08T23:53:07.885957"
   }
 ]

@@ -69,20 +69,36 @@
       "orb_n": 0,
       "orb_pnl": 0,
       "equity": 2144.42
+    },
+    {
+      "date": "2026-04-08",
+      "pnl": -70.5,
+      "trades": 3,
+      "wins": 0,
+      "losses": 3,
+      "kc_n": 2,
+      "kc_pnl": -65.77,
+      "rsi_n": 1,
+      "rsi_pnl": -4.73,
+      "orb_n": 0,
+      "orb_pnl": 0,
+      "equity": 2073.92
     }
   ],
   "summary": {
-    "observation_days": 4,
-    "total_trades": 2,
+    "observation_days": 5,
+    "total_trades": 5,
     "total_wins": 0,
-    "total_losses": 2,
-    "cum_pnl": -93.41,
+    "total_losses": 5,
+    "cum_pnl": -163.91,
     "cum_win_rate": 0.0,
     "cum_rr": 0.0,
-    "cum_kc_pnl": -93.41,
-    "cum_rsi_pnl": 0,
+    "cum_kc_pnl": -159.18,
+    "cum_rsi_pnl": -4.73,
     "cum_orb_pnl": 0,
-    "last_updated": "2026-04-08 00:00:21.879586"
+    "last_updated": "2026-04-09 00:00:08.332580"
   },
-  "alerts": []
+  "alerts": [
+    "连续 3 天亏损 ($-46, $-47, $-70)"
+  ]
 }

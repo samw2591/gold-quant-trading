@@ -1,13 +1,149 @@
 {
-  "date": "2026-04-08T00:00:22.619275",
+  "date": "2026-04-09T00:00:09.672165",
   "live": {
     "status": "insufficient_data",
-    "trade_count": 5,
+    "trade_count": 8,
     "min_required": 20
   },
   "paper": {
-    "status": "insufficient_data",
-    "trade_count": 11,
-    "min_required": 20
+    "status": "ok",
+    "trade_count": 31,
+    "overall": {
+      "EMA100": {
+        "ic": 0.2465,
+        "ic_mean": 0.3491,
+        "ic_std": 1.0,
+        "ic_ir": 0.3491,
+        "samples": 31,
+        "quality": "\u826f\u597d"
+      },
+      "EMA9": {
+        "ic": 0.2102,
+        "ic_mean": 0.3068,
+        "ic_std": 1.0,
+        "ic_ir": 0.3068,
+        "samples": 31,
+        "quality": "\u826f\u597d"
+      },
+      "kc_breakout_strength": {
+        "ic": 0.1828,
+        "ic_mean": 0.2253,
+        "ic_std": 1.0,
+        "ic_ir": 0.2253,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "RSI14": {
+        "ic": 0.1646,
+        "ic_mean": 0.2057,
+        "ic_std": 1.0,
+        "ic_ir": 0.2057,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "EMA21": {
+        "ic": 0.1566,
+        "ic_mean": 0.2485,
+        "ic_std": 1.0,
+        "ic_ir": 0.2485,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "KC_lower": {
+        "ic": 0.1243,
+        "ic_mean": 0.2128,
+        "ic_std": 1.0,
+        "ic_ir": 0.2128,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "MACD_hist": {
+        "ic": -0.1065,
+        "ic_mean": -0.1585,
+        "ic_std": 1.0,
+        "ic_ir": -0.1585,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "volume_ratio": {
+        "ic": 0.0912,
+        "ic_mean": 0.1042,
+        "ic_std": 1.0,
+        "ic_ir": 0.1042,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "Volume": {
+        "ic": 0.0868,
+        "ic_mean": 0.1006,
+        "ic_std": 1.0,
+        "ic_ir": 0.1006,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "ADX": {
+        "ic": 0.0865,
+        "ic_mean": 0.138,
+        "ic_std": 1.0,
+        "ic_ir": 0.138,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "KC_upper": {
+        "ic": 0.0783,
+        "ic_mean": 0.1692,
+        "ic_std": 1.0,
+        "ic_ir": 0.1692,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "RSI2": {
+        "ic": 0.0775,
+        "ic_mean": 0.1282,
+        "ic_std": 1.0,
+        "ic_ir": 0.1282,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "Vol_MA20": {
+        "ic": 0.0387,
+        "ic_mean": 0.0129,
+        "ic_std": 1.0,
+        "ic_ir": 0.0129,
+        "samples": 31,
+        "quality": "\u4e00\u822c"
+      },
+      "ATR": {
+        "ic": -0.0295,
+        "ic_mean": -0.0923,
+        "ic_std": 1.0,
+        "ic_ir": -0.0923,
+        "samples": 31,
+        "quality": "\u65e0\u6548"
+      },
+      "atr_percentile": {
+        "ic": 0.0081,
+        "ic_mean": -0.0595,
+        "ic_std": 1.0,
+        "ic_ir": -0.0595,
+        "samples": 31,
+        "quality": "\u65e0\u6548"
+      }
+    },
+    "by_strategy": {
+      "P4_atr_regime": {
+        "status": "insufficient_data",
+        "trade_count": 15
+      },
+      "P7_mega_trail": {
+        "status": "insufficient_data",
+        "trade_count": 7
+      },
+      "P8_mega_h20": {
+        "status": "insufficient_data",
+        "trade_count": 9
+      }
+    },
+    "decay": {}
   }
 }

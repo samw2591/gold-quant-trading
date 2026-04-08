@@ -124,5 +124,19 @@
     "brent_oil_change_pct": -0.46,
     "us10y_yield_price": 4.34,
     "us10y_yield_change_pct": 0.18
+  },
+  {
+    "date": "2026-04-09",
+    "label": "NEUTRAL",
+    "score": 0.0,
+    "confidence": 0.0,
+    "keyword_score": 0.0,
+    "finbert_score": null,
+    "vader_score": 0.0,
+    "direction_bias": null,
+    "brent_oil_price": 109.27,
+    "brent_oil_change_pct": -0.46,
+    "us10y_yield_price": 4.34,
+    "us10y_yield_change_pct": 0.18
   }
 ]

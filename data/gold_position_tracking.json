@@ -1,1 +1,15 @@
-{}
+{
+  "16435858": {
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "entry_price": 4761.44,
+    "entry_date": "2026.04.08 23:53:08",
+    "lots": 0.01,
+    "sl": 4812.07,
+    "trailing_stop_price": 0,
+    "extreme_price": 4756.57,
+    "is_pyramid": false,
+    "last_profit": 4.32,
+    "last_price": 4757.12
+  }
+}
