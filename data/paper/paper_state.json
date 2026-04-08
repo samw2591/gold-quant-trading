@@ -1,7 +1,7 @@
 {
-  "total_pnl": 8.55,
-  "trade_count": 40,
-  "wins": 23,
+  "total_pnl": 11.07,
+  "trade_count": 42,
+  "wins": 25,
   "losses": 17,
   "by_strategy": {
     "P4_atr_regime": {
@@ -11,15 +11,15 @@
       "losses": 5
     },
     "P7_mega_trail": {
-      "n": 3,
-      "pnl": 15.69,
-      "wins": 2,
+      "n": 4,
+      "pnl": 16.2,
+      "wins": 3,
       "losses": 1
     },
     "P8_mega_h20": {
-      "n": 3,
-      "pnl": 6.52,
-      "wins": 2,
+      "n": 4,
+      "pnl": 8.53,
+      "wins": 3,
       "losses": 1
     }
   }
