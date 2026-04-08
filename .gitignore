@@ -8,3 +8,6 @@ package-lock.json
 # 排除大文件，保留状态JSON
 data/download/
 data/bars_*.json
+
+# Python venv
+.venv/
