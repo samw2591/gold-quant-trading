@@ -38,11 +38,14 @@ LOCAL_TZ = ZoneInfo("Asia/Singapore")
 config.DATA_DIR.mkdir(exist_ok=True)
 config.LOG_DIR.mkdir(exist_ok=True)
 
+_stream_handler = logging.StreamHandler(
+    stream=open(sys.stdout.fileno(), mode='w', encoding='utf-8', closefd=False)
+)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.StreamHandler(),
+        _stream_handler,
         logging.FileHandler(config.LOG_DIR / 'gold_runner.log', encoding='utf-8'),
     ]
 )
@@ -145,6 +148,10 @@ def main():
     DISCONNECT_ALERT_THRESHOLD = 6   # 连续6次掉线(~3分钟) → 报警
     last_heartbeat_alert = None      # 上次报警时间 (避免刷屏)
     STARTUP_GRACE_SCANS = 6          # 启动后前6次扫描(~3分钟)不检测心跳，给EA启动时间
+    
+    # ── 主循环容错 ──
+    consecutive_errors = 0           # 连续异常次数
+    MAX_CONSECUTIVE_ERRORS = 10      # 连续异常超过此数发Telegram告警
 
     while True:
         try:
@@ -255,6 +262,7 @@ def main():
                 continue
 
             scan_count += 1
+            consecutive_errors = 0  # 成功进入扫描 → 重置异常计数
 
             # ── 心跳检测: EA是否在线 ──
             # 跳过条件: 启动宽限期 / 周五收盘前1小时(UTC 20:00+)
@@ -368,8 +376,27 @@ def main():
         except KeyboardInterrupt:
             log.info("\n⏹️ 用户中断，停止运行")
             break
+        except MemoryError:
+            log.critical("🚨 内存不足! 尝试释放资源后继续...")
+            import gc; gc.collect()
+            try:
+                notifier.notify_error("🚨 <b>内存不足 (MemoryError)</b>\n系统尝试恢复中，请检查服务器状态")
+            except Exception:
+                pass
+            time.sleep(30)
         except Exception as e:
-            log.error(f"主循环异常: {e}")
+            consecutive_errors += 1
+            log.error(f"主循环异常 (连续第{consecutive_errors}次): {e}", exc_info=True)
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
+                try:
+                    notifier.notify_error(
+                        f"🚨 <b>主循环连续异常{consecutive_errors}次</b>\n"
+                        f"最新错误: {str(e)[:200]}\n"
+                        f"请检查系统状态"
+                    )
+                except Exception:
+                    pass
+                consecutive_errors = 0
             time.sleep(60)
 
 

@@ -1,26 +1,30 @@
 """
-Gold-specific sentiment analysis module v3.
+Gold-specific sentiment analysis module v4.
 
 v3 changes (2026-03-31):
   - Rebalanced keyword dictionary: added 33 bearish keywords (42 bull / 59 bear)
     to fix permanent BULLISH bias (was 100% positive in simulation).
   - Weight shift: FinBERT promoted to PRIMARY (50%), keywords demoted to 30%.
-    FinBERT is a trained financial model with inherent balance; keywords are
-    domain-specific but structurally biased by dictionary composition.
   - BULLISH/BEARISH threshold raised from 0.15 to 0.25 to reduce false positives.
-  - Fallback (no FinBERT): keyword 40% + VADER 60% (was 70/30).
-
-Scoring architecture:
-  1. FinBERT score      (weight 0.50) — financial context aware, PRIMARY
-  2. Gold keyword score  (weight 0.30) — domain-specific supplement
-  3. VADER score         (weight 0.20) — general sentiment baseline
-  Falls back to keyword(0.40) + VADER(0.60) if FinBERT unavailable.
 
 v3.1 changes (2026-04-02):
   - Extreme FinBERT boost: when |finbert_score| > 0.30, weights shift to
-    FinBERT 70% / keyword 15% / vader 15%. Prevents keyword_score from
-    diluting strong semantic signals on extreme days (e.g. 4/2 crash where
-    FinBERT=-0.40 was overridden by keyword_score=1.0).
+    FinBERT 70% / keyword 15% / vader 15%.
+
+v4 changes (2026-04-08):
+  - CRITICAL FIX: keyword_score was ALWAYS 1.0 (10 days straight).
+    Root cause: sum-based scoring inflated by high match count (~200+ matches
+    across 193 headlines), then sqrt normalization still > 1.0, clipped to 1.0.
+    Fix: use per-headline average score instead of total sum.
+  - FinBERT weight increased to 0.60 (from 0.50), keyword reduced to 0.15
+    (from 0.30). FinBERT is the only signal source with real information value.
+  - Extreme FinBERT threshold lowered from 0.30 to 0.20 (triggers more often).
+  - Falls back to keyword(0.30) + VADER(0.70) if FinBERT unavailable.
+
+Scoring architecture (v4):
+  Normal:   FinBERT 0.60 / keyword 0.15 / VADER 0.25
+  Extreme:  FinBERT 0.80 / keyword 0.05 / VADER 0.15  (|FinBERT| > 0.20)
+  Fallback: keyword 0.30 / VADER 0.70  (FinBERT unavailable)
 """
 
 import logging
@@ -214,6 +218,12 @@ def _get_finbert():
     if _finbert_attempted:
         return None
     _finbert_attempted = True
+
+    import os
+    if os.environ.get("GOLD_DISABLE_FINBERT", "").strip() == "1":
+        logger.info("[情绪分析] FinBERT 已通过 GOLD_DISABLE_FINBERT=1 禁用 (节省~500MB内存)")
+        return None
+
     try:
         from transformers import pipeline as hf_pipeline
         logger.info("[情绪分析] 正在加载FinBERT模型 (首次使用会自动下载)...")
@@ -245,17 +255,14 @@ class SentimentAnalyzer:
         vader_score = self._vader_analyze(headlines)
         finbert_score = self._finbert_analyze(headlines)
 
-        # v3: FinBERT is PRIMARY (trained model, balanced), keyword is supplement
-        # v3.1: extreme FinBERT (|score|>0.30) gets higher weight to avoid
-        # keyword_score diluting strong semantic signals (e.g. 4/2 crash)
         if finbert_score is not None:
-            if abs(finbert_score) > 0.30:
-                combined = finbert_score * 0.70 + kw_score * 0.15 + vader_score * 0.15
+            if abs(finbert_score) > 0.20:
+                combined = finbert_score * 0.80 + kw_score * 0.05 + vader_score * 0.15
             else:
-                combined = finbert_score * 0.50 + kw_score * 0.30 + vader_score * 0.20
+                combined = finbert_score * 0.60 + kw_score * 0.15 + vader_score * 0.25
             mode = "finbert+keyword+vader"
         else:
-            combined = kw_score * 0.40 + vader_score * 0.60
+            combined = kw_score * 0.30 + vader_score * 0.70
             mode = "keyword+vader"
 
         combined = max(-1.0, min(1.0, combined))
@@ -301,36 +308,39 @@ class SentimentAnalyzer:
     # ------------------------------------------------------------------
 
     def _keyword_score(self, headlines: List[str]) -> float:
-        """Gold-specific keyword scoring — PRIMARY signal."""
-        total_score = 0.0
-        matched_count = 0
-        has_trump = False
-        
+        """Gold-specific keyword scoring — per-headline average approach.
+
+        Each headline gets a score from keyword matches, then we average across
+        all headlines that had at least one match.  This prevents the old bug
+        where 200+ keyword matches across 190 headlines inflated the sum so
+        much that sqrt-normalisation still saturated at +1.0.
+        """
+        headline_scores: List[float] = []
+
         for headline in headlines:
             h_lower = headline.lower()
-            headline_score = 0.0
-            
-            if "trump" in h_lower:
-                has_trump = True
-            
+            h_score = 0.0
+            h_matches = 0
+
             for keyword, weight in GOLD_KEYWORDS.items():
                 if keyword in h_lower:
-                    headline_score += weight
-                    matched_count += 1
-            
-            # Trump新闻放大
-            if has_trump and headline_score != 0:
-                headline_score *= TRUMP_AMPLIFIER
-            
-            total_score += headline_score
-        
-        if matched_count == 0:
+                    h_score += weight
+                    h_matches += 1
+
+            if h_matches == 0:
+                continue
+
+            if "trump" in h_lower and h_score != 0:
+                h_score *= TRUMP_AMPLIFIER
+
+            per_match_avg = h_score / h_matches
+            headline_scores.append(per_match_avg)
+
+        if not headline_scores:
             return 0.0
-        
-        # 归一化到 [-1, 1]
-        # 除以匹配数的平方根，避免新闻多时分数过大
-        normalized = total_score / (matched_count ** 0.5)
-        return max(-1.0, min(1.0, normalized))
+
+        avg = sum(headline_scores) / len(headline_scores)
+        return max(-1.0, min(1.0, avg))
 
     def _vader_analyze(self, headlines: List[str]) -> float:
         vader = _get_vader()

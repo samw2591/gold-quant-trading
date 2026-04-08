@@ -417,6 +417,10 @@ class GoldTrader:
 
         sentiment_bias = None
         lot_multiplier = 1.0
+        if sentiment_ctx and sentiment_ctx.get('trade_modifier'):
+            modifier = sentiment_ctx['trade_modifier']
+            sentiment_bias = modifier.get('direction_bias')
+            lot_multiplier = modifier.get('lot_multiplier', 1.0)
 
         slots = config.MAX_POSITIONS - len(current_positions)
         log.info(f"\n  🔍 信号扫描 (可开 {slots} 笔):")
@@ -550,15 +554,33 @@ class GoldTrader:
         return entries
 
     def check_exits_only(self) -> Dict:
-        """仅检查出场 (盘中监控, H1+M5双时间框架)"""
+        """仅检查出场 (盘中监控, 按策略匹配时间框架)
+
+        H1策略(keltner等)只用H1数据检查出场
+        M15策略(m15_rsi, orb)只用M15数据检查出场
+        避免用错误时间框架的指标触发出场
+        """
         self.tracker.sync_positions(risk_manager=self.risk)
 
         exits = []
         df_h1 = self.data.get_hourly_data()
-        if df_h1 is not None:
-            exits += self._check_exits(df_h1)
         df_m15 = self.data.get_m15_data()
-        if df_m15 is not None:
+
+        positions = self.tracker.get_strategy_positions()
+        has_h1_strats = any(
+            self.tracker.tracking.get(str(p['ticket']), {}).get('strategy', '') 
+            in ('keltner', 'macd', 'monday_gap')
+            for p in positions
+        )
+        has_m15_strats = any(
+            self.tracker.tracking.get(str(p['ticket']), {}).get('strategy', '') 
+            in ('m15_rsi', 'orb', 'm5_rsi')
+            for p in positions
+        )
+
+        if has_h1_strats and df_h1 is not None:
+            exits += self._check_exits(df_h1)
+        if has_m15_strats and df_m15 is not None:
             exits += self._check_exits(df_m15)
         return {"exits": exits}
 

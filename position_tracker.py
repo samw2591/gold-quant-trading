@@ -36,9 +36,13 @@ class PositionTracker:
     # ── 持仓查询 ──
 
     def get_strategy_positions(self) -> List[Dict]:
-        """获取本策略的持仓 (通过magic number过滤)"""
+        """获取本策略的市价持仓 (过滤magic number + 排除挂单)"""
         all_pos = self.bridge.get_positions()
-        return [p for p in all_pos if p.get('magic') == config.MAGIC_NUMBER]
+        return [
+            p for p in all_pos
+            if p.get('magic') == config.MAGIC_NUMBER
+            and p.get('type', 0) in (0, 1)  # 0=BUY, 1=SELL; 排除2-5挂单
+        ]
 
     # ── 持仓同步 ──
 

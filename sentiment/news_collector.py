@@ -190,12 +190,14 @@ class NewsCollector:
         return results
 
     def _fetch_rss(self, feed_url: str) -> List[Dict]:
-        """Fetch articles from an RSS feed."""
+        """Fetch articles from an RSS feed (with timeout protection)."""
         try:
-            feed = feedparser.parse(
-                feed_url,
-                request_headers={"User-Agent": "GoldQuantTrader/1.0"},
-            )
+            resp = self._session.get(feed_url, timeout=REQUEST_TIMEOUT)
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.text)
+        except requests.RequestException as exc:
+            logger.warning(f"[舆情采集] RSS下载失败 ({feed_url}): {exc}")
+            return []
         except Exception as exc:
             logger.warning(f"[舆情采集] RSS解析失败 ({feed_url}): {exc}")
             return []

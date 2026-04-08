@@ -259,12 +259,13 @@ class SentimentEngine:
     ) -> Dict:
         """Decide trading adjustments based on sentiment + calendar + Polymarket.
 
-        Decision logic:
+        Decision logic (v4 — lowered thresholds so sentiment actually affects trades):
           1. Calendar says pause -> allow_trading=False
-          2. Use analyzer's BULLISH/BEARISH label (threshold 0.25) with confidence >= 0.3
-          3. HIGH calendar risk -> lot_multiplier *= 0.5
-          4. Polymarket risk_index >= 60 -> direction_bias=BUY (避险需求)
-          5. Polymarket risk_index >= 85 -> lot_multiplier *= 0.5 (极端风险减仓防黑天鹅)
+          2. BULLISH/BEARISH (threshold 0.25) with confidence >= 0.15 -> direction_bias
+          3. Strong sentiment (confidence >= 0.30) -> lot_multiplier bump
+          4. HIGH calendar risk -> lot_multiplier *= 0.5
+          5. Polymarket risk_index >= 60 -> direction_bias=BUY
+          6. Polymarket risk_index >= 85 -> lot_multiplier *= 0.5
         """
         allow_trading = True
         direction_bias: Optional[str] = None
@@ -279,12 +280,13 @@ class SentimentEngine:
 
         label = sentiment.get("label", "NEUTRAL")
         confidence = sentiment.get("confidence", 0.0)
-        if label == "BULLISH" and confidence >= 0.3:
+
+        if label == "BULLISH" and confidence >= 0.15:
             direction_bias = "BUY"
-            lot_multiplier = 1.2
-        elif label == "BEARISH" and confidence >= 0.3:
+            lot_multiplier = 1.1 if confidence < 0.30 else 1.2
+        elif label == "BEARISH" and confidence >= 0.15:
             direction_bias = "SELL"
-            lot_multiplier = 1.2
+            lot_multiplier = 0.9 if confidence < 0.30 else 0.8
 
         if risk_level == "HIGH":
             lot_multiplier *= 0.5
