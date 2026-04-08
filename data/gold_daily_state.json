@@ -1,7 +1,7 @@
 {
   "date": "2026-04-08",
-  "pnl": -47.23,
-  "loss_count": 1,
+  "pnl": -70.5,
+  "loss_count": 3,
   "macro_sentiment": {
     "label": "NEUTRAL",
     "score": 0.0,
@@ -13,7 +13,7 @@
     "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-08T12:59:55.066499",
+    "timestamp": "2026-04-08T15:26:16.177973",
     "dxy": 99.64,
     "dxy_prev": 99.98,
     "dxy_change_pct": -0.34,
