@@ -28,6 +28,8 @@ from backtest import DataBundle
 from backtest.runner import C12_KWARGS, run_kfold, run_variant
 import strategies.signals as signals_mod
 
+_ORIGINAL_SCAN = signals_mod.scan_all_signals
+
 OUTPUT_FILE = "strategy_d_output.txt"
 
 
@@ -129,12 +131,10 @@ def make_pullback_signal_func(
 
 def patch_scan_with_pullback(**params):
     """Monkey-patch scan_all_signals to include pullback entries."""
-    original = signals_mod._original_scan_all if hasattr(signals_mod, '_original_scan_all') else signals_mod.scan_all_signals
-    signals_mod._original_scan_all = original
     check_fn = make_pullback_signal_func(**params)
 
     def patched_scan(df, timeframe='H1', h1_adx=None):
-        signals = original(df, timeframe, h1_adx=h1_adx)
+        signals = _ORIGINAL_SCAN(df, timeframe, h1_adx=h1_adx)
         if timeframe == 'H1':
             sig = check_fn(df)
             if sig:
@@ -145,8 +145,7 @@ def patch_scan_with_pullback(**params):
 
 
 def restore_scan():
-    if hasattr(signals_mod, '_original_scan_all'):
-        signals_mod.scan_all_signals = signals_mod._original_scan_all
+    signals_mod.scan_all_signals = _ORIGINAL_SCAN
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -307,7 +306,7 @@ if results:
     for idx in range(100, len(data.h1_df)):
         window = data.h1_df.iloc[max(0, idx - 100):idx + 1]
         pb_sig = check_fn(window)
-        kc_sigs = signals_mod._original_scan_all(window, 'H1')
+        kc_sigs = _ORIGINAL_SCAN(window, 'H1')
         kc_hit = any(s.get('strategy') == 'keltner_breakout' for s in kc_sigs) if kc_sigs else False
 
         if pb_sig:

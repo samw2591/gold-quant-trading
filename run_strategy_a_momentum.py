@@ -27,6 +27,8 @@ from backtest import DataBundle, run_variant
 from backtest.runner import C12_KWARGS, run_kfold
 import strategies.signals as signals_mod
 
+_ORIGINAL_SCAN = signals_mod.scan_all_signals
+
 OUTPUT_FILE = "strategy_a_output.txt"
 
 
@@ -108,12 +110,10 @@ def make_momentum_signal_func(lookback=3, atr_mult=2.0, sl_atr=4.5, tp_atr=8.0):
 
 def patch_scan_with_momentum(lookback=3, atr_mult=2.0, sl_atr=4.5, tp_atr=8.0):
     """Monkey-patch scan_all_signals to also check momentum."""
-    original = signals_mod._original_scan_all if hasattr(signals_mod, '_original_scan_all') else signals_mod.scan_all_signals
-    signals_mod._original_scan_all = original
     check_fn = make_momentum_signal_func(lookback, atr_mult, sl_atr, tp_atr)
 
     def patched_scan(df, timeframe='H1', h1_adx=None):
-        signals = original(df, timeframe, h1_adx=h1_adx)
+        signals = _ORIGINAL_SCAN(df, timeframe, h1_adx=h1_adx)
         if timeframe == 'H1':
             sig = check_fn(df)
             if sig:
@@ -124,8 +124,7 @@ def patch_scan_with_momentum(lookback=3, atr_mult=2.0, sl_atr=4.5, tp_atr=8.0):
 
 
 def restore_scan():
-    if hasattr(signals_mod, '_original_scan_all'):
-        signals_mod.scan_all_signals = signals_mod._original_scan_all
+    signals_mod.scan_all_signals = _ORIGINAL_SCAN
 
 
 # ═══════════════════════════════════════════════════════════════

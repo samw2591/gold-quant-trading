@@ -28,6 +28,8 @@ from backtest import DataBundle, BacktestEngine
 from backtest.runner import C12_KWARGS, run_kfold
 import strategies.signals as signals_mod
 
+_ORIGINAL_SCAN = signals_mod.scan_all_signals
+
 OUTPUT_FILE = "strategy_c_output.txt"
 
 
@@ -132,12 +134,10 @@ _d1_cache = {}
 
 def patch_scan_with_d1_filter(d1_df, fast=20, slow=50, adx_thresh=20, allow_flat=False):
     """Monkey-patch scan_all_signals to filter by D1 trend direction."""
-    original = signals_mod._original_scan_all if hasattr(signals_mod, '_original_scan_all') else signals_mod.scan_all_signals
-    signals_mod._original_scan_all = original
     _d1_cache.clear()
 
     def patched_scan(df, timeframe='H1', h1_adx=None):
-        signals = original(df, timeframe, h1_adx=h1_adx)
+        signals = _ORIGINAL_SCAN(df, timeframe, h1_adx=h1_adx)
         if not signals or df is None or len(df) < 1:
             return signals
 
@@ -158,8 +158,7 @@ def patch_scan_with_d1_filter(d1_df, fast=20, slow=50, adx_thresh=20, allow_flat
 
 
 def restore_scan():
-    if hasattr(signals_mod, '_original_scan_all'):
-        signals_mod.scan_all_signals = signals_mod._original_scan_all
+    signals_mod.scan_all_signals = _ORIGINAL_SCAN
 
 
 # ═══════════════════════════════════════════════════════════════

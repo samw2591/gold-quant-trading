@@ -1650,16 +1650,24 @@ ADX 11年均值: 34.6, ADX>18: 92.2%, ADX>25: 72.7%
 - **核心逻辑**: 短窗口 N 根 K 线累积涨幅超过 K*ATR 时入场，不等 ADX/EMA 确认，捕捉 Keltner 因指标滞后错过的急速行情
 - **参数搜索**: lookback(2-5) x atr_mult(1.0-3.0) x sl_atr(3-6) x max_hold(8-16)，共 180 组合
 - **验证**: Top-3 做 6-fold K-Fold + Momentum-only 独立评估
-- **状态**: 待运行
+- **状态**: 已运行 - **monkey-patch 失效，结果无效，需修复后重测**
 
 #### Strategy C: 多级趋势过滤 (`run_strategy_c_trend_filter.py`)
 - **核心逻辑**: 从 H1 聚合 D1 数据，D1 EMA 交叉 + ADX 确认多空方向，只放行方向一致的 H1 信号
-- **参数搜索**: D1 EMA fast(10/20) x slow(50/100) x ADX 阈值(15-30) x 允许 FLAT(Y/N)，共 16 组合
+- **参数搜索**: D1 EMA fast(10/20) x slow(50/100) x ADX 阈值(15-30) x 允许 FLAT(Y/N)，共 32 组合
 - **验证**: Top-3 做 6-fold K-Fold + D1 趋势分布分析
-- **状态**: 待运行
+- **状态**: 已运行 - **monkey-patch 失效，所有 32 组合结果完全相同，需修复后重测**
 
 #### Strategy D: 趋势回调入场 (`run_strategy_d_pullback.py`)
 - **核心逻辑**: 先确认趋势脉冲（N 根 K 线涨幅 > K*ATR），然后等 RSI 回调或价格触及短期 EMA 时入场，风险回报更优
 - **参数搜索**: impulse_lb(5-15) x impulse_atr(1.5-3.0) x pb_rsi(30-45) x pb_ema(9/21) x sl_atr(3-6)，共 384 组合
 - **验证**: Top-3 做 6-fold K-Fold + Pullback-only 独立评估 + 与 Keltner 信号重叠分析
-- **状态**: 待运行
+- **状态**: 已运行 - **monkey-patch 失效，所有 384 组合结果完全相同，需修复后重测**
+
+#### 首次测试结论 (2026-04-08)
+- **2026-04-08**: 三个策略回测脚本在外部服务器完成运行（A=119min, C=8min, D=241min），但 monkey-patch 机制存在 bug：
+  - Strategy A: 最佳 Sharpe=4.62 低于 Baseline 4.92，添加的动量信号反而拉低了表现；Momentum-only 测试结果与 Baseline 完全一致（N=1779），说明实际未正确隔离
+  - Strategy C: 所有 32 个 D1 过滤组合结果完全相同（N=1779, Sharpe=4.92），D1 过滤器未生效
+  - Strategy D: 所有 384 个组合结果完全相同（N=1779, Sharpe=4.92），Pullback 信号未被加入；Part 4 overlap 分析显示 Keltner signals=0（应有大量信号）
+- **根因**: `restore_scan()` / `patch_scan_*()` 的 `_original_scan_all` 在多次调用间状态管理不正确，导致 patch 替换了自身引用
+- **待办**: 修复三个脚本的 monkey-patching 机制后重新测试
