@@ -14,6 +14,7 @@ METATRADER_DIR_PATH = r"C:\Users\hlin2\AppData\Roaming\MetaQuotes\Terminal\35EEC
 
 # MT4 文件桥接目录 (EA和Python通过这个目录通信)
 BRIDGE_DIR = Path(METATRADER_DIR_PATH) / "MQL4" / "Files" / "DWX"
+BRIDGE_DIR_EURUSD = Path(METATRADER_DIR_PATH) / "MQL4" / "Files" / "DWX_EURUSD"
 
 # ============================================================
 # 交易账户参数

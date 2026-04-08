@@ -44,8 +44,24 @@ class DataProvider:
         return self._get_yfinance_data('15m', '30d')
 
     def _read_mt4_bars(self, filename: str) -> Optional[pd.DataFrame]:
-        """从MT4桥接文件读K线数据 (优先数据源)"""
-        filepath = config.BRIDGE_DIR / filename
+        """从黄金桥接目录读K线数据 (优先数据源)"""
+        df = self._read_mt4_bars_from(filename, config.BRIDGE_DIR)
+        if df is not None:
+            return prepare_indicators(df)
+        return None
+
+    def get_eurusd_h1(self) -> Optional[pd.DataFrame]:
+        """获取 EUR/USD H1 数据: MT4 桥接 > yfinance fallback"""
+        df = self._read_mt4_bars_from('bars_h1.json', config.BRIDGE_DIR_EURUSD)
+        if df is not None:
+            log.debug("EURUSD H1数据来源: MT4本地")
+            return df
+        log.debug("EURUSD H1数据来源: yfinance (fallback)")
+        return self._get_yfinance_data('1h', '30d', ticker='EURUSD=X', apply_indicators=False)
+
+    def _read_mt4_bars_from(self, filename: str, bridge_dir) -> Optional[pd.DataFrame]:
+        """从指定桥接目录读K线数据"""
+        filepath = bridge_dir / filename
         try:
             if not filepath.exists():
                 return None
@@ -67,22 +83,24 @@ class DataProvider:
             times = [pd.Timestamp(b['t'].replace('.', '-')) for b in bars]
             df.index = pd.DatetimeIndex(times)
             df.index.name = 'Datetime'
-
-            return prepare_indicators(df)
+            return df
         except Exception as e:
-            log.debug(f"MT4本地数据读取失败 ({filename}): {e}")
+            log.debug(f"MT4本地数据读取失败 ({bridge_dir.name}/{filename}): {e}")
             return None
 
-    def _get_yfinance_data(self, interval='1h', period='60d') -> Optional[pd.DataFrame]:
+    def _get_yfinance_data(self, interval='1h', period='60d',
+                           ticker='GC=F', apply_indicators=True) -> Optional[pd.DataFrame]:
         """从yfinance获取数据 (fallback备用)"""
         try:
-            df = yf.download('GC=F', period=period, interval=interval, progress=False)
+            df = yf.download(ticker, period=period, interval=interval, progress=False)
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
             df = df.dropna(subset=['Close'])
             if len(df) < 55:
                 return None
-            return prepare_indicators(df)
+            if apply_indicators:
+                return prepare_indicators(df)
+            return df
         except Exception as e:
-            log.debug(f"yfinance {interval}数据获取失败: {e}")
+            log.debug(f"yfinance {ticker} {interval}数据获取失败: {e}")
             return None

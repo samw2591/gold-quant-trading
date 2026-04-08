@@ -307,11 +307,18 @@ def main():
             except Exception as e:
                 log.error(f"出场检查出错: {e}")
 
-            # 模拟盘扫描 (和实盘共享行情数据)
+            # 模拟盘扫描 (黄金行情 + EUR/USD行情)
             try:
                 df_h1 = trader.get_hourly_data()
                 df_m15 = trader.get_m15_data()
-                paper.scan(df_h1, df_m15)
+                extra = {}
+                try:
+                    eurusd_h1 = trader.data.get_eurusd_h1()
+                    if eurusd_h1 is not None:
+                        extra['EURUSD_H1'] = eurusd_h1
+                except Exception as e:
+                    log.debug(f"EUR/USD 数据获取失败: {e}")
+                paper.scan(df_h1, df_m15, extra_data=extra)
             except Exception as e:
                 log.debug(f"模拟盘扫描出错: {e}")
 

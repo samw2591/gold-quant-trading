@@ -33,7 +33,8 @@ class PaperPosition:
     def __init__(self, strategy: str, direction: str, entry_price: float,
                  sl: float, tp: float, lots: float, reason: str,
                  factors: Optional[Dict] = None,
-                 trailing_activate: float = 0, trailing_distance: float = 0):
+                 trailing_activate: float = 0, trailing_distance: float = 0,
+                 point_value: float = 0, symbol: str = ""):
         self.strategy = strategy
         self.direction = direction
         self.entry_price = entry_price
@@ -50,6 +51,8 @@ class PaperPosition:
         self.trailing_distance = trailing_distance
         self.trailing_active = False
         self.trailing_stop_price = 0.0
+        self.point_value = point_value or config.POINT_VALUE_PER_LOT
+        self.symbol = symbol or config.SYMBOL
 
     def update(self, high: float, low: float, close: float) -> Optional[Dict]:
         """
@@ -103,12 +106,13 @@ class PaperPosition:
         return {
             'strategy': self.strategy,
             'direction': self.direction,
+            'symbol': self.symbol,
             'entry_price': self.entry_price,
             'exit_price': self.entry_price + pnl if self.direction == 'BUY' else self.entry_price - pnl,
             'sl': self.sl,
             'tp': self.tp,
             'lots': self.lots,
-            'pnl': round(pnl * self.lots * config.POINT_VALUE_PER_LOT, 2),
+            'pnl': round(pnl * self.lots * self.point_value, 2),
             'pnl_points': round(pnl, 2),
             'exit_reason': exit_reason,
             'reason': self.reason,
@@ -129,10 +133,11 @@ class PaperPosition:
         return {
             'strategy': self.strategy,
             'direction': self.direction,
+            'symbol': self.symbol,
             'entry_price': self.entry_price,
             'exit_price': close,
             'sl': self.sl, 'tp': self.tp, 'lots': self.lots,
-            'pnl': round(pnl * self.lots * config.POINT_VALUE_PER_LOT, 2),
+            'pnl': round(pnl * self.lots * self.point_value, 2),
             'pnl_points': round(pnl, 2),
             'exit_reason': 'timeout',
             'reason': self.reason,
@@ -213,6 +218,8 @@ class PaperTrader:
                 factors=p.get('factors', {}),
                 trailing_activate=p.get('trailing_activate', 0),
                 trailing_distance=p.get('trailing_distance', 0),
+                point_value=p.get('point_value', config.POINT_VALUE_PER_LOT),
+                symbol=p.get('symbol', config.SYMBOL),
             )
             pos.entry_time = p.get('entry_time', '')
             pos.bars_held = p.get('bars_held', 0)
@@ -232,6 +239,7 @@ class PaperTrader:
             data.append({
                 'strategy': pos.strategy,
                 'direction': pos.direction,
+                'symbol': pos.symbol,
                 'entry_price': pos.entry_price,
                 'sl': pos.sl, 'tp': pos.tp,
                 'lots': pos.lots,
@@ -245,6 +253,7 @@ class PaperTrader:
                 'trailing_distance': pos.trailing_distance,
                 'trailing_active': pos.trailing_active,
                 'trailing_stop_price': pos.trailing_stop_price,
+                'point_value': pos.point_value,
             })
         self._save_json(self.positions_file, data)
 
@@ -265,16 +274,20 @@ class PaperTrader:
         log.info(f"📝 模拟盘注册策略: {name}")
 
     def scan(self, df_h1: Optional[pd.DataFrame] = None,
-             df_m15: Optional[pd.DataFrame] = None):
+             df_m15: Optional[pd.DataFrame] = None,
+             extra_data: Optional[Dict[str, pd.DataFrame]] = None):
         """
         主扫描入口，在gold_runner主循环中调用
 
         Args:
-            df_h1: H1数据 (和实盘共享)
-            df_m15: M15数据 (和实盘共享)
+            df_h1: H1数据 (黄金, 和实盘共享)
+            df_m15: M15数据 (黄金, 和实盘共享)
+            extra_data: 其他品种数据 {"EURUSD_H1": df, ...}
         """
         if not self.strategies:
             return
+
+        self._extra_data = extra_data or {}
 
         # 更新现有持仓
         self._update_positions(df_h1, df_m15)
@@ -282,13 +295,21 @@ class PaperTrader:
         # 扫描新信号
         self._scan_signals(df_h1, df_m15)
 
+    def _get_df_for_strategy(self, strategy_name, df_h1, df_m15):
+        """根据策略配置返回对应的 DataFrame"""
+        strat_config = self.strategies.get(strategy_name, {})
+        data_key = strat_config.get('data_key')
+        if data_key and data_key in self._extra_data:
+            return self._extra_data[data_key]
+        tf = strat_config.get('timeframe', 'H1')
+        return df_h1 if tf == 'H1' else df_m15
+
     def _update_positions(self, df_h1, df_m15):
         """更新持仓，检查出场"""
         to_close = []
 
         for pos in self.positions:
-            # 选择对应时间框架的数据
-            df = df_h1  # 默认用H1
+            df = self._get_df_for_strategy(pos.strategy, df_h1, df_m15)
             if df is None or len(df) < 5:
                 continue
 
@@ -311,7 +332,6 @@ class PaperTrader:
                 to_close.append((pos, result))
                 continue
 
-            # 自定义出场逻辑
             exit_func = strat_config.get('exit_func')
             if exit_func:
                 exit_signal = exit_func(df, pos.direction)
@@ -322,7 +342,7 @@ class PaperTrader:
                         pnl = pos.entry_price - close
                     result = {
                         **pos._close(pnl, 'signal_exit'),
-                        'pnl': round(pnl * pos.lots * config.POINT_VALUE_PER_LOT, 2),
+                        'pnl': round(pnl * pos.lots * pos.point_value, 2),
                         'pnl_points': round(pnl, 2),
                         'exit_reason': f'signal: {exit_signal}',
                     }
@@ -342,19 +362,16 @@ class PaperTrader:
             if not strat_config.get('enabled', True):
                 continue
 
-            # 检查该策略持仓上限
             max_pos = strat_config.get('max_positions', 1)
             active = sum(1 for p in self.positions if p.strategy == name)
             if active >= max_pos:
                 continue
 
-            # 调用策略信号函数
             signal_func = strat_config.get('signal_func')
             if not signal_func:
                 continue
 
-            # 传入对应时间框架
-            df = df_h1 if strat_config.get('timeframe', 'H1') == 'H1' else df_m15
+            df = self._get_df_for_strategy(name, df_h1, df_m15)
             if df is None or len(df) < 50:
                 continue
 
@@ -362,24 +379,23 @@ class PaperTrader:
             if sig is None:
                 continue
 
-            # 防止同一根K线重复触发
             bar_time_str = str(df.index[-1])
             if self._last_signal_bar.get(name) == bar_time_str:
                 continue
 
-            # 方向冲突检查
-            active_dirs = set(p.direction for p in self.positions)
+            # 方向冲突检查（仅限同品种）
+            strat_symbol = strat_config.get('symbol', config.SYMBOL)
+            active_dirs = set(p.direction for p in self.positions if p.symbol == strat_symbol)
             if active_dirs and sig['signal'] not in active_dirs:
                 continue
 
-            # 记录触发时间
             self._last_signal_bar[name] = bar_time_str
 
-            # 虚拟开仓
             entry_price = float(df.iloc[-1]['Close'])
             sl = sig.get('sl', 20)
             tp = sig.get('tp', 0)
-            lots = 0.01  # 模拟盘固定小手数
+            lots = strat_config.get('lots', 0.01)
+            pv = strat_config.get('point_value', config.POINT_VALUE_PER_LOT)
 
             factors = self._snapshot_factors(df, name)
 
@@ -392,12 +408,15 @@ class PaperTrader:
                 factors=factors,
                 trailing_activate=sig.get('trailing_activate', 0),
                 trailing_distance=sig.get('trailing_distance', 0),
+                point_value=pv,
+                symbol=strat_symbol,
             )
             self.positions.append(pos)
             self._save_positions()
 
-            log.info(f"  📝 [模拟] {sig['signal']} {name} @ {entry_price:.2f} "
-                     f"SL={sl:.1f} TP={tp:.1f} | {sig.get('reason', '')}")
+            sym_tag = f"[{strat_symbol}] " if strat_symbol != config.SYMBOL else ""
+            log.info(f"  📝 [模拟] {sym_tag}{sig['signal']} {name} @ {entry_price:.5f} "
+                     f"SL={sl:.5f} TP={tp:.5f} | {sig.get('reason', '')}")
 
     @staticmethod
     def _snapshot_factors(df: pd.DataFrame, strategy: str) -> Dict:
@@ -787,4 +806,134 @@ def setup_paper_strategies(paper: PaperTrader):
         'max_hold_bars': 15,
         'max_positions': 2,
         'enabled': True,
+    })
+
+    # ── 策略P8: Mega Trail + 短持仓 (H20 = 5h) ──
+    # EXP33 冠军组合: Mega T0.5/D0.15 + Hold=20 bars
+    # K-Fold 6/6 折全赢, Avg Sharpe 8.25 vs P7的7.47
+    # 与 P7 同信号同 trailing，仅 max_hold 从 15 bars 缩短到 5 bars
+    # 对比目标: 短持仓是否在实盘中也能减少 SL 损失
+    paper.register_strategy('P8_mega_h20', {
+        'signal_func': mega_trail_signal,
+        'timeframe': 'H1',
+        'max_hold_bars': 5,
+        'max_positions': 2,
+        'enabled': True,
+    })
+
+    # ══════════════════════════════════════════════════════════════
+    # EUR/USD 策略 — 第二量化品类
+    # 数据通过 extra_data["EURUSD_H1"] 传入
+    # PnL: 1 标准手 1 pip = $10, 所以 point_value = 100,000
+    #       (price_diff * lots * 100000 = pnl in USD)
+    # ══════════════════════════════════════════════════════════════
+
+    EURUSD_POINT_VALUE = 100_000  # 1 standard lot = 100,000 units
+    EURUSD_SYMBOL = "EURUSD.mx"
+
+    def _calc_eurusd_indicators(df):
+        """Calculate indicators for EUR/USD with KC mult=2.0 (optimized params)."""
+        if 'KC_mid' in df.columns:
+            return df
+        df = df.copy()
+        df['EMA100'] = df['Close'].ewm(span=100).mean()
+        df['EMA9'] = df['Close'].ewm(span=9).mean()
+        df['EMA21'] = df['Close'].ewm(span=21).mean()
+        df['SMA50'] = df['Close'].rolling(50).mean()
+        df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
+        df['KC_mid'] = df['Close'].ewm(span=25).mean()
+        df['KC_upper'] = df['KC_mid'] + 2.0 * df['ATR']
+        df['KC_lower'] = df['KC_mid'] - 2.0 * df['ATR']
+
+        # RSI14
+        delta = df['Close'].diff()
+        gain = delta.where(delta > 0, 0.0)
+        loss = -delta.where(delta < 0, 0.0)
+        avg_gain = gain.ewm(com=13, min_periods=14).mean()
+        avg_loss = loss.ewm(com=13, min_periods=14).mean()
+        rs = avg_gain / avg_loss
+        df['RSI14'] = 100 - (100 / (1 + rs))
+
+        # ADX
+        high, low, close = df['High'], df['Low'], df['Close']
+        plus_dm = high.diff()
+        minus_dm = low.diff().apply(lambda x: -x)
+        plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0.0)
+        minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0.0)
+        tr = pd.concat([high - low, (high - close.shift()).abs(), (low - close.shift()).abs()], axis=1).max(axis=1)
+        atr_14 = tr.ewm(span=14, min_periods=14).mean()
+        plus_di = 100 * plus_dm.ewm(span=14, min_periods=14).mean() / atr_14
+        minus_di = 100 * minus_dm.ewm(span=14, min_periods=14).mean() / atr_14
+        dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di)
+        df['ADX'] = dx.ewm(span=14, min_periods=14).mean()
+
+        df['atr_percentile'] = df['ATR'].rolling(500, min_periods=50).rank(pct=True).fillna(0.5)
+        return df
+
+    # ── 策略 P9: EUR/USD Keltner KC2.0 ──
+    # 11年回测: Sharpe 1.91, 12/12年盈利, K-Fold 6/6折正面
+    # 最优参数: KC mult=2.0, ADX18, SL=4.5xATR, TP=8.0xATR, MaxHold=20
+    def eurusd_keltner_signal(df):
+        df = _calc_eurusd_indicators(df)
+        if len(df) < 150:
+            return None
+        row = df.iloc[-1]
+        close = float(row['Close'])
+        atr = float(row.get('ATR', 0))
+        adx = float(row.get('ADX', 0))
+        kc_upper = float(row.get('KC_upper', 0))
+        kc_lower = float(row.get('KC_lower', 0))
+        ema100 = float(row.get('EMA100', 0))
+
+        if any(pd.isna(v) for v in [atr, adx, kc_upper, kc_lower, ema100]):
+            return None
+        if atr <= 0 or adx < 18 or kc_upper <= 0:
+            return None
+
+        sl = round(atr * 4.5, 6)
+        tp = round(atr * 8.0, 6)
+
+        # V3 ATR Regime trailing
+        atr_pct = float(row.get('atr_percentile', 0.5))
+        if pd.isna(atr_pct):
+            atr_pct = 0.5
+        if atr_pct < 0.30:
+            trail_act = round(atr * 1.0, 6)
+            trail_dist = round(atr * 0.35, 6)
+        elif atr_pct > 0.70:
+            trail_act = round(atr * 0.6, 6)
+            trail_dist = round(atr * 0.20, 6)
+        else:
+            trail_act = round(atr * 0.8, 6)
+            trail_dist = round(atr * 0.25, 6)
+
+        signal = None
+        if close > kc_upper and close > ema100:
+            signal = 'BUY'
+        elif close < kc_lower and close < ema100:
+            signal = 'SELL'
+
+        if not signal:
+            return None
+
+        atr_pips = atr * 10000
+        return {
+            'signal': signal,
+            'sl': sl,
+            'tp': tp,
+            'trailing_activate': trail_act,
+            'trailing_distance': trail_dist,
+            'reason': f'P9 EURUSD KC2.0: {signal} ADX={adx:.0f} ATR={atr_pips:.1f}pip',
+        }
+
+    paper.register_strategy('P9_eurusd_keltner', {
+        'signal_func': eurusd_keltner_signal,
+        'data_key': 'EURUSD_H1',
+        'timeframe': 'H1',
+        'max_hold_bars': 20,
+        'max_positions': 1,
+        'enabled': True,
+        'point_value': EURUSD_POINT_VALUE,
+        'symbol': EURUSD_SYMBOL,
+        'lots': 0.05,
     })

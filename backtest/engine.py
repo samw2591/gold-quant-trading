@@ -43,6 +43,7 @@ class Position:
     extreme_price: float = 0.0
     trailing_stop_price: float = 0.0
     bars_held: int = 0
+    entry_atr: float = 0.0
 
     def __post_init__(self):
         if self.direction == 'BUY':
@@ -142,6 +143,10 @@ class BacktestEngine:
         # Macro regime (P4)
         macro_df: Optional[pd.DataFrame] = None,
         macro_regime_enabled: bool = False,
+        # ATR spike protection: tighten trailing when intra-trade ATR spikes
+        atr_spike_protection: bool = False,
+        atr_spike_threshold: float = 1.5,   # ATR > entry_atr * threshold triggers
+        atr_spike_trail_mult: float = 0.7,  # multiply trail_distance by this when spiked
         # Label
         label: str = "",
     ):
@@ -221,6 +226,11 @@ class BacktestEngine:
             except ImportError:
                 pass
 
+        # ATR spike protection
+        self._atr_spike_protection = atr_spike_protection
+        self._atr_spike_threshold = atr_spike_threshold
+        self._atr_spike_trail_mult = atr_spike_trail_mult
+
         # State
         self.positions: List[Position] = []
         self.trades: List[TradeRecord] = []
@@ -237,6 +247,7 @@ class BacktestEngine:
         self.skipped_choppy = 0
         self.skipped_neutral_m15 = 0
         self.skipped_ema_slope = 0
+        self.atr_spike_tighten_count = 0
 
     # ── Main loop ─────────────────────────────────────────────
 
@@ -346,6 +357,13 @@ class BacktestEngine:
                 dist_atr = self._trail_dist or config.TRAILING_DISTANCE_ATR
                 atr = self._get_h1_atr(h1_window)
                 if atr > 0:
+                    # ATR spike protection: tighten trailing when volatility surges
+                    if (self._atr_spike_protection
+                            and pos.entry_atr > 0
+                            and atr > pos.entry_atr * self._atr_spike_threshold):
+                        dist_atr = dist_atr * self._atr_spike_trail_mult
+                        self.atr_spike_tighten_count += 1
+
                     if pos.direction == 'BUY':
                         float_profit = high - pos.entry_price
                         pos.extreme_price = max(pos.extreme_price, high)
@@ -632,10 +650,13 @@ class BacktestEngine:
                             lots = round(lots * 0.7, 2)
                 lots = max(config.MIN_LOT_SIZE, lots)
 
+            entry_atr = self._get_h1_atr(self._get_h1_window(bar_time))
+
             pos = Position(
                 strategy=strategy, direction=direction,
                 entry_price=close, entry_time=bar_time,
                 lots=lots, sl_distance=sl, tp_distance=tp,
+                entry_atr=entry_atr,
             )
             self.positions.append(pos)
             active_strategies.add(strategy)
@@ -734,13 +755,23 @@ class BacktestEngine:
         if h1_window is None or len(h1_window) < 2:
             return
         bar_date = pd.Timestamp(bar_time).date()
-        h1_len = len(h1_window)
-        if bar_date == self._cached_date and h1_len == self._cached_h1_count:
+
+        h1_time = pd.Timestamp(bar_time).floor('h')
+        if h1_time in self.h1_lookup:
+            max_idx = self.h1_lookup[h1_time]
+        else:
+            h1_times = self.h1_df.index
+            mask = h1_times <= pd.Timestamp(bar_time)
+            if not mask.any():
+                return
+            max_idx = int(mask.sum()) - 1
+
+        if bar_date == self._cached_date and max_idx == self._cached_h1_count:
             return
 
         indices = self._h1_date_map.get(bar_date)
         if indices:
-            valid = [i for i in indices if i < h1_len]
+            valid = [i for i in indices if i <= max_idx]
             if len(valid) >= 2:
                 today_bars = self.h1_df.iloc[valid]
                 self._current_score = self._calc_realtime_score(today_bars)
@@ -750,12 +781,15 @@ class BacktestEngine:
                     self._current_regime = 'neutral'
                 else:
                     self._current_regime = 'choppy'
+            else:
+                self._current_score = 0.5
+                self._current_regime = 'neutral'
         elif bar_date != self._cached_date:
             self._current_score = 0.5
             self._current_regime = 'neutral'
 
         self._cached_date = bar_date
-        self._cached_h1_count = h1_len
+        self._cached_h1_count = max_idx
 
     @staticmethod
     def _calc_realtime_score(today_bars: pd.DataFrame) -> float:
