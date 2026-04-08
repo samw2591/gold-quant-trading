@@ -1,15 +1,28 @@
 {
-  "16430573": {
+  "16431136": {
+    "strategy": "m15_rsi",
+    "direction": "BUY",
+    "entry_price": 4797.47,
+    "entry_date": "2026.04.08 09:20:56",
+    "lots": 0.01,
+    "sl": 4746.57,
+    "trailing_stop_price": 0,
+    "extreme_price": 4813.6,
+    "is_pyramid": false,
+    "last_profit": 12.41,
+    "last_price": 4809.88
+  },
+  "16431321": {
     "strategy": "keltner",
     "direction": "BUY",
-    "entry_price": 4843.8,
-    "entry_date": "2026.04.08 08:05:12",
+    "entry_price": 4811.28,
+    "entry_date": "2026.04.08 09:56:27",
     "lots": 0.01,
-    "sl": 4793.92,
+    "sl": 4759.71,
     "trailing_stop_price": 0,
-    "extreme_price": 4853.6,
+    "extreme_price": 4811.64,
     "is_pyramid": false,
-    "last_profit": -20.53,
-    "last_price": 4823.27
+    "last_profit": -1.4,
+    "last_price": 4809.88
   }
 }
