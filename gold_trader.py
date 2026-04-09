@@ -365,27 +365,28 @@ class GoldTrader:
                 log.info(f"      → {reason}")
                 success = self.bridge.close_order(ticket)
 
-                trade = {
-                    'action': 'CLOSE', 'ticket': ticket,
-                    'strategy': strategy, 'lots': lots,
-                    'open_price': open_price, 'close_price': current_price,
-                    'profit': profit, 'pnl_pct': round(pnl_pct, 2),
-                    'reason': reason, 'hold_hours': round(hold_hours, 1),
-                    'time': now.isoformat(),
-                }
-                exits.append(trade)
-                self.tracker.record_trade(trade)
-
                 if success:
-                    notifier.notify_close(ticket, strategy, profit, reason)
+                    trade = {
+                        'action': 'CLOSE', 'ticket': ticket,
+                        'strategy': strategy, 'lots': lots,
+                        'open_price': open_price, 'close_price': current_price,
+                        'profit': profit, 'pnl_pct': round(pnl_pct, 2),
+                        'reason': reason, 'hold_hours': round(hold_hours, 1),
+                        'time': now.isoformat(),
+                    }
+                    exits.append(trade)
+                    self.tracker.record_trade(trade)
                     self.tracker.update_pnl(profit)
                     self.risk.update_daily_pnl(profit)
+                    notifier.notify_close(ticket, strategy, profit, reason)
                     if profit < 0:
                         self.risk.add_cooldown(strategy, config.COOLDOWN_MINUTES)
 
                     if track_key in self.tracker.tracking:
                         del self.tracker.tracking[track_key]
                         self.tracker._save_tracking()
+                else:
+                    log.warning(f"      ⚠️ 平仓指令发送失败, 等待下次重试或MT4自行处理")
             else:
                 log.info(f"      → 继续持有")
 
