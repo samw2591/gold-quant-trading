@@ -150,12 +150,17 @@
   },
   {
     "date": "2026-04-09",
-    "equity": 2073.92,
-    "total_pnl": 73.92,
-    "daily_pnl": 0.0,
-    "daily_trades": 0,
-    "daily_wins": 0,
+    "equity": 2120.9,
+    "total_pnl": 120.9,
+    "daily_pnl": 46.98,
+    "daily_trades": 1,
+    "daily_wins": 1,
     "daily_losses": 0,
-    "strategies": {}
+    "strategies": {
+      "m15_rsi": {
+        "trades": 1,
+        "pnl": 46.98
+      }
+    }
   }
 ]

@@ -1555,5 +1555,16 @@
       "atr_percentile": 0.86
     },
     "time": "2026-04-08T23:53:07.885957"
+  },
+  {
+    "action": "CLOSE_DETECTED",
+    "ticket": 16435858,
+    "strategy": "m15_rsi",
+    "direction": "SELL",
+    "entry_price": 4761.44,
+    "lots": 0.01,
+    "profit": 46.98,
+    "reason": "\ud83d\udea8 MT4\u81ea\u52a8\u5e73\u4ed3 (\u6b62\u635f\u6216\u624b\u52a8)",
+    "time": "2026-04-09T11:32:21.942990"
   }
 ]
