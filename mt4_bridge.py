@@ -8,6 +8,8 @@ MT4 文件桥接模块
 通信目录: MT4数据文件夹/MQL4/Files/DWX/
 """
 import json
+import os
+import tempfile
 import time
 import logging
 from pathlib import Path
@@ -46,12 +48,20 @@ class MT4Bridge:
         return None
 
     def _write_json(self, filepath: Path, data: Dict):
-        """写入JSON文件 (紧凑格式, 无空格, 确保EA能正确解析)"""
+        """原子写入JSON文件：先写临时文件再 os.replace，防止EA读到半截JSON"""
         try:
-            with open(filepath, 'w') as f:
+            tmp_fd, tmp_path = tempfile.mkstemp(
+                dir=str(filepath.parent), suffix='.tmp'
+            )
+            with os.fdopen(tmp_fd, 'w') as f:
                 json.dump(data, f, separators=(',', ':'), default=str)
-        except IOError as e:
+            os.replace(tmp_path, str(filepath))
+        except OSError as e:
             log.error(f"写入 {filepath.name} 失败: {e}")
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
     def get_account(self) -> Optional[Dict]:
         """获取账户信息"""

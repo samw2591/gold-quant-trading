@@ -23,6 +23,7 @@ from risk_manager import RiskManager
 from position_tracker import PositionTracker
 from strategies.signals import (scan_all_signals, check_exit_signal,
                                 get_orb_strategy, calc_auto_lot_size)
+from strategies.exit_logic import check_trailing_exit, check_time_decay_tp
 import notifier
 
 # 舆情分析模块 (安全导入，失败不影响交易)
@@ -306,73 +307,53 @@ class GoldTrader:
                 if exit_sig:
                     reason = exit_sig
 
-            # 2. Keltner Trailing Stop (V3 ATR Regime adaptive)
+            # 2. Keltner Trailing Stop (V3 ATR Regime adaptive) — 共享模块
             if not reason and strategy == 'keltner' and config.TRAILING_STOP_ENABLED:
                 atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
                 if atr > 0 and open_price > 0:
-                    if direction == 'BUY':
-                        float_profit = current_price - open_price
-                    else:
-                        float_profit = open_price - current_price
-
-                    trail_act_mult = config.TRAILING_ACTIVATE_ATR
-                    trail_dist_mult = config.TRAILING_DISTANCE_ATR
+                    atr_pct = 0.5
                     if config.V3_ATR_REGIME_ENABLED:
                         atr_series = df['ATR'].dropna()
                         if len(atr_series) >= 50:
-                            atr_pct = (atr_series.iloc[-50:] < atr).mean()
-                            if atr_pct > 0.70:
-                                trail_act_mult = 0.4
-                                trail_dist_mult = 0.10
-                            elif atr_pct < 0.30:
-                                trail_act_mult = 0.7
-                                trail_dist_mult = 0.25
-                    activate_threshold = atr * trail_act_mult
-                    trail_distance = atr * trail_dist_mult
+                            atr_pct = float((atr_series.iloc[-50:] < atr).mean())
 
-                    if float_profit >= activate_threshold:
-                        extreme = track.get('extreme_price', current_price)
-                        if direction == 'BUY':
-                            extreme = max(extreme, current_price)
-                            new_trail = round(extreme - trail_distance, 2)
-                            old_trail = track.get('trailing_stop_price', 0)
-                            trail_price = max(new_trail, old_trail)
-                        else:
-                            extreme = min(extreme, current_price) if extreme > 0 else current_price
-                            new_trail = round(extreme + trail_distance, 2)
-                            old_trail = track.get('trailing_stop_price', 0)
-                            trail_price = min(new_trail, old_trail) if old_trail > 0 else new_trail
+                    trail_reason, new_extreme, new_trail, activate_threshold = check_trailing_exit(
+                        direction=direction,
+                        current_price=current_price,
+                        open_price=open_price,
+                        atr=atr,
+                        atr_percentile=atr_pct,
+                        extreme_price=track.get('extreme_price', current_price),
+                        prev_trail_price=track.get('trailing_stop_price', 0),
+                    )
 
-                        self.tracker.tracking[track_key]['trailing_stop_price'] = trail_price
+                    if new_trail > 0:
+                        self.tracker.tracking[track_key]['extreme_price'] = new_extreme
+                        self.tracker.tracking[track_key]['trailing_stop_price'] = new_trail
                         self.tracker._save_tracking()
 
-                        triggered = (direction == 'BUY' and current_price <= trail_price) or \
-                                    (direction == 'SELL' and current_price >= trail_price)
-                        if triggered:
-                            reason = (f"📈 Trailing Stop: 浮盈${float_profit:.2f} "
-                                      f"(激活阈值${activate_threshold:.2f}), "
-                                      f"价格{current_price:.2f}触及追踪止盈{trail_price:.2f}")
-                        else:
-                            log.info(f"      📈 Trailing激活: 浮盈${float_profit:.2f} "
-                                     f"追踪价{trail_price:.2f} (距离${trail_distance:.2f})")
+                    if trail_reason:
+                        reason = trail_reason
+                    elif new_trail > 0:
+                        float_profit = (current_price - open_price) if direction == 'BUY' else (open_price - current_price)
+                        from strategies.exit_logic import calc_trailing_params
+                        _, trail_distance = calc_trailing_params(atr, atr_pct)
+                        log.info(f"      📈 Trailing激活: 浮盈${float_profit:.2f} "
+                                 f"追踪价{new_trail:.2f} (距离${trail_distance:.2f})")
 
-            # 3. 时间衰减止盈 (D1+3h: start=1h, atr_start=0.30, step=0.10/h)
-            if not reason and strategy == 'keltner' and hold_hours >= 1.0:
-                trailing_active = track.get('trailing_stop_price', 0) > 0
-                if not trailing_active:
-                    atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
-                    if atr > 0:
-                        decay_hours = hold_hours - 1.0
-                        min_profit_atr = max(0.0, 0.30 - decay_hours * 0.10)
-                        min_profit = atr * min_profit_atr
-                        if direction == 'BUY':
-                            float_pnl = current_price - open_price
-                        else:
-                            float_pnl = open_price - current_price
-                        if float_pnl > 0 and float_pnl >= min_profit:
-                            reason = (f"⏳ 时间衰减止盈: 持仓{hold_hours:.1f}h, "
-                                      f"浮盈${float_pnl:.2f} >= 门槛${min_profit:.2f} "
-                                      f"({min_profit_atr:.2f}×ATR)")
+            # 3. 时间衰减止盈 (D1+3h) — 共享模块
+            if not reason and strategy == 'keltner':
+                atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
+                decay_reason = check_time_decay_tp(
+                    direction=direction,
+                    current_price=current_price,
+                    open_price=open_price,
+                    hold_hours=hold_hours,
+                    atr=atr,
+                    trailing_active=track.get('trailing_stop_price', 0) > 0,
+                )
+                if decay_reason:
+                    reason = decay_reason
 
             # 4. 时间止损
             max_hold = config.STRATEGIES.get(strategy, {}).get('max_hold_bars', 15)

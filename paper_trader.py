@@ -24,6 +24,7 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 import config
+from strategies.exit_logic import check_time_decay_tp
 
 log = logging.getLogger(__name__)
 
@@ -324,8 +325,32 @@ class PaperTrader:
                 to_close.append((pos, result))
                 continue
 
-            # 检查超时
+            # 时间衰减止盈（与实盘共享逻辑）
             strat_config = self.strategies.get(pos.strategy, {})
+            if strat_config.get('time_decay_tp', False):
+                atr_val = float(latest.get('ATR', 0)) if not pd.isna(latest.get('ATR', 0)) else 0
+                td_reason = check_time_decay_tp(
+                    direction=pos.direction,
+                    current_price=close,
+                    open_price=pos.entry_price,
+                    hold_hours=pos.bars_held,
+                    atr=atr_val,
+                    trailing_active=pos.trailing_active,
+                )
+                if td_reason:
+                    if pos.direction == 'BUY':
+                        pnl = close - pos.entry_price
+                    else:
+                        pnl = pos.entry_price - close
+                    result = {
+                        **pos._close(pnl, 'time_decay_tp'),
+                        'pnl': round(pnl * pos.lots * pos.point_value, 2),
+                        'pnl_points': round(pnl, 2),
+                    }
+                    to_close.append((pos, result))
+                    continue
+
+            # 检查超时
             max_bars = strat_config.get('max_hold_bars', 15)
             if pos.bars_held >= max_bars:
                 result = pos.force_close(close)
@@ -806,6 +831,7 @@ def setup_paper_strategies(paper: PaperTrader):
         'max_hold_bars': 15,
         'max_positions': 2,
         'enabled': True,
+        'time_decay_tp': True,
     })
 
     # ── 策略P8: Mega Trail + 短持仓 (H20 = 5h) ──
@@ -819,6 +845,7 @@ def setup_paper_strategies(paper: PaperTrader):
         'max_hold_bars': 5,
         'max_positions': 2,
         'enabled': True,
+        'time_decay_tp': True,
     })
 
     # ══════════════════════════════════════════════════════════════

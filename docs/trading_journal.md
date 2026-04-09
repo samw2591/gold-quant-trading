@@ -1800,12 +1800,73 @@ ADX 11年均值: 34.6, ADX>18: 92.2%, ADX>25: 72.7%
 - 实盘仅 9 笔有 factors，距 20 笔门槛还远
 - 历史交易缺 factors 的问题仍未解决（需要离线脚本回填）
 
+### 2026-04-08 Mega Trail 追踪止盈参数上线实盘
+
+- **变更**: 将实盘 Keltner 追踪止盈从旧参数切换为 P7/P8 Mega Trail 参数
+- **依据**: 4/8 模拟盘 P7 +$22.32 (5W2L) vs 实盘 KC -$65.77 (0W2L)，同信号不同追踪参数，差值 +$88
+- **修改文件**: `config.py` + `gold_trader.py`
+- **参数对比**:
+
+| ATR 百分位 | 旧 activate/distance | 新 activate/distance |
+|---|---|---|
+| 低波动 (<30%) | 1.0 / 0.35 | **0.7 / 0.25** |
+| 中间 (30-70%) | 0.8 / 0.25 | **0.5 / 0.15** |
+| 高波动 (>70%) | 0.6 / 0.20 | **0.4 / 0.10** |
+
+- **风险评估**: 入场逻辑完全不变，仅出场更紧。最坏情况是被震荡洗出少赚，不会增加亏损
+- **监控**: 观察 1 周，对比切换前后的平均单笔盈亏和追踪触发率
+
+### 2026-04-09 时间衰减止盈（Time-Decay TP）回测脚本
+
+- **背景**: 盈利持仓长时间未触及止盈时，逐步降低锁利门槛，避免浮盈回吐
+- **实现**: `backtest/engine.py` 新增 step 3b 出场逻辑，在追踪止盈之后、时间止损之前
+- **参数**: `time_decay_start_hour` (开始衰减时间), `time_decay_atr_start` (初始门槛 ATR倍数), `time_decay_atr_step` (每小时衰减量)
+- **回测脚本**: `run_time_decay_test.py`，8 个变体（2 基线 + 4 衰减参数网格 + 2 衰减+短持仓组合）
+- **回测结果**: D1+3h 最优 — Sharpe 7.35→8.39 (+1.04), PnL $59,218, 衰减触发 1,859 次
+- **已上线实盘**: `config.py` max_hold_bars 5→3; `gold_trader.py` 新增 step 3 时间衰减止盈 (start=1h, atr_start=0.30, step=0.10/h)
+
+### 2026-04-09 严重 Bug：entry_date 解析失败导致时间止损永不触发
+
+- **现象**: #16435858 m15_rsi SELL 持仓超 11 小时未被时间止损平仓，浮盈从峰值 +$62 回吐到 +$49
+- **根因 1**: MT4 返回 `open_time` 格式为 `"2026.04.08 23:53:08"`（点分隔），但代码用 `datetime.fromisoformat()` 解析，只接受 `"2026-04-08T23:53:08"` 格式。解析失败后 fallback 到 `entry_date = now`，导致 `hold_hours` 永远≈0
+- **根因 2**: `m15_rsi` 不在 `config.STRATEGIES` 字典中，`max_hold_bars` 默认 15 小时（即使 Bug 1 修复后也偏长）
+- **修复**: `gold_trader.py` 添加 `strptime("%Y.%m.%d %H:%M:%S")` fallback；`position_tracker.py` 同步修复；`config.py` 新增 `m15_rsi` 配置 `max_hold_bars=4`
+- **影响范围**: 所有通过 MT4 `open_time` 写入 `entry_date` 的持仓都受影响，即**所有自动检测到的持仓**的时间止损都是失效的
+- **教训**: 数据格式兼容性必须有测试覆盖，不同来源（MT4 vs Python `isoformat()`）的时间字符串格式不同
+
+### 2026-04-09 四项实验回测脚本（服务器并行跑测）
+
+- **EXP A: M15 RSI 参数优化** (`run_rsi_optimize.py`): 11 个变体 — max_hold 扫描(4/8/12/16/24 bars)、sell 禁用、ADX 过滤(30/35)、RSI 阈值调优(10/90, 3/97)
+- **EXP B: KC Bandwidth 入场过滤** (`run_kc_bandwidth_test.py`): 5 个变体 — 要求 KC 通道宽度扩张才允许入场(lookback 3/5/8/12 bars)
+- **EXP C: ORB 策略诊断** (`run_orb_diagnosis.py`): 7 个变体 — ORB 开/关、不同 max_hold(4/8/12/16/24)
+- **EXP D: 特朗普关税舆情因子** (`run_trump_factor_test.py`): 后验分析 — 按时代/波动率/跳空/连续高波动分组统计策略表现，模拟波动率仓位调整
+- **引擎变更**: `backtest/engine.py` 新增 `rsi_max_hold_m15`、`kc_bw_filter_bars` 两个参数；`runner.py` 新增 `skipped_kc_bw` 统计
+
 ### 待办
 - [ ] 手动处理 MT4 #16434374（无止损裸单）和 #16341386（老挂单）
 - [ ] 三个顺势策略脚本（A/C/D）monkey-patch 已修复，待在外部服务器重新测试
 - [ ] 考虑将 watchdog 注册为 Windows Task Scheduler 任务，实现真正的进程解耦保活
 - [ ] 观察修复后 keyword_score 分布，确认不再饱和（预计 1 周数据验证）
 - [ ] 4/30 正式评估舆情系统 lot_multiplier 对 PnL 的实际影响
-- [ ] 回测 ADX 阈值 26/28 是否减少震荡期 KC 假突破（高优先级）
-- [ ] 明天日切后审阅首份模拟盘 IC 报告，评估 P7/P8 因子有效性
-- [ ] 评估是否加速 P7/P8 从模拟盘到实盘的迁移节奏（当前连亏期需要新策略参数）
+- [x] ~~评估是否加速 P7/P8 从模拟盘到实盘的迁移节奏~~ → 已上线 Mega Trail 参数
+- [ ] 回测 ADX 阈值 26/28 是否减少震荡期 KC 假突破（服务器跑测中）
+- [ ] 明天日切后审阅首份模拟盘 IC 报告，评估因子有效性
+- [ ] 1 周后评估 Mega Trail 实盘表现（对比切换前后追踪触发率和平均盈亏）
+
+### 2026-04-09 架构改进：原子写入 + 共享出场逻辑
+
+#### 1. Bridge commands.json 原子写入
+- **文件**: `mt4_bridge.py` `_write_json()`
+- **变更**: 从 `open(filepath, 'w') → json.dump()` 改为 `tempfile.mkstemp() → json.dump() → os.replace()`
+- **原因**: 直接写入时 EA 可能读到半截 JSON（写入非原子操作）
+- **影响**: 所有通过 bridge 发送的指令（OPEN/CLOSE/MODIFY）都受保护
+
+#### 2. 共享出场逻辑模块 `strategies/exit_logic.py`
+- **新文件**: `strategies/exit_logic.py`，包含三个函数：
+  - `calc_trailing_params(atr, atr_percentile)` — ATR Regime 自适应 Trailing 参数
+  - `check_trailing_exit(...)` — Trailing Stop 完整判定（激活+追踪+触发）
+  - `check_time_decay_tp(...)` — 时间衰减止盈判定
+- **实盘改动**: `gold_trader.py` `_check_exits()` 的 Trailing 和时间衰减逻辑改为调用共享模块
+- **模拟盘改动**: `paper_trader.py` `_update_positions()` 新增时间衰减止盈检查（通过 `time_decay_tp: True` 策略配置开关控制）
+- **受影响策略**: P7_mega_trail 和 P8_mega_h20 已启用 `time_decay_tp`
+- **好处**: 出场逻辑改一处、两边生效，消除实盘/模拟盘出场行为不一致的问题
