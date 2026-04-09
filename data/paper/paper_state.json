@@ -1,26 +1,26 @@
 {
-  "total_pnl": 30.69,
-  "trade_count": 50,
+  "total_pnl": 20.6,
+  "trade_count": 53,
   "wins": 31,
-  "losses": 19,
+  "losses": 22,
   "by_strategy": {
     "P4_atr_regime": {
-      "n": 13,
-      "pnl": 33.81,
+      "n": 14,
+      "pnl": 29.54,
       "wins": 8,
-      "losses": 5
+      "losses": 6
     },
     "P7_mega_trail": {
-      "n": 7,
-      "pnl": 22.32,
+      "n": 8,
+      "pnl": 18.15,
       "wins": 5,
-      "losses": 2
+      "losses": 3
     },
     "P8_mega_h20": {
-      "n": 9,
-      "pnl": 22.03,
+      "n": 10,
+      "pnl": 20.38,
       "wins": 7,
-      "losses": 2
+      "losses": 3
     }
   }
 }

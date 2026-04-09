@@ -128,14 +128,14 @@
   {
     "date": "2026-04-09",
     "label": "NEUTRAL",
-    "score": 0.0809,
-    "confidence": 0.1213,
-    "keyword_score": 0.0774,
-    "finbert_score": 0.0888,
-    "vader_score": 0.064,
+    "score": 0.1012,
+    "confidence": 0.1518,
+    "keyword_score": 0.0987,
+    "finbert_score": 0.1072,
+    "vader_score": 0.0882,
     "direction_bias": null,
-    "brent_oil_price": 96.91,
-    "brent_oil_change_pct": -11.31,
+    "brent_oil_price": 97.15,
+    "brent_oil_change_pct": -11.09,
     "us10y_yield_price": 4.29,
     "us10y_yield_change_pct": -1.2
   }
