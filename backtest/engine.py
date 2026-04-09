@@ -17,7 +17,6 @@ import pandas as pd
 import config
 from strategies.signals import (
     prepare_indicators,
-    scan_all_signals,
     check_exit_signal,
     calc_auto_lot_size,
     get_orb_strategy,
@@ -518,10 +517,10 @@ class BacktestEngine:
         if self._kc_adx_threshold > 0:
             old_threshold = signals_mod.ADX_TREND_THRESHOLD
             signals_mod.ADX_TREND_THRESHOLD = self._kc_adx_threshold
-            signals = scan_all_signals(h1_window, 'H1')
+            signals = signals_mod.scan_all_signals(h1_window, 'H1')
             signals_mod.ADX_TREND_THRESHOLD = old_threshold
         else:
-            signals = scan_all_signals(h1_window, 'H1')
+            signals = signals_mod.scan_all_signals(h1_window, 'H1')
 
         if not signals:
             return
@@ -584,7 +583,7 @@ class BacktestEngine:
             self._check_m15_custom_rsi(m15_window, h1_window, bar_time)
             return
 
-        signals = scan_all_signals(m15_window, 'M15')
+        signals = signals_mod.scan_all_signals(m15_window, 'M15')
         if not signals:
             return
 

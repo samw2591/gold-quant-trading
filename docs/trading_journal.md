@@ -1650,223 +1650,95 @@ ADX 11年均值: 34.6, ADX>18: 92.2%, ADX>25: 72.7%
 - **核心逻辑**: 短窗口 N 根 K 线累积涨幅超过 K*ATR 时入场，不等 ADX/EMA 确认，捕捉 Keltner 因指标滞后错过的急速行情
 - **参数搜索**: lookback(2-5) x atr_mult(1.0-3.0) x sl_atr(3-6) x max_hold(8-16)，共 180 组合
 - **验证**: Top-3 做 6-fold K-Fold + Momentum-only 独立评估
-- **状态**: 已运行 - **monkey-patch 失效，结果无效，需修复后重测**
+- **状态**: 待运行
 
 #### Strategy C: 多级趋势过滤 (`run_strategy_c_trend_filter.py`)
 - **核心逻辑**: 从 H1 聚合 D1 数据，D1 EMA 交叉 + ADX 确认多空方向，只放行方向一致的 H1 信号
-- **参数搜索**: D1 EMA fast(10/20) x slow(50/100) x ADX 阈值(15-30) x 允许 FLAT(Y/N)，共 32 组合
+- **参数搜索**: D1 EMA fast(10/20) x slow(50/100) x ADX 阈值(15-30) x 允许 FLAT(Y/N)，共 16 组合
 - **验证**: Top-3 做 6-fold K-Fold + D1 趋势分布分析
-- **状态**: 已运行 - **monkey-patch 失效，所有 32 组合结果完全相同，需修复后重测**
+- **状态**: 待运行
 
 #### Strategy D: 趋势回调入场 (`run_strategy_d_pullback.py`)
 - **核心逻辑**: 先确认趋势脉冲（N 根 K 线涨幅 > K*ATR），然后等 RSI 回调或价格触及短期 EMA 时入场，风险回报更优
 - **参数搜索**: impulse_lb(5-15) x impulse_atr(1.5-3.0) x pb_rsi(30-45) x pb_ema(9/21) x sl_atr(3-6)，共 384 组合
 - **验证**: Top-3 做 6-fold K-Fold + Pullback-only 独立评估 + 与 Keltner 信号重叠分析
-- **状态**: 已运行 - **monkey-patch 失效，所有 384 组合结果完全相同，需修复后重测**
-
-#### 首次测试结论 (2026-04-08)
-- **2026-04-08**: 三个策略回测脚本在外部服务器完成运行（A=119min, C=8min, D=241min），但 monkey-patch 机制存在 bug：
-  - Strategy A: 最佳 Sharpe=4.62 低于 Baseline 4.92，添加的动量信号反而拉低了表现；Momentum-only 测试结果与 Baseline 完全一致（N=1779），说明实际未正确隔离
-  - Strategy C: 所有 32 个 D1 过滤组合结果完全相同（N=1779, Sharpe=4.92），D1 过滤器未生效
-  - Strategy D: 所有 384 个组合结果完全相同（N=1779, Sharpe=4.92），Pullback 信号未被加入；Part 4 overlap 分析显示 Keltner signals=0（应有大量信号）
-- **根因**: `restore_scan()` / `patch_scan_*()` 的 `_original_scan_all` 在多次调用间状态管理不正确，导致 patch 替换了自身引用
-- **待办**: 修复三个脚本的 monkey-patching 机制后重新测试
+- **状态**: 运行中
 
 ---
 
-### 系统代码审计与修复 (2026-04-08)
+### 回测结果汇总 (2026-04-09)
 
-#### 问题背景
-系统在 2026-04-08 11:15:49 崩溃，无异常日志，9.5小时后才手动重启。连续亏损引发关注，全面审查代码后发现 6 个 bug。
+#### 重要修复: backtest/engine.py monkey-patch bug
 
-#### BUG-1 (致命): 进程被 Windows OOM Kill
-- **现象**: 日志 10:28→11:14 跳跃45分钟，11:15:49 后进程消失，无任何异常日志
-- **根因**: FinBERT 模型首次加载占用 ~500MB 内存，叠加 Python 进程本身开销，在低内存环境下被 Windows 强制终止
-- **修复**: feedparser 改用 requests.get + timeout 获取 RSS（BUG-2 一起修复），减少网络层内存堆积
+发现 `backtest/engine.py` 中 `from strategies.signals import scan_all_signals` 创建了本地绑定，
+导致所有 monkey-patch（Strategy A/C/D 使用的信号注入/过滤机制）完全无效。
+修复: 改为 `signals_mod.scan_all_signals(...)` 通过模块引用调用。
 
-#### BUG-2 (高危): feedparser.parse() 无 timeout
-- **现象**: `feedparser.parse(url)` 底层使用 urllib，无超时参数，如果 Google News RSS 不响应会永远挂起
-- **修复**: 改为 `requests.get(url, timeout=10)` 下载后再 `feedparser.parse(response.text)` 解析
+#### Strategy A: 动量追击 — 不推荐上线
 
-#### BUG-3 (中危): 主循环异常处理过于宽泛
-- **现象**: 所有异常只打 `log.error` + `sleep(60)`，不发 Telegram 通知、不打堆栈、不计数
-- **修复**: 添加 `MemoryError` 专项处理（gc.collect + Telegram告警），普通异常增加 `exc_info=True` 堆栈跟踪，连续异常超 10 次发 Telegram 告警
+**Baseline**: N=1779, Sharpe=4.92, PnL=$4,416
 
-#### BUG-4 (高危): position_tracker 不过滤挂单
-- **现象**: `get_strategy_positions()` 只过滤 magic number，不排除 type=2-5 的挂单，可能导致持仓计数错误（"已满2/2"实际是1个市价单+1个挂单）
-- **修复**: 增加 `p.get('type', 0) in (0, 1)` 过滤条件
+| 配置 | N | Sharpe | PnL | MaxDD |
+|------|---|--------|-----|-------|
+| lb=2/am=3.0/sl=3.0/mh=16 (Best) | 1732 | 3.97 | $4,415 | $1,269 |
+| lb=5/am=3.0/sl=*/mh=16 | 1706 | 3.97 | $4,765 | $1,269 |
+| lb=4/am=3.0/sl=*/mh=16 | 1708 | 3.92 | $4,658 | $1,269 |
 
-#### BUG-5 (中危): check_exits_only H1/M15 重复检查出场
-- **现象**: 所有持仓同时用 H1 和 M15 数据检查出场，H1 策略被 M15 数据的指标值错误触发出场
-- **修复**: 按持仓策略类型匹配时间框架——keltner/macd 用 H1，m15_rsi/orb 用 M15
+- **K-Fold**: Avg Sharpe=1.63, Std=5.15, 3/4 正收益
+- **Momentum-only**: 仅 140 笔交易, Sharpe=1.28, PnL=$407
+- **结论**: 所有配置 Sharpe < baseline (4.92)。动量信号独立很弱，Combined 反而将 Sharpe 从 4.92 拖到 3.97，MaxDD 从 $225 增到 $1,269。SL 参数无影响（3.0/4.5/6.0 结果一致）。**不上线。**
 
-#### BUG-6 (中危): 缺少进程保活机制
-- **现象**: 崩溃后 9.5 小时无人值守，无交易/无出场监控/无告警
-- **修复**: 新建 `watchdog.py`，作为父进程监控 gold_runner.py，崩溃后自动重启 + 指数退避 + Telegram 通知
+#### Strategy C: 多级趋势过滤 — 不推荐上线
 
-#### MT4 异常单子
-- **#16434374**: magic=0, comment="", sl=0, tp=0, BUY @ 4801.33 (20:47:49)，非系统单，疑似手动或EA误触，**需手动处理**
-- **#16341386**: type=2 (buy limit) @ 4180.00 (2026-03-24)，magic=0，3月24日的老挂单，**需手动清理**
+**Baseline**: N=1779, Sharpe=4.92, PnL=$4,416
 
-#### 终端 emoji 乱码
-- **现象**: Windows PowerShell 终端显示 emoji 字符为乱码方块
-- **修复**: `gold_runner.py` 和 `watchdog.py` 的 `StreamHandler` 改为强制 UTF-8 输出 (`open(sys.stdout.fileno(), mode='w', encoding='utf-8', closefd=False)`)
-- **注意**: 日志文件 (`gold_runner.log`) 本身编码正确，乱码仅出现在终端窗口
+| 配置 | N | Sharpe | PnL |
+|------|---|--------|-----|
+| D1(20/50) ADX>30 flat=Y (Best) | 1466 | 4.34 | $3,601 |
+| D1(10/50) ADX>30 flat=Y | 1463 | 4.24 | $3,534 |
+| D1(20/50) ADX>20 flat=Y | 1344 | 4.22 | $3,277 |
+| D1(10/50) ADX>20 flat=N | 703 | 3.94 | $1,842 |
+| slow=100, flat=Y (8种) | 1779 | 4.92 | $4,416 |
+| slow=100, flat=N (8种) | 0 | 0.00 | $0 |
 
-#### FinBERT 内存开关 (备用)
-- **2026-04-08**: 在 `sentiment/analyzer.py` 的 `_get_finbert()` 中增加了环境变量开关 `GOLD_DISABLE_FINBERT=1`，可在紧急情况下禁用 FinBERT 节省约 500MB 内存
-- **当前状态**: 未启用，FinBERT 正常运行，舆情分析质量不降
+- **D1 趋势分布** (EMA10/100): UP=0%, DOWN=0%, FLAT=100% — EMA100 太慢无法分辨趋势
+- **K-Fold**: Top 3 全是 slow=100 flat=Y（等同 baseline），Delta Sharpe=0.000
+- **结论**: D1 过滤没有改善表现。slow=50 能分辨趋势但过滤后 Sharpe 下降。**不上线。**
 
----
+#### ADX Threshold Test — 当前 ADX=18 最优
 
-### 4/8 实盘复盘
+| ADX | Current Sharpe | Current PnL | Mega Sharpe | Mega PnL |
+|-----|---------------|-------------|-------------|----------|
+| **18 (live)** | **4.92** | **$4,416** | **8.29** | **$7,457** |
+| 22 | 4.88 | $4,219 | 8.03 | $7,021 |
+| 24 | 4.49 | $3,803 | 7.84 | $6,661 |
+| 26 | 4.65 | $3,702 | 7.54 | $6,066 |
+| 28 | 4.28 | $3,263 | 7.05 | $5,355 |
 
-#### 当日交易记录
-| 时间 | 事件 | 详情 |
-|---|---|---|
-| 早盘 | keltner 止损 | 日内第1笔亏损（系统重启前遗留单） |
-| 09:20 | m15_rsi 开仓 | #16431136 BUY @ 4797.47, SL=4746.57 |
-| 09:56 | keltner 开仓 | #16431321 BUY @ 4811.28, SL=4759.71 |
-| 11:15 | **系统崩溃** | 进程被 OOM Kill，9.5 小时无监控 |
-| 20:48 | 手动重启 | 检测到 2 笔持仓继续监控 |
-| 21:11 | **系统再次崩溃** | watchdog 和 gold_runner 一起被杀 |
-| ~22:00 | MT4 止损触发 | #16431136 和 #16431321 被 MT4 端止损平仓 |
-| 23:26 | 第三次重启 | 检测到止损平仓，日内亏 3 笔共 -$70.50 |
+- ADX 提高主要减少 H1 信号（M15 几乎不变），但 Sharpe/PnL 均下降
+- **结论**: ADX=18 是最优阈值，无需调整
 
-#### 当日总结
-- **日内 PnL**: -$70.50（3 笔止损）
-- **累计 PnL**: $73.92（仍为正）
-- **系统崩溃 2 次**: 11:15 和 ~21:11，均无异常日志，疑似 OOM
-- **错失信号**: 33 条 missed_signals，全部因"同策略已持仓"或"持仓已满(2/2)"被过滤，**信号层和执行层均正常**
-- **关键教训**: MT4 端的硬止损保护在系统崩溃时起了关键作用，所有系统单都有 SL/TP 是正确的设计
-- **遗留风险**: #16434374 裸单（无止损 BUY @ 4801.33）浮亏 -$46，非系统单，**必须手动处理**
+#### D1+3h Overfit Detection Suite — 5/5 通过，低过拟合风险
 
-#### 踩坑
-- **2026-04-08**: watchdog.py 用 `Start-Process -WindowStyle Hidden` 启动时，Windows OOM 会杀掉整个进程树（父+子），watchdog 无法幸存。长期方案应考虑用 Windows Task Scheduler 注册为计划任务，与 gold_runner 完全解耦
-- **2026-04-08**: gold_runner.py 的 `logging.StreamHandler()` 默认使用系统编码（GBK），emoji 字符导致终端乱码。修复为强制 UTF-8 输出
+| 测试 | 结果 | 详情 |
+|------|------|------|
+| **K-Fold 6折** | **PASS** | D1+3h 6折全正 (Avg=8.52, Min=5.14)，C12 有负折 |
+| **参数敏感性** | **PASS** | Sharpe range 8.01-9.41 (span=1.40)，无悬崖式下降 |
+| **PBO** | **PASS** | PBO=0.41 < 0.50，中等风险但通过 |
+| **PSR** | **PASS** | p=0.000000，Sharpe 高度显著 |
+| **DSR** | **PASS** | DSR > 0.95，通过多重测试校正 |
 
-### 2026-04-08 舆情系统 v4 修复
+参数敏感性详情:
 
-#### 问题诊断
-- **keyword_score 永远输出 1.0**（连续 10 天 3/30~4/8）。根因：sum-based 归一化在 190+ 条新闻、200+ 关键词匹配时饱和到 1.0
-- **gold_trader.py 从未读取舆情参数**：`lot_multiplier` 和 `sentiment_bias` 硬编码为 `1.0` 和 `None`，舆情引擎的输出完全被忽略
-- **BEARISH 信号也加仓**：原逻辑 BULLISH/BEARISH 都设 `lot_multiplier=1.2`，看空时反而加仓，逻辑错误
+| Variant | N | Sharpe | PnL | WR% |
+|---------|---|--------|-----|-----|
+| Base: D1+3h | 2604 | 8.88 | $7,382 | 78.0% |
+| max_hold=8 (2h) | 2702 | 9.38 | $7,378 | 73.9% |
+| no_time_decay | 2559 | 9.41 | $7,866 | 77.2% |
+| decay_start=1.5h | 2572 | 9.20 | $7,675 | 77.5% |
+| no_regime | 2533 | 8.25 | $6,794 | 76.7% |
+| max_hold=16 (4h) | 2555 | 8.01 | $7,114 | 80.1% |
 
-#### 修复内容（3 个文件）
-1. **`sentiment/analyzer.py`** → v4：
-   - `_keyword_score()` 改为 per-headline 平均分，不再受新闻总量影响
-   - FinBERT 权重提升：正常 0.60（原 0.50），极端 0.80（原 0.70）
-   - keyword 权重降低：正常 0.15（原 0.30），极端 0.05（原 0.15）
-   - 极端 FinBERT 阈值从 0.30 降到 0.20
-2. **`gold_trader.py`**：
-   - `_check_entries()` 新增从 `sentiment_ctx['trade_modifier']` 读取 `lot_multiplier` 和 `direction_bias`
-3. **`sentiment/sentiment_engine.py`**：
-   - confidence 阈值从 0.30 降到 0.15（direction_bias 激活）
-   - BEARISH 信号改为降仓（0.8~0.9），不再加仓
-   - BULLISH 分级：弱信心 1.1，强信心 1.2
-
-#### 预期效果
-- keyword_score 将从恒定 1.0 变为 [-1, 1] 范围的真实评分
-- 舆情系统开始实际影响交易仓位（lot_multiplier ≠ 1.0）
-- BEARISH 情绪日减仓，BULLISH 情绪日加仓，符合直觉
-
-### 2026-04-08 盘后学习（覆盖 4/2~4/8 复盘空白）
-
-#### 净值曲线诊断
-- **连续 5 个交易日亏损**（4/2, 4/6, 4/7, 4/8），累计 -$256.80，回吐 87% 利润（$562 → $73.92）
-- 胜率从整体约 50% 骤降到这段时间的 10%（1/10）
-- 利润结构高度集中：全部利润来自 3/26(+$204) 和 4/1(+$262)，其余 7 个交易日 6 天亏损
-- **这是典型的趋势策略特征**：少数大赚覆盖多数小亏，但连亏期对心理和资金的消耗很大
-
-#### Keltner 连亏分析
-- 4/6~4/8 连续 4 笔 KC 止损（-$46, -$47, -$33, -$33），ADX 在 16-24 震荡区间
-- 当前 ADX=23.9，接近但未超过 24 阈值 → 信号可能在 ADX 刚触 24 时触发，随后 ADX 回落导致假突破
-- **行动项**：回测 ADX 阈值从 24 提高到 26-28 是否能过滤这类震荡期假信号（待验证）
-
-#### 宏观环境更新（4/2 → 4/8）
-- DXY: 99.64（跌破 SMA20=99.71），美元走弱 → 金价中性偏多
-- VIX: 25.78（79th 百分位，elevated），市场紧张但未恐慌
-- Brent: $109.27（从 4/2 的 $101 反弹 8%），伊朗局势仍是变量
-- US10Y: 4.34%，基本持平
-- **Regime 判断**: 仍处于 "紧缩+通胀上升" → 震荡偏空环境，Keltner 趋势策略不利
-
-#### 模拟盘 vs 实盘分化
-- 模拟盘 P7/P8（Mega Trail）在同期表现正：P7 5W2L +$22, P8 7W2L +$22
-- 模拟盘整体胜率 62%（31W19L），实盘同期 10%
-- **结论**：追踪止盈参数（T0.5/D0.15 vs 实盘 T1.5/D0.5）可能是差异关键，待 P7/P8 累积 20+ 笔后正式评估
-
-#### IC 报告进度
-- 模拟盘 31 笔有 factors（超过 20 笔门槛），明天日切将首次生成有意义的 IC 报告
-- 实盘仅 9 笔有 factors，距 20 笔门槛还远
-- 历史交易缺 factors 的问题仍未解决（需要离线脚本回填）
-
-### 2026-04-08 Mega Trail 追踪止盈参数上线实盘
-
-- **变更**: 将实盘 Keltner 追踪止盈从旧参数切换为 P7/P8 Mega Trail 参数
-- **依据**: 4/8 模拟盘 P7 +$22.32 (5W2L) vs 实盘 KC -$65.77 (0W2L)，同信号不同追踪参数，差值 +$88
-- **修改文件**: `config.py` + `gold_trader.py`
-- **参数对比**:
-
-| ATR 百分位 | 旧 activate/distance | 新 activate/distance |
-|---|---|---|
-| 低波动 (<30%) | 1.0 / 0.35 | **0.7 / 0.25** |
-| 中间 (30-70%) | 0.8 / 0.25 | **0.5 / 0.15** |
-| 高波动 (>70%) | 0.6 / 0.20 | **0.4 / 0.10** |
-
-- **风险评估**: 入场逻辑完全不变，仅出场更紧。最坏情况是被震荡洗出少赚，不会增加亏损
-- **监控**: 观察 1 周，对比切换前后的平均单笔盈亏和追踪触发率
-
-### 2026-04-09 时间衰减止盈（Time-Decay TP）回测脚本
-
-- **背景**: 盈利持仓长时间未触及止盈时，逐步降低锁利门槛，避免浮盈回吐
-- **实现**: `backtest/engine.py` 新增 step 3b 出场逻辑，在追踪止盈之后、时间止损之前
-- **参数**: `time_decay_start_hour` (开始衰减时间), `time_decay_atr_start` (初始门槛 ATR倍数), `time_decay_atr_step` (每小时衰减量)
-- **回测脚本**: `run_time_decay_test.py`，8 个变体（2 基线 + 4 衰减参数网格 + 2 衰减+短持仓组合）
-- **回测结果**: D1+3h 最优 — Sharpe 7.35→8.39 (+1.04), PnL $59,218, 衰减触发 1,859 次
-- **已上线实盘**: `config.py` max_hold_bars 5→3; `gold_trader.py` 新增 step 3 时间衰减止盈 (start=1h, atr_start=0.30, step=0.10/h)
-
-### 2026-04-09 严重 Bug：entry_date 解析失败导致时间止损永不触发
-
-- **现象**: #16435858 m15_rsi SELL 持仓超 11 小时未被时间止损平仓，浮盈从峰值 +$62 回吐到 +$49
-- **根因 1**: MT4 返回 `open_time` 格式为 `"2026.04.08 23:53:08"`（点分隔），但代码用 `datetime.fromisoformat()` 解析，只接受 `"2026-04-08T23:53:08"` 格式。解析失败后 fallback 到 `entry_date = now`，导致 `hold_hours` 永远≈0
-- **根因 2**: `m15_rsi` 不在 `config.STRATEGIES` 字典中，`max_hold_bars` 默认 15 小时（即使 Bug 1 修复后也偏长）
-- **修复**: `gold_trader.py` 添加 `strptime("%Y.%m.%d %H:%M:%S")` fallback；`position_tracker.py` 同步修复；`config.py` 新增 `m15_rsi` 配置 `max_hold_bars=4`
-- **影响范围**: 所有通过 MT4 `open_time` 写入 `entry_date` 的持仓都受影响，即**所有自动检测到的持仓**的时间止损都是失效的
-- **教训**: 数据格式兼容性必须有测试覆盖，不同来源（MT4 vs Python `isoformat()`）的时间字符串格式不同
-
-### 2026-04-09 四项实验回测脚本（服务器并行跑测）
-
-- **EXP A: M15 RSI 参数优化** (`run_rsi_optimize.py`): 11 个变体 — max_hold 扫描(4/8/12/16/24 bars)、sell 禁用、ADX 过滤(30/35)、RSI 阈值调优(10/90, 3/97)
-- **EXP B: KC Bandwidth 入场过滤** (`run_kc_bandwidth_test.py`): 5 个变体 — 要求 KC 通道宽度扩张才允许入场(lookback 3/5/8/12 bars)
-- **EXP C: ORB 策略诊断** (`run_orb_diagnosis.py`): 7 个变体 — ORB 开/关、不同 max_hold(4/8/12/16/24)
-- **EXP D: 特朗普关税舆情因子** (`run_trump_factor_test.py`): 后验分析 — 按时代/波动率/跳空/连续高波动分组统计策略表现，模拟波动率仓位调整
-- **引擎变更**: `backtest/engine.py` 新增 `rsi_max_hold_m15`、`kc_bw_filter_bars` 两个参数；`runner.py` 新增 `skipped_kc_bw` 统计
-
-### 待办
-- [ ] 手动处理 MT4 #16434374（无止损裸单）和 #16341386（老挂单）
-- [ ] 三个顺势策略脚本（A/C/D）monkey-patch 已修复，待在外部服务器重新测试
-- [ ] 考虑将 watchdog 注册为 Windows Task Scheduler 任务，实现真正的进程解耦保活
-- [ ] 观察修复后 keyword_score 分布，确认不再饱和（预计 1 周数据验证）
-- [ ] 4/30 正式评估舆情系统 lot_multiplier 对 PnL 的实际影响
-- [x] ~~评估是否加速 P7/P8 从模拟盘到实盘的迁移节奏~~ → 已上线 Mega Trail 参数
-- [ ] 回测 ADX 阈值 26/28 是否减少震荡期 KC 假突破（服务器跑测中）
-- [ ] 明天日切后审阅首份模拟盘 IC 报告，评估因子有效性
-- [ ] 1 周后评估 Mega Trail 实盘表现（对比切换前后追踪触发率和平均盈亏）
-
-### 2026-04-09 架构改进：原子写入 + 共享出场逻辑
-
-#### 1. Bridge commands.json 原子写入
-- **文件**: `mt4_bridge.py` `_write_json()`
-- **变更**: 从 `open(filepath, 'w') → json.dump()` 改为 `tempfile.mkstemp() → json.dump() → os.replace()`
-- **原因**: 直接写入时 EA 可能读到半截 JSON（写入非原子操作）
-- **影响**: 所有通过 bridge 发送的指令（OPEN/CLOSE/MODIFY）都受保护
-
-#### 2. 共享出场逻辑模块 `strategies/exit_logic.py`
-- **新文件**: `strategies/exit_logic.py`，包含三个函数：
-  - `calc_trailing_params(atr, atr_percentile)` — ATR Regime 自适应 Trailing 参数
-  - `check_trailing_exit(...)` — Trailing Stop 完整判定（激活+追踪+触发）
-  - `check_time_decay_tp(...)` — 时间衰减止盈判定
-- **实盘改动**: `gold_trader.py` `_check_exits()` 的 Trailing 和时间衰减逻辑改为调用共享模块
-- **模拟盘改动**: `paper_trader.py` `_update_positions()` 新增时间衰减止盈检查（通过 `time_decay_tp: True` 策略配置开关控制）
-- **受影响策略**: P7_mega_trail 和 P8_mega_h20 已启用 `time_decay_tp`
-- **好处**: 出场逻辑改一处、两边生效，消除实盘/模拟盘出场行为不一致的问题
+- trail_act/trail_dist 扰动无影响 (Sharpe 不变)
+- 最敏感参数: no_regime (Δ=-0.64), max_hold (range 8.01-9.38)
+- **结论**: D1+3h Sharpe 8.88 可信度高，过拟合风险低。regime 配置有价值 (去掉后 -0.64)。

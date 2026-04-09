@@ -1,0 +1,277 @@
+================================================================================
+D1+3h OVERFIT DETECTION SUITE
+Started: 2026-04-09 14:05:43.325541
+================================================================================
+
+Loading data...
+  M15: data/download/xauusd-m15-bid-2015-01-01-2026-03-25.csv (46080 bars, 2020-01-01 00:00:00+00:00 -> 2025-01-14 23:45:00+00:00)
+  H1: 54800 bars, 2019-12-23 16:00:00+00:00 -> 2026-03-24 23:00:00+00:00
+Preparing custom indicators (KC_ema=25, KC_mult=1.2, EMA=100)...
+  M15: 46080 bars, H1: 54800 bars
+
+
+================================================================================
+TEST 1: K-FOLD 6-FOLD CROSS VALIDATION
+================================================================================
+
+--- D1+3h ---
+
+  [D1_Fold3]
+  Backtest: 2020-01-02 -> 2020-02-09
+  M15 bars: 3840, H1 bars: 8984
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    227 trades (H1=178, M15=49), Sharpe=10.59, PnL=$733, 2s
+
+  [D1_Fold4]
+  Backtest: 2022-01-02 -> 2022-03-01
+  M15 bars: 5760, H1 bars: 17520
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    353 trades (H1=275, M15=78), Sharpe=9.78, PnL=$915, 5s
+
+  [D1_Fold5]
+  Backtest: 2024-01-02 -> 2024-12-31
+  M15 bars: 35136, H1 bars: 17544
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    1946 trades (H1=1505, M15=441), Sharpe=8.58, PnL=$5354, 13s
+
+  [D1_Fold6]
+  Backtest: 2025-01-02 -> 2025-01-14
+  M15 bars: 1344, H1 bars: 10752
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    40 trades (H1=31, M15=9), Sharpe=5.14, PnL=$52, 0s
+
+--- C12 Baseline ---
+
+  [C12_Fold3]
+  Backtest: 2020-01-02 -> 2020-02-09
+  M15 bars: 3840, H1 bars: 8984
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    199 trades (H1=148, M15=51), Sharpe=7.30, PnL=$462, 1s
+
+  [C12_Fold4]
+  Backtest: 2022-01-02 -> 2022-03-01
+  M15 bars: 5760, H1 bars: 17520
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    288 trades (H1=213, M15=75), Sharpe=4.25, PnL=$415, 2s
+
+  [C12_Fold5]
+  Backtest: 2024-01-02 -> 2024-12-31
+  M15 bars: 35136, H1 bars: 17544
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    1662 trades (H1=1225, M15=437), Sharpe=5.62, PnL=$3376, 16s
+
+  [C12_Fold6]
+  Backtest: 2025-01-02 -> 2025-01-14
+  M15 bars: 1344, H1 bars: 10752
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    35 trades (H1=26, M15=9), Sharpe=-12.97, PnL=$-123, 0s
+
+Fold          D1_Sharpe     D1_PnL   D1_N |  C12_Sharpe    C12_PnL  C12_N |   Delta
+-------------------------------------------------------------------------------------
+Fold3             10.59 $      733    227 |        7.30 $      462    199 |   +3.29
+Fold4              9.78 $      915    353 |        4.25 $      415    288 |   +5.53
+Fold5              8.58 $    5,354   1946 |        5.62 $    3,376   1662 |   +2.96
+Fold6              5.14 $       52     40 |      -12.97 $     -123     35 |  +18.10
+
+D1+3h:  Avg=8.52, Std=2.08, Min=5.14, All Positive=True
+C12:    Avg=1.05, Std=8.16, Min=-12.97, All Positive=False
+D1 wins 4/6 folds
+
+>>> K-Fold PASSED: D1+3h positive in all 6 folds
+
+
+================================================================================
+TEST 2: PARAMETER SENSITIVITY (±1 step perturbation)
+================================================================================
+
+  [Base: D1+3h]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=8.88, PnL=$7382, 16s
+
+  [trail_act=0.4]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=8.88, PnL=$7382, 21s
+
+  [trail_act=0.6]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=8.88, PnL=$7382, 21s
+
+  [trail_dist=0.10]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=8.88, PnL=$7382, 17s
+
+  [trail_dist=0.20]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=8.88, PnL=$7382, 22s
+
+  [decay_atr_start=0.20]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2702 trades (H1=2111, M15=591), Sharpe=9.02, PnL=$7465, 22s
+
+  [decay_atr_start=0.40]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2572 trades (H1=1990, M15=582), Sharpe=9.09, PnL=$7620, 18s
+
+  [decay_step=0.05]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2594 trades (H1=2008, M15=586), Sharpe=8.85, PnL=$7396, 21s
+
+  [decay_step=0.15]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2620 trades (H1=2033, M15=587), Sharpe=8.95, PnL=$7445, 22s
+
+  [max_hold=8 (2h)]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2702 trades (H1=2121, M15=581), Sharpe=9.38, PnL=$7378, 18s
+
+  [max_hold=16 (4h)]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2555 trades (H1=1965, M15=590), Sharpe=8.01, PnL=$7114, 22s
+
+  [decay_start=0.5h]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2650 trades (H1=2060, M15=590), Sharpe=9.19, PnL=$7611, 22s
+
+  [decay_start=1.5h]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2572 trades (H1=1989, M15=583), Sharpe=9.20, PnL=$7675, 17s
+
+  [SL=4.0]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=9.09, PnL=$8233, 21s
+
+  [SL=5.0]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2604 trades (H1=2019, M15=585), Sharpe=9.19, PnL=$6794, 16s
+
+  [no_time_decay]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2559 trades (H1=1977, M15=582), Sharpe=9.41, PnL=$7866, 16s
+
+  [no_regime]
+  Backtest: 2020-01-02 -> 2025-01-14
+  M15 bars: 46080, H1 bars: 54800
+    10%...    20%...    30%...    40%...    50%...    60%...    70%...    80%...    90%... done!
+    2533 trades (H1=1955, M15=578), Sharpe=8.25, PnL=$6794, 15s
+
+
+Variant                          N  Sharpe        PnL    WR%    MaxDD
+--------------------------------------------------------------------
+Base: D1+3h                   2604    8.88 $    7,382  78.0% $    123
+trail_act=0.4                 2604    8.88 $    7,382  78.0% $    123
+trail_act=0.6                 2604    8.88 $    7,382  78.0% $    123
+trail_dist=0.10               2604    8.88 $    7,382  78.0% $    123
+trail_dist=0.20               2604    8.88 $    7,382  78.0% $    123
+decay_atr_start=0.20          2702    9.02 $    7,465  79.5% $    134
+decay_atr_start=0.40          2572    9.09 $    7,620  77.3% $    129
+decay_step=0.05               2594    8.85 $    7,396  77.5% $    139
+decay_step=0.15               2620    8.95 $    7,445  78.5% $    123
+max_hold=8 (2h)               2702    9.38 $    7,378  73.9% $    144
+max_hold=16 (4h)              2555    8.01 $    7,114  80.1% $    149 ***
+decay_start=0.5h              2650    9.19 $    7,611  79.0% $    123
+decay_start=1.5h              2572    9.20 $    7,675  77.5% $    134
+SL=4.0                        2604    9.09 $    8,233  77.9% $    164
+SL=5.0                        2604    9.19 $    6,794  78.1% $    134
+no_time_decay                 2559    9.41 $    7,866  77.2% $    129 +++
+no_regime                     2533    8.25 $    6,794  76.7% $    130 ***
+
+Sharpe range: 8.01 — 9.41 (span=1.40)
+All perturbations Sharpe > 0: True
+All perturbations Sharpe > baseline*0.8: True
+
+>>> Sensitivity MODERATE: Sharpe range 1.0-2.0, some sensitivity
+
+PER-PARAMETER IMPACT:
+  trail_act            avg Δ=+0.00  range=[8.88, 8.88]
+  trail_dist           avg Δ=+0.00  range=[8.88, 8.88]
+  decay_atr_start      avg Δ=+0.17  range=[9.02, 9.09]
+  decay_step           avg Δ=+0.01  range=[8.85, 8.95]
+  max_hold             avg Δ=-0.19  range=[8.01, 9.38]
+  decay_start          avg Δ=+0.31  range=[9.19, 9.20]
+  SL                   avg Δ=+0.25  range=[9.09, 9.19]
+  no_time_decay        avg Δ=+0.53  range=[9.41, 9.41]
+  no_regime            avg Δ=-0.64  range=[8.25, 8.25]
+
+
+================================================================================
+TEST 3: PROBABILITY OF BACKTEST OVERFITTING (PBO)
+================================================================================
+
+  PBO = 0.4143
+  Combinations tested: 70
+  Overfit risk: HIGH
+  IS-best OOS rank distribution: median=7.0, mean=8.3 (of 17 variants)
+  IS-best ranked below OOS median: 29/70 = 41.4%
+
+>>> PBO MODERATE: PBO = 0.41, some overfit concern
+
+
+================================================================================
+TEST 4: PROBABILISTIC SHARPE RATIO (PSR) & DEFLATED SHARPE RATIO (DSR)
+================================================================================
+
+PSR (vs benchmark=0):
+  Observed Sharpe: 9.02
+  PSR probability: 1.0000
+  p-value: 0.000000
+  Skewness: 0.904
+  Excess kurtosis: 2.068
+  N (trading days): 345
+  >>> PSR PASSED: p < 0.01, Sharpe is highly significant
+
+DSR (corrected for 17 trials):
+  Expected max SR under null (SR*): 0.63
+  DSR probability: 1.0000
+  Passed (DSR > 0.95): True
+  Sharpes variance across variants: 0.1193
+  >>> DSR PASSED: Sharpe survives multiple-testing correction
+
+
+================================================================================
+OVERALL VERDICT
+================================================================================
+  K-Fold          PASS
+  Sensitivity     PASS
+  PBO             PASS
+  PSR             PASS
+  DSR             PASS
+
+  Result: 5/5 tests passed
+
+>>> D1+3h configuration shows LOW overfit risk. Sharpe is likely genuine.
+
+Total runtime: 6.2 minutes
+Output saved to: d1_3h_overfit_output.txt
+Finished: 2026-04-09 14:11:53.276181
