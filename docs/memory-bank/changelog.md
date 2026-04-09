@@ -5,8 +5,17 @@
 ---
 
 ## 2026-04-09
-- 新增 entry quality filters 到 backtest engine (min_h1_bars_today, adx_gray_zone, escalating_cooldown) — 待回测验证
-- 新增 run_exp_entry_quality.py 和 test_entry_quality.py
+- **🚨 重大修复: H1 look-ahead bias + 入场价 look-ahead** (commit 7f02772)
+  - `_get_h1_window(closed_only=True)`: 入场只用已收盘 H1
+  - pending signal 队列: 入场价用下一根 M15 Open，不用当前 bar Close
+  - 修复前 Current Sharpe=5.06 → 修复后 3.18（-37%）
+  - 根因: H1 时间戳=开盘时间(Dukascopy), 引擎在14:00就用了15:00才有的Close
+  - 13.8% 的 KC 突破信号是 phantom（只因看到未来 Close 才触发）
+- 框架审计: 发现 7 个问题（3 严重 + 3 中等 + 1 ORB patch bug）
+- 全量实验分析完成: Trail Momentum 1.5x K-Fold通过, T7 ExtremeRegime 待验证, 其余全部否决
+- 新增 run_lookahead_fix_verify.py（修复后基准线）和 run_t7_extreme_validation.py
+- 修复 run_t7_extreme_validation.py 中 stats key 名称错误（n_trades→n 等）
+- 新增 entry quality filters 到 backtest engine (min_h1_bars_today, adx_gray_zone, escalating_cooldown) — 回测确认无效
 - Memory Bank 迁移: trading_journal.md → docs/memory-bank/ 6 文件分离
 
 ## 2026-04-08

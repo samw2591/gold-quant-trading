@@ -11,23 +11,38 @@
 - 本金 $2,000，最大总亏损保护 $1,500
 - 最近连续亏损: 4/6-4/8 共 5 笔止损（~$163），4/6 两笔 Keltner + 4/8 三笔(Keltner+RSI)
 
+## 🚨 回测引擎重大修复 (2026-04-09)
+
+**H1 look-ahead bias + 入场价 look-ahead 已修复**（commit 7f02772）
+
+修复内容：
+1. `_get_h1_window(closed_only=True)` — 入场信号只使用已收盘的 H1 bar
+2. pending signal 队列 — 信号在下一根 M15 bar 的 Open 执行，不用当前 bar Close
+
+修复前后初步对比（Current 无成本）：
+- 修复前: N=18,544 Sharpe=5.06 PnL=$35,251
+- 修复后: N=25,677 Sharpe=3.18 PnL=$26,206
+- Sharpe 下降 37%，但仍为强正值
+
+**⚠️ 重要**: 之前所有实验的 Sharpe 数字都基于有 look-ahead 的旧引擎，不再可信。
+在服务器运行 `run_lookahead_fix_verify.py` 获取 6 配置完整基准线后，
+之前发现的优化（T7 ExtremeRegime、Trail Momentum 1.5x 等）需要在修复后的引擎上重新验证。
+
 ## 进行中的实验
 
-- **EXP-EQ (Entry Quality Filters)**: 服务器运行 `run_exp_entry_quality.py` 中
-  - 测试 3 个过滤器: min_h1_bars_today, adx_gray_zone, escalating_cooldown
-  - ⚠️ **注意**: 这三个过滤器是在未经回测验证的情况下写入 engine 的（见 constraints.md 2026-04-09 方法论错误记录），等结果出来后严格按数据判断是否保留
-- **等待结果**: session_filter / sl_optimization / tp_atr_sweep / trailing_evolution / exit_combo_matrix（服务器运行中）
-- **EXP-NEW Batch** (`run_exp_new_batch.py`): 已推送 GitHub，待服务器运行
-  - EXP-A: Trail Momentum (+50%) K-Fold — 6 折 × 4 倍数 × 2 配置
-  - EXP-B: ORB 完整诊断 + NoORB K-Fold — 判定 ORB 去留
-  - EXP-C: Stochastic 10/90 带 $0.30 点差 K-Fold — 6 配置 × 3 点差级别
-  - EXP-D: Squeeze-to-Expansion 置信度加权 — 5 种 sizing scheme × K-Fold
-- **EXP-NEW Batch 2** (`run_exp_new_batch2.py`): 已推送 GitHub，待服务器运行
-  - EXP-E: Mega vs Current 带 $0.30/$0.50 成本 K-Fold — 判定是否切换实盘配置
-  - EXP-F: Current 配置 max_hold 精调(16-60) — 带 $0.30 成本 + K-Fold
-  - EXP-G: KC 通道入场相对位置分析 — 突破距离 vs $/t 关系
-  - EXP-H: MFE/MAE 深度分析 — capture ratio、输家曾浮盈比例、出场效率
-  - EXP-I: 连续交易方向模式分析 — 方向序列 streak sizing（非盈亏序列）
+- **`run_lookahead_fix_verify.py`** — 已推送，待服务器运行（最高优先级）
+  - Current/Mega × $0/$0.30/$0.50 = 6 个配置的修复后基准线
+- **`run_t7_extreme_validation.py`** — 已推送，T7 K-Fold + 带成本 + 消融测试
+  - **注意**: 此脚本基于修复后引擎，结果将是可信的
+- **batch2 / exit_combo_matrix** — 服务器后台运行中（基于旧引擎，结果仅供参考）
+
+## 之前实验结论（基于旧引擎，仅供参考）
+
+以下结论基于有 look-ahead 的旧引擎。方向性判断可能仍然有效，但具体 Sharpe 数字不可信：
+- Trail Momentum 1.5x: K-Fold 6/6 通过（需重新验证）
+- T7 ExtremeRegime: Sharpe +1.20（需重新验证）
+- Entry Quality Filters: 全部无效（否决结论应仍有效）
+- Session/SL/TP 优化: 全部无效（否决结论应仍有效）
 
 ## 模拟盘策略
 
@@ -43,11 +58,12 @@
 ## 待办事项
 
 ### 高优先级
-- [ ] **T7 ExtremeRegime K-Fold + 带成本验证** — Sharpe +1.20, 12/12年全赢（高波动 T0.25/D0.05）
-- [ ] **实装 Trail Momentum 1.5x** — K-Fold 6/6×2配置全通过，Sharpe +0.36~+0.73
-- [ ] 等 batch2 + exit_combo_matrix 跑完分析
+- [ ] **等 `run_lookahead_fix_verify.py` 结果** — 修复后 6 配置基准线（决定一切后续行动的基础）
+- [ ] **看 `run_t7_extreme_validation.py` 结果** — T7 在修复后引擎上是否仍有效
+- [ ] 基准线确认后，决定是否需要重新跑 Trail Momentum 1.5x K-Fold
+- [x] ~~H1 look-ahead + 入场价 look-ahead 修复~~ → commit 7f02772
 - [x] ~~EXP-EQ 回测结果分析~~ → 全部无效，不采纳
-- [x] ~~session_filter / sl_optimization / tp_atr_sweep / trailing_evolution 分析~~ → 见下方结论
+- [x] ~~session_filter / sl_optimization / tp_atr_sweep / trailing_evolution 分析~~ → 见 backtestArchive
 
 ### 中期
 - [ ] 测试缩短最大持仓时间从 60 bars 到 24-32 bars（Timeout 60 bars 亏损 $12,287，占总损失最大项）
