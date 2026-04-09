@@ -134,8 +134,8 @@
     "finbert_score": null,
     "vader_score": 0.0,
     "direction_bias": null,
-    "brent_oil_price": 96.71,
-    "brent_oil_change_pct": -11.49,
+    "brent_oil_price": 96.77,
+    "brent_oil_change_pct": -11.44,
     "us10y_yield_price": 4.29,
     "us10y_yield_change_pct": -1.2
   }
