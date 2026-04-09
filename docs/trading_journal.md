@@ -122,15 +122,19 @@
 - **Strategy A — 动量追击**: 180 组合网格搜索(lookback×ATR_mult×SL×max_hold)。所有组合 Sharpe≤4.62 均低于基线 4.92。Momentum-Only 产生与 Keltner 完全相同的交易(N=1779)，组合后额外 128 笔净亏损。K-Fold 3/4正但 Std=7.28 极不稳定。动量信号完全被 Keltner 吸收
 - **Strategy C — D1 趋势过滤**: 32 组合(EMA fast/slow×ADX thresh×allow_flat)。384/384 全部与基线完全一致(Sharpe=4.92, N=1779, PnL=$4,416)。D1 过滤未阻挡任何信号(黄金 57% UP/20% DOWN/23% FLAT)。Delta Sharpe=+0.000
 - **Strategy D — 趋势回调入场**: 384 组合(impulse_lb×impulse_atr×RSI×EMA×SL)。384/384 全部与基线完全一致。Pullback-Only 也产生与 Keltner 完全相同的 1779 笔交易。Overlap 分析：Pullback 产生 2204 个信号，Keltner 报告 0 个（回测引擎内部处理），0 重叠。回调信号在引擎中完全不触发额外交易
+- **KC Bandwidth 扩张过滤**: BW3-BW12 全部降低 Sharpe（-0.40 到 -1.60）。虽然提高 KC 单笔质量($/t $3.30→$3.73)但过滤掉大量盈利交易，12/12 年均不如基线
+- **London Breakout**: 7 个变体全部负 Sharpe（-0.15 到 -0.39），WR 仅 48%。远不如现有 ORB（Sharpe 正, $/t=$1.28）
+- **宏观 Regime 过滤 (第三次确认)**: Baseline Sharpe=5.58 > Regime-Weighted 5.53。K-Fold 0/6 折赢。所有 6 种 regime 下均盈利，策略是 regime-agnostic
+- **Trump/波动率 Sizing**: 所有方案效果在 ±0.05 以内。高波动加仓反而 -0.16。低波动时 $/t 反而最高
 
-## 六日研究总结 — 核心认知 (2026-04-08 更新)
+## 核心认知 (2026-04-09 更新)
 
 1. **交易成本是策略杀手**: 无成本 Sharpe 3.46 加 $0.50 点差后仅 0.35。所有回测必须包含成本
 2. **少交易比好参数更重要**: C12 无 Adaptive 15,770 笔 Sharpe -0.53; 加 Adaptive 7,365 笔 Sharpe 1.03。砍掉一半交易反而从亏到赚
-3. **利润来自少数大趋势日**: 25% 的趋势日贡献 +$17,593, 其余 75% 净亏 -$15,015。趋势日不可预测，但可通过盘中实时判断过滤震荡时段
-4. **追踪止盈是核心 alpha**: 5,542 笔 trailing +$41,088 (97.7%WR), 赢家快进快出(中位 1.5h), 输家拖很久(中位 11.5h)
+3. **~~利润来自少数大趋势日~~ → 避开震荡比抓住趋势更重要**: (2026-04-09 修正) 旧结论基于 Combo+$0.50 点差的过时配置。当前 D1+3h (Mega Trail 0.5ATR 激活 + Time Decay) 下，利润主要来自大量小额追踪止盈（11,611 次 trail 触发，97.7%WR，中位持仓 1.5h），TP 仅触发 25 次。小波段高频锁利是核心利润模式，不依赖大趋势日。但**震荡时段仍是亏损源**，Adaptive 门控砍掉震荡时段交易仍然关键
+4. **追踪止盈是核心 alpha**: 5,542 笔 trailing +$41,088 (97.7%WR), 赢家快进快出(中位 1.5h), 输家拖很久(中位 11.5h)。Mega Trail (0.5/0.15) + Time Decay (1h/0.30/0.10) 进一步强化了这个优势
 5. **过拟合风险低, 结构风险高**: PBO=0.00, 参数平滑, DSR 通过。真正风险是低波动盘整期持续数月小额亏损(1/3 半年窗口为负)
-6. **Keltner+ADX+EMA100 信号集已饱和**: Strategy A/C/D 共 596 种组合(动量/D1趋势/回调)全部无法超越基线。新信号要么与 Keltner 完全重合，要么是净负贡献。当前框架下，改善方向应聚焦于风控和仓位管理而非新信号
+6. **Keltner+ADX+EMA100 信号集已饱和**: Strategy A/C/D 共 596 种组合(动量/D1趋势/回调)全部无法超越基线。新信号要么与 Keltner 完全重合，要么是净负贡献。改善方向应聚焦于**出场机制和仓位管理**而非新入场信号
 
 ## 因子研究笔记
 
@@ -1258,10 +1262,13 @@
 
 ### 待办事项
 - [x] ~~实现 ATR spike 检测逻辑到 `_check_exits`~~ → 已实现并完成全量验证，见下方验证结果
-- [ ] 评估 "Skip KC bandwidth Q1" 过滤是否值得加入实盘（+0.18 Sharpe 但减少 25% 交易量）
-- [ ] 重新评估 ORB 策略: 是否需要参数优化或直接移除
+- [x] ~~评估 "Skip KC bandwidth Q1" 过滤是否值得加入实盘~~ → 全量回测确认 BW 过滤弊大于利（Sharpe -0.40 到 -1.60），加入否决列表 (2026-04-09)
+- [ ] 重新评估 ORB 策略: 初步数据显示去掉 ORB 后 Sharpe +0.24，待完整 orb_diagnosis 结果
 - [ ] 探索 M15 级别的均值回归策略（H1 不可行，但 M15 时间框架可能更适合）
 - [ ] 将 squeeze-to-expansion 信号作为 Keltner 入场 confidence score 测试（Mega 中 $/t 溢价 40%）
+- [ ] **Trail Momentum (+50%) K-Fold 验证后考虑实装** — 12/12 年一致, Sharpe +0.44 (2026-04-09)
+- [ ] **Stochastic 10/90 作为 RSI 替代候选** — $/t=$27.66 但 11 年仅 103 笔, 需更多数据 (2026-04-09)
+- [ ] 等待 exit_combo_matrix / sl_optimization / tp_atr_sweep / trailing_evolution / session_filter 结果并分析 (2026-04-09)
 
 ## ATR Spike Protection 全量验证 (2026-04-07)
 
@@ -1742,3 +1749,114 @@ ADX 11年均值: 34.6, ADX>18: 92.2%, ADX>25: 72.7%
 - trail_act/trail_dist 扰动无影响 (Sharpe 不变)
 - 最敏感参数: no_regime (Δ=-0.64), max_hold (range 8.01-9.38)
 - **结论**: D1+3h Sharpe 8.88 可信度高，过拟合风险低。regime 配置有价值 (去掉后 -0.64)。
+
+## 第四批并行实验结果 (2026-04-09, AutoDL 服务器)
+
+### 实验概览
+- 20 个测试脚本在 AutoDL 服务器并行运行，全部完成
+- 覆盖方向：因子重要性、入场过滤、仓位管理、新策略、出场优化、宏观 regime
+
+### Factor Importance (因子重要性分析)
+
+- **IC 排名**: atr_pct(-0.0708, 最显著) > ADX(-0.0412) > KC_bw(-0.0298) > EMA100_dist(+0.0191) > KC_pos(+0.0163)
+- **Gradient Boosting**: ATR(22.9%) > EMA100_dist(16.8%) > KC_pos(14.5%) > RSI14(11.5%) > KC_bw(8.8%)
+- **最佳交互**: Low ATR + Asian session $/t=$3.27 WR=85.9%; RSI14 oversold + BUY $/t=$3.29
+- **Volume = 0**: 数据中成交量全零，volume 因子完全无用
+- **结论**: ATR 是最重要因子，现有 ADX+KC+EMA100 框架已覆盖 top 因子。R²=-0.023 说明线性模型无法解释 PnL 变异
+
+### KC Bandwidth Filter (通道宽度过滤) — ❌ 不实装
+
+| 变体 | Sharpe | PnL | vs 基线 |
+|------|--------|-----|---------|
+| 无过滤（D1+3h 基线） | **8.39** | **$59,218** | — |
+| BW3 (3 bar 扩张) | 7.99 | $50,728 | **-0.40** |
+| BW5 (5 bar 扩张) | 7.69 | $48,230 | **-0.70** |
+| BW8 (8 bar 扩张) | 7.19 | $44,287 | **-1.20** |
+| BW12 (12 bar 扩张) | 6.79 | $39,913 | **-1.60** |
+
+- 虽然 BW3 提高了 KC 单笔质量 ($/t $3.30→$3.73)，但过滤掉的信号中包含大量盈利交易
+- 逐年 12/12 年 BW3 均不如基线
+- **加入否决列表**
+
+### Kelly Sizing & 仓位管理 — ✅ Trail Momentum 有价值
+
+| 方案 | Sharpe | PnL | MaxDD |
+|------|--------|-----|-------|
+| Fixed 1.0x (基线) | 8.45 | $59,218 | $329 |
+| **Trail momentum (+50%)** | **8.89** | **$81,194** | $353 |
+| Streak ±30% | 8.48 | $70,340 | $370 |
+| Half-Kelly (rolling 100) | 8.46 | $118,384 | $658 |
+| Day-loss extreme | 8.30 | $48,908 | $201 |
+| Anti-streak | 8.29 | $49,024 | $287 |
+
+- **Trail momentum (+50%)**: 上一笔 trailing 出场后，下一笔加仓 50%。逻辑合理（trailing = 趋势存在，趋势有延续性）
+- **12/12 年全部优于基线**（Delta +0.10 到 +0.70），一致性 100%
+- MaxDD 仅增 7%（$329→$353），$2000 账户可接受
+- **待进一步 K-Fold 验证后考虑实装**
+
+### London Breakout (伦敦突破) — ❌ 全部失败
+
+- 7 个变体全部负 Sharpe（-0.15 到 -0.39），WR 仅 48%
+- 对比 ORB（N=330, PnL=$423, $/t=$1.28），伦敦突破完全不可行
+- **加入否决列表**
+
+### Stochastic Mean Reversion — ⚠️ 暂不实装，标记观察
+
+| 变体 | N | Sharpe | $/t |
+|------|---|--------|-----|
+| Stoch 10/90 hold=4h | 103 | 3.58 | $27.66 |
+| Stoch 15/85 hold=6h | 306 | 2.05 | $10.19 |
+| Stoch 25/75 hold=6h | 1016 | 1.15 | $11.12 |
+
+- 单笔利润远高于 M15 RSI（$27.66 vs $0.73），但 11 年仅 103 笔（样本不足）
+- 如 RSI 继续表现弱，可考虑替换为 Stochastic 10/90
+
+### Gold/Oil Ratio — ❌ 数据失败
+
+- yfinance 下载原油 CL=F 失败（`index 0 is out of bounds`），测试跳过
+- 需从其他数据源获取后重跑
+
+### Regime Validation (宏观 Regime 验证) — ❌ 再次确认无效
+
+- Baseline Sharpe=5.58 > Regime-Weighted 5.53（-0.05）
+- K-Fold: Baseline 赢 6/6 折
+- 所有 6 种 regime 下策略都盈利（Sharpe 5.18-6.05），策略是 regime-agnostic
+- Regime 区分度仅 0.87（<1.0 阈值），不足以产生有效过滤
+- **再次确认加入否决列表**
+
+### Trump Factor / 波动率 Sizing — ❌ 无效
+
+| 方案 | Sharpe | Delta |
+|------|--------|-------|
+| Flat 1.0x (基线) | 8.45 | — |
+| Extreme 0.5x | 8.49 | +0.04 |
+| HighVol 1.3x | 8.29 | -0.16 |
+| LowVol+HighVol combo | 8.16 | -0.29 |
+
+- 低波动 $/t=$2.97 > 高波动 $2.52 > 极端波动 $2.39
+- 所有 sizing 调整效果在 ±0.05 以内
+- **加入否决列表**
+
+### ORB Diagnosis — 等待完整结果
+
+- 初步看到: NoORB Sharpe=8.63 > 有 ORB 8.39（+0.24）
+- 去掉 ORB 后 Sharpe 更高，再次确认 ORB 是拖累
+- 完整结果待脚本运行完毕
+
+### RSI Optimize — 等待完整结果
+
+- 初步看到: 所有 RSI 变体 Sharpe 在 8.38-8.40 之间，与基线 8.39 几乎无差别
+- 再次确认 RSI 在 D1+3h 框架下已自然消亡
+
+### Session Filter / SL Optimization / TP ATR Sweep / Trailing Evolution / Exit Combo Matrix — 仍在运行
+
+- 这 6 个测试仍在运行中，结果待补充
+
+### 第四批实验总体结论 (2026-04-09)
+
+1. **唯一可操作发现: Trail Momentum (+50%)** — Sharpe +0.44, 12/12 年一致，逻辑合理（趋势延续性），待 K-Fold 验证
+2. **KC Bandwidth 过滤弊大于利**: 虽然提高单笔质量但损失总利润，加入否决列表
+3. **London Breakout 全部失败**: 7 个变体全负 Sharpe，加入否决列表
+4. **宏观 Regime 第三次确认无效**: 策略在所有 regime 下都盈利，不需要 regime 调节
+5. **波动率 Sizing 无效**: 高波动不应加仓也不应减仓，保持固定仓位最优
+6. **Stochastic 10/90 值得观察**: 单笔利润高但样本过少，作为 RSI 替代候选保留

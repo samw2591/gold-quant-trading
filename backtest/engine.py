@@ -157,6 +157,12 @@ class BacktestEngine:
         time_decay_start_hour: float = 1.0,   # hours before decay kicks in
         time_decay_atr_start: float = 0.30,   # min profit at start (ATR mult)
         time_decay_atr_step: float = 0.10,    # decay per hour (ATR mult)
+        # Entry quality filters (anti false-breakout)
+        min_h1_bars_today: int = 0,           # require N H1 bars before allowing entry (0=disabled)
+        adx_gray_zone: float = 0,             # ADX in [threshold, threshold+gray_zone) requires higher trend_score
+        adx_gray_zone_min_score: float = 0.50,  # min trend_score required in ADX gray zone
+        escalating_cooldown: bool = False,     # double cooldown after 2nd same-day loss
+        escalating_cooldown_mult: float = 4.0, # multiplier for escalated cooldown
         # Label
         label: str = "",
     ):
@@ -252,6 +258,13 @@ class BacktestEngine:
         self._td_atr_start = time_decay_atr_start
         self._td_atr_step_per_bar = time_decay_atr_step / 4   # convert per-hour to per-M15-bar
 
+        # Entry quality filters
+        self._min_h1_bars_today = min_h1_bars_today
+        self._adx_gray_zone = adx_gray_zone
+        self._adx_gray_zone_min_score = adx_gray_zone_min_score
+        self._escalating_cooldown = escalating_cooldown
+        self._escalating_cooldown_mult = escalating_cooldown_mult
+
         # State
         self.positions: List[Position] = []
         self.trades: List[TradeRecord] = []
@@ -270,6 +283,9 @@ class BacktestEngine:
         self.skipped_ema_slope = 0
         self.atr_spike_tighten_count = 0
         self.time_decay_tp_count = 0
+        self.skipped_min_bars = 0
+        self.skipped_adx_gray = 0
+        self.escalated_cooldowns = 0
 
     # ── Main loop ─────────────────────────────────────────────
 
@@ -485,6 +501,26 @@ class BacktestEngine:
             if self._current_regime == 'choppy':
                 self.skipped_choppy += 1
                 return
+
+        # Min H1 bars today: don't trade before enough intraday data
+        if self._min_h1_bars_today > 0 and self._intraday_adaptive:
+            bar_date = pd.Timestamp(bar_time).date()
+            indices = self._h1_date_map.get(bar_date, [])
+            h1_time = pd.Timestamp(bar_time).floor('h')
+            max_idx = self.h1_lookup.get(h1_time, -1)
+            today_count = len([i for i in indices if i <= max_idx]) if max_idx >= 0 else 0
+            if today_count < self._min_h1_bars_today:
+                self.skipped_min_bars += 1
+                return
+
+        # ADX gray zone: require higher trend_score when ADX is marginal
+        if self._adx_gray_zone > 0 and self._intraday_adaptive and h1_window is not None and len(h1_window) > 0:
+            adx_val = float(h1_window.iloc[-1].get('ADX', 0))
+            adx_threshold = self._kc_adx_threshold or signals_mod.ADX_TREND_THRESHOLD
+            if adx_threshold <= adx_val < adx_threshold + self._adx_gray_zone:
+                if self._current_score < self._adx_gray_zone_min_score:
+                    self.skipped_adx_gray += 1
+                    return
 
         # Macro regime gating
         if self._macro_regime_enabled and self._macro_regime_detector and self._macro_df is not None:
@@ -803,6 +839,9 @@ class BacktestEngine:
         if pnl < 0:
             self.daily_loss_count += 1
             hours = self._cooldown_hours_override or (config.COOLDOWN_MINUTES / 60)
+            if self._escalating_cooldown and self.daily_loss_count >= 2:
+                hours *= self._escalating_cooldown_mult
+                self.escalated_cooldowns += 1
             self.cooldown_until[pos.strategy] = (
                 pd.Timestamp(exit_time) + pd.Timedelta(hours=hours)
             )

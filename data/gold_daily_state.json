@@ -4,16 +4,16 @@
   "loss_count": 0,
   "macro_sentiment": {
     "label": "NEUTRAL",
-    "score": 0.0,
-    "confidence": 0.0,
-    "keyword_score": 0.0,
-    "finbert_score": null,
-    "vader_score": 0.0,
+    "score": -0.1671,
+    "confidence": 0.2506,
+    "keyword_score": 0.139,
+    "finbert_score": -0.2374,
+    "vader_score": 0.1059,
     "direction_bias": null,
-    "news_summary": "\u8206\u60c5\u6570\u636e\u91c7\u96c6\u4e2d..."
+    "news_summary": "\u5206\u6790177\u6761\u65b0\u95fb\uff0c\u6574\u4f53\u60c5\u7eea\u4e2d\u6027(\u5f97\u5206-0.17)\u3002 Polymarket\u5730\u7f18\u98ce\u9669: 12/100(LOW)\u3002\u4ee3\u8868\u6027\u6807\u9898: Gold (XAU/USD) Price Forecast for Today, Tomorrow, Next Week, and the Next 30 Days - LiteFinance | Gold Rises on U.S.-Iran Ceasefire, Strait of Hormuz Condition | 2026 Market Update - News and Statistics - IndexBox | Gold Futures Streaming Chart - Investing.com"
   },
   "macro_cross_assets": {
-    "timestamp": "2026-04-09T06:22:18.167854",
+    "timestamp": "2026-04-09T06:46:55.480670",
     "dxy": 99.64,
     "dxy_prev": 99.98,
     "dxy_change_pct": -0.34,
