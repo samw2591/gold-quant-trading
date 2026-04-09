@@ -129,8 +129,12 @@ class BacktestEngine:
         rsi_sell_threshold: float = 0,
         # ORB
         orb_max_hold_m15: int = 0,
+        # M15 RSI max hold override (in M15 bars, 0 = use default 15)
+        rsi_max_hold_m15: int = 0,
         # Keltner max hold override (in M15 bars, 0 = use config default)
         keltner_max_hold_m15: int = 0,
+        # KC bandwidth expanding filter: only enter Keltner when bandwidth is expanding
+        kc_bw_filter_bars: int = 0,  # 0=disabled, N=require bw(now)>bw(N bars ago)
         # EMA slope filter: block BUY when EMA100 slope < 0 over N bars
         block_buy_ema_slope: int = 0,
         # Lot sizing
@@ -208,8 +212,11 @@ class BacktestEngine:
 
         # ORB
         self._orb_max_hold_m15 = orb_max_hold_m15
+        self._rsi_max_hold_m15 = rsi_max_hold_m15
         self._keltner_max_hold_m15 = keltner_max_hold_m15
+        self._kc_bw_filter_bars = kc_bw_filter_bars
         self._block_buy_ema_slope = block_buy_ema_slope
+        self.skipped_kc_bw = 0
 
         # Lots
         self._atr_regime_lots = atr_regime_lots
@@ -441,7 +448,7 @@ class BacktestEngine:
             # 4. Time stop
             if not reason:
                 if pos.strategy == 'm15_rsi':
-                    max_hold = 15
+                    max_hold = self._rsi_max_hold_m15 if self._rsi_max_hold_m15 > 0 else 15
                 elif pos.strategy == 'orb' and self._orb_max_hold_m15 > 0:
                     max_hold = self._orb_max_hold_m15
                 elif pos.strategy == 'keltner' and self._keltner_max_hold_m15 > 0:
@@ -507,6 +514,23 @@ class BacktestEngine:
 
         if not signals:
             return
+
+        # KC bandwidth expanding filter: block keltner entries when bandwidth is contracting
+        if self._kc_bw_filter_bars > 0 and h1_window is not None and len(h1_window) > self._kc_bw_filter_bars:
+            kc_u = h1_window.iloc[-1].get('KC_upper', 0)
+            kc_l = h1_window.iloc[-1].get('KC_lower', 0)
+            kc_m = h1_window.iloc[-1].get('KC_mid', 1)
+            kc_u_prev = h1_window.iloc[-1 - self._kc_bw_filter_bars].get('KC_upper', 0)
+            kc_l_prev = h1_window.iloc[-1 - self._kc_bw_filter_bars].get('KC_lower', 0)
+            kc_m_prev = h1_window.iloc[-1 - self._kc_bw_filter_bars].get('KC_mid', 1)
+            if not any(pd.isna(v) for v in [kc_u, kc_l, kc_m, kc_u_prev, kc_l_prev, kc_m_prev]) and kc_m > 0 and kc_m_prev > 0:
+                bw_now = (kc_u - kc_l) / kc_m
+                bw_prev = (kc_u_prev - kc_l_prev) / kc_m_prev
+                if bw_now <= bw_prev:
+                    signals = [s for s in signals if s.get('strategy') != 'keltner']
+                    if not signals:
+                        self.skipped_kc_bw += 1
+                        return
 
         # EMA slope filter: block BUY when EMA100 is declining
         if self._block_buy_ema_slope > 0 and h1_window is not None and len(h1_window) >= self._block_buy_ema_slope:
