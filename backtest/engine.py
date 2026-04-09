@@ -135,6 +135,8 @@ class BacktestEngine:
         keltner_max_hold_m15: int = 0,
         # KC bandwidth expanding filter: only enter Keltner when bandwidth is expanding
         kc_bw_filter_bars: int = 0,  # 0=disabled, N=require bw(now)>bw(N bars ago)
+        # Session filter for H1 entries (UTC hours). Empty = no filter.
+        h1_allowed_sessions: Optional[List[int]] = None,  # e.g. [7,8,9,...,20]
         # EMA slope filter: block BUY when EMA100 slope < 0 over N bars
         block_buy_ema_slope: int = 0,
         # Lot sizing
@@ -215,8 +217,10 @@ class BacktestEngine:
         self._rsi_max_hold_m15 = rsi_max_hold_m15
         self._keltner_max_hold_m15 = keltner_max_hold_m15
         self._kc_bw_filter_bars = kc_bw_filter_bars
+        self._h1_allowed_sessions = set(h1_allowed_sessions) if h1_allowed_sessions else None
         self._block_buy_ema_slope = block_buy_ema_slope
         self.skipped_kc_bw = 0
+        self.skipped_session = 0
 
         # Lots
         self._atr_regime_lots = atr_regime_lots
@@ -468,6 +472,13 @@ class BacktestEngine:
     def _check_h1_entries(self, h1_window, bar_time):
         if len(self.positions) >= self._max_pos:
             return
+
+        # Session filter
+        if self._h1_allowed_sessions is not None:
+            hour = pd.Timestamp(bar_time).hour
+            if hour not in self._h1_allowed_sessions:
+                self.skipped_session += 1
+                return
 
         # Intraday trend gating
         if self._intraday_adaptive:

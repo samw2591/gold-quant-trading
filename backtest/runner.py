@@ -207,6 +207,7 @@ def run_variant(data: DataBundle, label: str, *, verbose: bool = True, **engine_
     stats['skipped_ema_slope'] = getattr(engine, 'skipped_ema_slope', 0)
     stats['atr_spike_tightens'] = getattr(engine, 'atr_spike_tighten_count', 0)
     stats['skipped_kc_bw'] = getattr(engine, 'skipped_kc_bw', 0)
+    stats['skipped_session'] = getattr(engine, 'skipped_session', 0)
     stats['time_decay_tp'] = getattr(engine, 'time_decay_tp_count', 0)
     stats['elapsed_s'] = round(elapsed, 1)
     stats['_trades'] = trades
