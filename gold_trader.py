@@ -282,7 +282,11 @@ class GoldTrader:
             try:
                 entry_date = datetime.fromisoformat(entry_date_str)
             except (ValueError, TypeError):
-                entry_date = now
+                try:
+                    entry_date = datetime.strptime(entry_date_str, "%Y.%m.%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    entry_date = now
+                    log.warning(f"    ⚠️ #{ticket} entry_date 解析失败: '{entry_date_str}', 用当前时间兜底")
             hold_hours = (now - entry_date).total_seconds() / 3600
             hold_display = f"{hold_hours:.0f}h" if hold_hours < 48 else f"{hold_hours/24:.1f}天"
 
@@ -318,11 +322,11 @@ class GoldTrader:
                         if len(atr_series) >= 50:
                             atr_pct = (atr_series.iloc[-50:] < atr).mean()
                             if atr_pct > 0.70:
-                                trail_act_mult = 0.6
-                                trail_dist_mult = 0.20
+                                trail_act_mult = 0.4
+                                trail_dist_mult = 0.10
                             elif atr_pct < 0.30:
-                                trail_act_mult = 1.0
-                                trail_dist_mult = 0.35
+                                trail_act_mult = 0.7
+                                trail_dist_mult = 0.25
                     activate_threshold = atr * trail_act_mult
                     trail_distance = atr * trail_dist_mult
 
@@ -657,7 +661,11 @@ class GoldTrader:
                 profit = track.get('last_profit', 0)
                 min_profit = min(min_profit, profit)
                 try:
-                    entry_t = datetime.fromisoformat(track.get('entry_date', ''))
+                    ed_str = track.get('entry_date', '')
+                    try:
+                        entry_t = datetime.fromisoformat(ed_str)
+                    except (ValueError, TypeError):
+                        entry_t = datetime.strptime(ed_str, "%Y.%m.%d %H:%M:%S")
                     if latest_entry_time is None or entry_t > latest_entry_time:
                         latest_entry_time = entry_t
                         latest_entry_price = track.get('entry_price', 0)

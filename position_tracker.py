@@ -141,7 +141,10 @@ class PositionTracker:
             else:
                 entry_str = self.tracking[pk].get('entry_date', '')
                 try:
-                    entry_time = datetime.fromisoformat(entry_str)
+                    try:
+                        entry_time = datetime.fromisoformat(entry_str)
+                    except (ValueError, TypeError):
+                        entry_time = datetime.strptime(entry_str, "%Y.%m.%d %H:%M:%S")
                     if (datetime.now() - entry_time).total_seconds() > 600:
                         del self.tracking[pk]
                         self._save_tracking()
