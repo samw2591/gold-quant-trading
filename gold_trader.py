@@ -356,7 +356,25 @@ class GoldTrader:
                             log.info(f"      📈 Trailing激活: 浮盈${float_profit:.2f} "
                                      f"追踪价{trail_price:.2f} (距离${trail_distance:.2f})")
 
-            # 3. 时间止损
+            # 3. 时间衰减止盈 (D1+3h: start=1h, atr_start=0.30, step=0.10/h)
+            if not reason and strategy == 'keltner' and hold_hours >= 1.0:
+                trailing_active = track.get('trailing_stop_price', 0) > 0
+                if not trailing_active:
+                    atr = float(df.iloc[-1]['ATR']) if not pd.isna(df.iloc[-1].get('ATR', float('nan'))) else 0
+                    if atr > 0:
+                        decay_hours = hold_hours - 1.0
+                        min_profit_atr = max(0.0, 0.30 - decay_hours * 0.10)
+                        min_profit = atr * min_profit_atr
+                        if direction == 'BUY':
+                            float_pnl = current_price - open_price
+                        else:
+                            float_pnl = open_price - current_price
+                        if float_pnl > 0 and float_pnl >= min_profit:
+                            reason = (f"⏳ 时间衰减止盈: 持仓{hold_hours:.1f}h, "
+                                      f"浮盈${float_pnl:.2f} >= 门槛${min_profit:.2f} "
+                                      f"({min_profit_atr:.2f}×ATR)")
+
+            # 4. 时间止损
             max_hold = config.STRATEGIES.get(strategy, {}).get('max_hold_bars', 15)
             if not reason and hold_hours >= max_hold:
                 reason = f"⏰ 时间止损: 持仓{hold_hours:.0f}小时 >= 上限{max_hold}小时"

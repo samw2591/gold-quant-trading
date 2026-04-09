@@ -89,7 +89,7 @@ STRATEGIES = {
         "name": "Keltner通道突破",
         "stop_loss": 20,
         "take_profit": 35,
-        "max_hold_bars": 5,       # P8最优: 15h→5h, K-Fold Sharpe 7.47→8.25, 减少震荡回撤暴露
+        "max_hold_bars": 3,       # D1+3h回测最优: 5h→3h, Sharpe 8.01→8.39, 配合时间衰减止盈减少浮盈回吐
     },
     "macd": {
         "enabled": False,  # v5禁用: 11年Sharpe=-0.36, 71%信号与Keltner重叠, 拉低组合Sharpe
