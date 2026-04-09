@@ -147,6 +147,11 @@ class BacktestEngine:
         atr_spike_protection: bool = False,
         atr_spike_threshold: float = 1.5,   # ATR > entry_atr * threshold triggers
         atr_spike_trail_mult: float = 0.7,  # multiply trail_distance by this when spiked
+        # Time-decay TP: gradually lower profit lock threshold over time
+        time_decay_tp: bool = False,
+        time_decay_start_hour: float = 1.0,   # hours before decay kicks in
+        time_decay_atr_start: float = 0.30,   # min profit at start (ATR mult)
+        time_decay_atr_step: float = 0.10,    # decay per hour (ATR mult)
         # Label
         label: str = "",
     ):
@@ -231,6 +236,12 @@ class BacktestEngine:
         self._atr_spike_threshold = atr_spike_threshold
         self._atr_spike_trail_mult = atr_spike_trail_mult
 
+        # Time-decay TP
+        self._time_decay_tp = time_decay_tp
+        self._td_start_bars = int(time_decay_start_hour * 4)  # convert hours to M15 bars
+        self._td_atr_start = time_decay_atr_start
+        self._td_atr_step_per_bar = time_decay_atr_step / 4   # convert per-hour to per-M15-bar
+
         # State
         self.positions: List[Position] = []
         self.trades: List[TradeRecord] = []
@@ -248,6 +259,7 @@ class BacktestEngine:
         self.skipped_neutral_m15 = 0
         self.skipped_ema_slope = 0
         self.atr_spike_tighten_count = 0
+        self.time_decay_tp_count = 0
 
     # ── Main loop ─────────────────────────────────────────────
 
@@ -404,6 +416,27 @@ class BacktestEngine:
                     if exit_sig:
                         reason = exit_sig
                         exit_price = close
+
+            # 3b. Time-decay TP: shrink profit target for stalled positions
+            if (not reason
+                    and self._time_decay_tp
+                    and pos.strategy == 'keltner'
+                    and pos.bars_held >= self._td_start_bars):
+                trailing_activated = (pos.trailing_stop_price > 0) if pos.direction == 'BUY' else (pos.trailing_stop_price > 0)
+                if not trailing_activated:
+                    atr_td = self._get_h1_atr(h1_window) if h1_window is not None else 0
+                    if atr_td > 0:
+                        decay_bars = pos.bars_held - self._td_start_bars
+                        min_profit_atr = max(0.0, self._td_atr_start - decay_bars * self._td_atr_step_per_bar)
+                        min_profit = atr_td * min_profit_atr
+                        if pos.direction == 'BUY':
+                            float_pnl = close - pos.entry_price
+                        else:
+                            float_pnl = pos.entry_price - close
+                        if float_pnl >= min_profit and float_pnl > 0:
+                            reason = "TimeDecayTP"
+                            exit_price = close
+                            self.time_decay_tp_count += 1
 
             # 4. Time stop
             if not reason:
