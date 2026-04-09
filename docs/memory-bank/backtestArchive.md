@@ -35,6 +35,13 @@
 | D1+3h 过拟合检测 | PBO/PSR/DSR/参数敏感性 | 5/5 通过 |
 | EUR/USD 深度回测 | 11年 Dukascopy | KC2.0 MH20 Sharpe 1.91, 12/12年全正 |
 | 第四批实验 | 因子重要性/BW/Kelly/London/Stoch/Regime | Trail Momentum 唯一可操作 |
+| Trail Momentum K-Fold | 1.5x/2.0x Current+Mega 6折 | **1.5x 6/6折全通过 ✅ 可实装** |
+| T7 ExtremeRegime | 高波动 trail_act=0.25/dist=0.05 | Sharpe+1.20, 12/12年，待K-Fold+成本 |
+| EXP-EQ Entry Quality | min_bars/ADX gray zone | 全部无效否决 |
+| EXP-B ORB K-Fold | NoORB monkey-patch | patch失败，ORB影响<2%保留 |
+| EXP-C Stochastic K-Fold | 10/90 H6 带成本 | 5/6折正但样本极小，待观察 |
+| EXP-D BW Confidence | squeeze-to-expansion sizing | 效果太弱否决 |
+| Session/SL/TP 扫描 | 时段/SL 3-6/TP 4-12 | 全部无效否决 |
 
 ---
 
@@ -108,18 +115,54 @@
 - DSR > 0.95 PASS
 - 参数敏感性 Sharpe 8.01-9.41 无悬崖 PASS
 
-### Trail Momentum (+50%) 初步结果
-- Sharpe 8.45→8.89 (+0.44)
-- PnL $59,218→$81,194
-- MaxDD $329→$353 (仅+7%)
-- 12/12 年全部优于基线
-- **待 K-Fold 验证**
+### Trail Momentum (+50%) — K-Fold 验证通过 ✅
+- 全样本: Sharpe 8.45→8.89 (+0.44), PnL $59K→$81K, MaxDD +7%
+- K-Fold Current 1.5x: 6/6折全正 delta (+0.44~+0.73), MaxDD最坏+17%
+- K-Fold Mega 1.5x: 6/6折全正 delta (+0.36~+0.55), MaxDD最坏+35%
+- **结论: 1.5x 可实装，2.0x 过激**
+
+### T7 ExtremeRegime (待验证)
+- 全样本 Mega: Sharpe 8.39→9.59 (+1.20), 12/12年全赢
+- 高波动档: trail_act=0.25, trail_dist=0.05（当前 0.4/0.10）
+- **需要 K-Fold + 带成本验证**
 
 ### KC Bandwidth Filter (否决)
 - BW3→BW12 全部降低 Sharpe (-0.40 to -1.60)
 - 12/12年BW3均不如基线
 
-### ATR Spike Protection (真实引擎)
+### BW Confidence Sizing (否决)
+- Conservative K-Fold: 3正2负（不稳定）
+- Mega 全样本仅 +0.02 Sharpe
+- 效果太弱不采纳
+
+### ATR Spike Protection (真实引擎, 否决)
 - post-hoc +0.48 Sharpe → 真实引擎仅 +0.03
 - K-Fold 6/6折正面但每折仅 +0.02~0.04
 - 不值得增加复杂度
+
+### Entry Quality Filters (否决)
+- min_h1_bars: 每增1bar限制 Sharpe降~0.10（过滤好信号）
+- ADX gray zone: 最好 gray=7/score≥0.50 也仅 -0.03 Sharpe
+- **全部无效，不采纳**
+
+### Session Filter / SL优化 / TP Sweep (否决)
+- Session Filter: 所有时段过滤 Sharpe 均下降 (-0.96 to -3.71)
+- SL=5.0: 仅 +0.06 Sharpe，PnL 反降 → 保持 SL=4.5
+- TP Sweep 4.0-12.0: 全部 ±0.01 → 保持 TP=8.0
+
+### Stochastic 10/90 (待观察)
+- 5/6 K-Fold 折正 Sharpe，全样本 $/t=$28.53
+- 但样本量极小（10-21笔/折），不足以决策
+- **待 paper trade 观察**
+
+### ORB K-Fold (NoORB 测试失败)
+- DisabledORB monkey-patch 未生效，Full=NoORB 完全一致
+- ORB 交易仅占 <2%，影响可忽略
+- **暂时保留**
+
+### 第五批否决列表补充
+- Strategy A/C/D: 596种组合全部不如基线
+- London Breakout: 全部无效
+- Regime Validation: 确认V3有效，其他无用
+- Factor Importance: 确认 BW/ATR/ADX 为前三因子
+- Trump Factor: 2024后+$1107但样本太小

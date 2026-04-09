@@ -17,6 +17,17 @@
   - 测试 3 个过滤器: min_h1_bars_today, adx_gray_zone, escalating_cooldown
   - ⚠️ **注意**: 这三个过滤器是在未经回测验证的情况下写入 engine 的（见 constraints.md 2026-04-09 方法论错误记录），等结果出来后严格按数据判断是否保留
 - **等待结果**: session_filter / sl_optimization / tp_atr_sweep / trailing_evolution / exit_combo_matrix（服务器运行中）
+- **EXP-NEW Batch** (`run_exp_new_batch.py`): 已推送 GitHub，待服务器运行
+  - EXP-A: Trail Momentum (+50%) K-Fold — 6 折 × 4 倍数 × 2 配置
+  - EXP-B: ORB 完整诊断 + NoORB K-Fold — 判定 ORB 去留
+  - EXP-C: Stochastic 10/90 带 $0.30 点差 K-Fold — 6 配置 × 3 点差级别
+  - EXP-D: Squeeze-to-Expansion 置信度加权 — 5 种 sizing scheme × K-Fold
+- **EXP-NEW Batch 2** (`run_exp_new_batch2.py`): 已推送 GitHub，待服务器运行
+  - EXP-E: Mega vs Current 带 $0.30/$0.50 成本 K-Fold — 判定是否切换实盘配置
+  - EXP-F: Current 配置 max_hold 精调(16-60) — 带 $0.30 成本 + K-Fold
+  - EXP-G: KC 通道入场相对位置分析 — 突破距离 vs $/t 关系
+  - EXP-H: MFE/MAE 深度分析 — capture ratio、输家曾浮盈比例、出场效率
+  - EXP-I: 连续交易方向模式分析 — 方向序列 streak sizing（非盈亏序列）
 
 ## 模拟盘策略
 
@@ -32,9 +43,11 @@
 ## 待办事项
 
 ### 高优先级
-- [ ] **EXP-EQ 回测结果分析**: 等服务器跑完，严格按数据决定三个过滤器去留
-- [ ] **Trail Momentum (+50%) K-Fold 验证后考虑实装** — 12/12 年一致, Sharpe +0.44
-- [ ] 等待 exit_combo_matrix / sl_optimization / tp_atr_sweep / trailing_evolution / session_filter 结果并分析
+- [ ] **T7 ExtremeRegime K-Fold + 带成本验证** — Sharpe +1.20, 12/12年全赢（高波动 T0.25/D0.05）
+- [ ] **实装 Trail Momentum 1.5x** — K-Fold 6/6×2配置全通过，Sharpe +0.36~+0.73
+- [ ] 等 batch2 + exit_combo_matrix 跑完分析
+- [x] ~~EXP-EQ 回测结果分析~~ → 全部无效，不采纳
+- [x] ~~session_filter / sl_optimization / tp_atr_sweep / trailing_evolution 分析~~ → 见下方结论
 
 ### 中期
 - [ ] 测试缩短最大持仓时间从 60 bars 到 24-32 bars（Timeout 60 bars 亏损 $12,287，占总损失最大项）

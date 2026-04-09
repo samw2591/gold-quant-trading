@@ -273,6 +273,10 @@ class BacktestEngine:
         self.current_date = None
         self.cooldown_until: Dict[str, datetime] = {}
 
+        # Pending entries: signals generated on bar[i] execute on bar[i+1].Open
+        # to avoid using the current bar's Close as entry price (look-ahead)
+        self._pending_signals: List[tuple] = []  # [(signals, source), ...]
+
         # Counters
         self.rsi_filtered_count = 0
         self.rsi_total_signals = 0
@@ -325,18 +329,32 @@ class BacktestEngine:
             m15_window = self.m15_df.iloc[m15_start_idx:i + 1]
             h1_window = self._get_h1_window(bar_time)
 
-            # 1. Check exits
+            # 0. Execute pending entries from previous bar at this bar's Open
+            #    (avoids using the signal bar's Close as entry price)
+            if self._pending_signals:
+                bar_open = float(bar['Open'])
+                for pending_sigs, pending_source in self._pending_signals:
+                    self._process_signals(pending_sigs, bar_time, pending_source,
+                                          entry_price_override=bar_open)
+                self._pending_signals.clear()
+
+            # 1. Check exits (uses current H1 window — OK for SL/TP/trailing
+            #    since those use lagged indicators like ATR/atr_percentile)
             self._check_exits(m15_window, h1_window, bar, bar_time)
 
-            # 2. Check entries
+            # 2. Generate entry signals (uses closed-only H1 to avoid look-ahead:
+            #    H1 timestamps = bar open time, so H1[14:00] is not closed
+            #    until 15:00. Entry signals must only use fully closed bars.)
+            #    Signals are queued and executed on the NEXT bar's Open.
             if self.daily_loss_count < config.DAILY_MAX_LOSSES:
                 is_h1_boundary = (bar_time.minute == 0)
+                h1_window_closed = self._get_h1_window(bar_time, closed_only=True)
 
-                if is_h1_boundary and h1_window is not None and len(h1_window) >= 50:
-                    self._check_h1_entries(h1_window, bar_time)
+                if is_h1_boundary and h1_window_closed is not None and len(h1_window_closed) >= 50:
+                    self._check_h1_entries(h1_window_closed, bar_time)
 
                 if len(m15_window) >= 105:
-                    self._check_m15_entries(m15_window, h1_window, bar_time)
+                    self._check_m15_entries(m15_window, h1_window_closed, bar_time)
 
             realized_pnl = sum(t.pnl for t in self.trades)
             unrealized = self._calc_unrealized(float(bar['Close']))
@@ -588,7 +606,7 @@ class BacktestEngine:
                     self.skipped_ema_slope += 1
                     return
 
-        self._process_signals(signals, bar_time, source='H1')
+        self._pending_signals.append((signals, 'H1'))
 
     # ── M15 Entries ───────────────────────────────────────────
 
@@ -654,7 +672,7 @@ class BacktestEngine:
                 filtered.append(sig)
 
         if filtered:
-            self._process_signals(filtered, bar_time, source='M15')
+            self._pending_signals.append((filtered, 'M15'))
 
     def _check_m15_custom_rsi(self, m15_window, h1_window, bar_time):
         """Custom RSI threshold logic (replaces ParamExploreEngine)."""
@@ -694,11 +712,12 @@ class BacktestEngine:
                    'reason': f"RSI SELL: RSI2={rsi2:.1f}>{sell_th}"}
 
         if sig:
-            self._process_signals([sig], bar_time, source='M15')
+            self._pending_signals.append(([sig], 'M15'))
 
     # ── Signal processing ─────────────────────────────────────
 
-    def _process_signals(self, signals: List[Dict], bar_time, source: str):
+    def _process_signals(self, signals: List[Dict], bar_time, source: str,
+                         entry_price_override: float = 0.0):
         # Global entry gap check
         if self._min_entry_gap_hours > 0 and self._last_entry_time is not None:
             gap = (pd.Timestamp(bar_time) - self._last_entry_time).total_seconds() / 3600
@@ -713,7 +732,7 @@ class BacktestEngine:
         for sig in signals[:slots]:
             strategy = sig['strategy']
             direction = sig['signal']
-            close = sig['close']
+            entry_price = entry_price_override if entry_price_override > 0 else sig['close']
             sl = sig.get('sl', config.STOP_LOSS_PIPS)
             tp = sig.get('tp', 0)
 
@@ -757,7 +776,7 @@ class BacktestEngine:
 
             pos = Position(
                 strategy=strategy, direction=direction,
-                entry_price=close, entry_time=bar_time,
+                entry_price=entry_price, entry_time=bar_time,
                 lots=lots, sl_distance=sl, tp_distance=tp,
                 entry_atr=entry_atr,
             )
@@ -942,7 +961,17 @@ class BacktestEngine:
     def _build_h1_lookup(h1_df: pd.DataFrame) -> Dict[pd.Timestamp, int]:
         return {ts: i for i, ts in enumerate(h1_df.index)}
 
-    def _get_h1_window(self, m15_time: pd.Timestamp) -> Optional[pd.DataFrame]:
+    def _get_h1_window(self, m15_time: pd.Timestamp, closed_only: bool = False) -> Optional[pd.DataFrame]:
+        """Get H1 data window aligned to m15_time.
+
+        Args:
+            closed_only: If True, exclude the current (potentially unclosed) H1 bar.
+                         H1 timestamps represent bar OPEN time (Dukascopy convention),
+                         so H1[14:00] covers 14:00-15:00 and is not closed until 15:00.
+                         At M15[14:00], H1[14:00] is still open — using its Close is
+                         look-ahead bias. With closed_only=True, the window ends at
+                         H1[13:00] instead (the last fully closed bar).
+        """
         h1_time = m15_time.floor('h')
         if h1_time in self.h1_lookup:
             h1_idx = self.h1_lookup[h1_time]
@@ -955,6 +984,12 @@ class BacktestEngine:
         h1_len = len(self.h1_df)
         if h1_idx >= h1_len:
             h1_idx = h1_len - 1
+
+        if closed_only:
+            h1_idx -= 1
+            if h1_idx < 0:
+                return None
+
         start = max(0, h1_idx - self.H1_WINDOW + 1)
         return self.h1_df.iloc[start:h1_idx + 1]
 

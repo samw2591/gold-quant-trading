@@ -106,6 +106,34 @@
 - **monkey-patch 信号注入 bug**: `from strategies.signals import scan_all_signals` 创建本地绑定导致 monkey-patch 无效（2026-04-08 修复）
 - **服务器测试最佳实践**: 独立 `.py` 脚本 + `sys.path.insert(0, ...)` + `python -u run_expXX.py 2>&1 | tee logs/expXX.log`
 
+### 🚨 回测框架审计 (2026-04-09 发现)
+
+**严重 1 — H1 Look-Ahead Bias（未来函数）**:
+- Dukascopy H1 数据时间戳 = bar 开盘时间（已验证: Open[i] ≈ Close[i-1], avg diff 0.037）
+- 引擎 `_get_h1_window` 在 M15 xx:00 时取 `floor('h')` 对应的 H1 bar → 取到的是当前小时尚未收盘的 bar
+- 例: 14:00 时用了 14:00-15:00 这根 H1 的 Close=2998.49（Open=2988.12, 差 $10）
+- **所有基于 H1 Close 的信号（KC 突破、ADX、EMA100）都提前 1 小时看到了未来**
+- H1 信号占总交易 72%，**所有 Sharpe 数字系统性高估**
+- **修复方案**: `_get_h1_window` 中 `h1_idx -= 1`（只用已收盘的 H1 bar）
+
+**严重 2 — 入场价格用 bar Close**:
+- `sig['close']` = 产生信号的 bar 收盘价 → 实盘不可能在 bar 收盘前以 Close 成交
+- **修复方案**: 改为下一根 M15 bar 的 Open 作为入场价
+
+**严重 3 — 回测与实盘路径不对齐**:
+- `regime_config` 仅存在于回测引擎，实盘用不同的 V3 exit_logic 路径
+- `time_decay_tp` 回测需显式打开，实盘默认开启
+- `escalating_cooldown / min_entry_gap` 仅回测有，实盘无
+- H1 评估时机: 回测仅 minute==0，实盘每次轮询
+- 意味着: **回测优化的参数在实盘中无法完全复现**
+
+**中等 — 无数据缺口检测**: M15/H1 加载后不检查时间连续性
+**中等 — SL/TP 同 bar 固定 SL 优先**: 不区分 bar 内真实触发先后
+**中等 — Sharpe 用 ddof=0**: 短折 K-Fold 略微高估
+
+**ORB monkey-patch 失效原因**: `check_orb_signal` 直接用 `_orb_strategy` 模块级单例，patch `get_orb_strategy` 无效
+**T1-T6 Sharpe 相同原因**: `regime_config` 在 `_check_exits` 开头覆盖 `_trail_act/_trail_dist`，基线参数从未被使用
+
 ### 分析类
 - **市场分析必须先查日历再归因**: 大跌时遗漏 Liberation Day 关税生效
 - **post-hoc vs 真实引擎差异巨大**: EXP52 post-hoc +0.48 Sharpe，真实引擎仅 +0.03（差异 19 倍）

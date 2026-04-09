@@ -135,9 +135,11 @@ def fmt_pnl(v):
 
 def print_row(label, stats, delta_sharpe=None):
     ds = f"  {delta_sharpe:>+6.2f}" if delta_sharpe is not None else "     ---"
-    print(f"  {label:<28s}  {stats['n_trades']:>5d}  {stats['sharpe']:>6.2f}  "
-          f"{fmt_pnl(stats['total_pnl'])}  {stats['win_rate']*100:>5.1f}%  "
-          f"${stats['avg_pnl_per_trade']:>6.2f}  {fmt_pnl(stats.get('max_drawdown',0))}  {ds}")
+    n = stats['n']
+    avg_pnl = stats['total_pnl'] / n if n > 0 else 0
+    print(f"  {label:<28s}  {n:>5d}  {stats['sharpe']:>6.2f}  "
+          f"{fmt_pnl(stats['total_pnl'])}  {stats['win_rate']:>5.1f}%  "
+          f"${avg_pnl:>6.2f}  {fmt_pnl(stats['max_dd'])}  {ds}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -148,7 +150,7 @@ print("PHASE 1: FULL-SAMPLE — T7 vs Baseline vs Ablation at $0/$0.30/$0.50 spr
 print("=" * 80)
 
 print(f"\n{'Config':<28s}  {'N':>5s}  {'Sharpe':>6s}  {'PnL':>11s}  {'WR%':>5s}  "
-      f"{'$/t':>7s}  {'MaxDD':>11s}  {'Δ Sharpe':>8s}")
+      f"{'$/t':>7s}  {'MaxDD':>11s}  {'d Sharpe':>8s}")
 print("-" * 100)
 
 for spread in [0.0, 0.30, 0.50]:
@@ -201,18 +203,20 @@ for fold_name, start, end in FOLDS:
     delta = st7['sharpe'] - sb['sharpe']
     won = delta > 0
 
-    print(f"  {fold_name:<8s}  {'Baseline':<12s}  {sb['n_trades']:>5d}  {sb['sharpe']:>6.2f}  "
-          f"{fmt_pnl(sb['total_pnl'])}  {sb['win_rate']*100:>5.1f}%  "
-          f"${sb['avg_pnl_per_trade']:>6.2f}  {fmt_pnl(sb.get('max_drawdown',0))}       ---")
-    print(f"  {fold_name:<8s}  {'T7 Extreme':<12s}  {st7['n_trades']:>5d}  {st7['sharpe']:>6.2f}  "
-          f"{fmt_pnl(st7['total_pnl'])}  {st7['win_rate']*100:>5.1f}%  "
-          f"${st7['avg_pnl_per_trade']:>6.2f}  {fmt_pnl(st7.get('max_drawdown',0))}  {delta:>+6.2f} {'✓' if won else '✗'}")
+    sb_avg = sb['total_pnl'] / sb['n'] if sb['n'] > 0 else 0
+    st7_avg = st7['total_pnl'] / st7['n'] if st7['n'] > 0 else 0
+    print(f"  {fold_name:<8s}  {'Baseline':<12s}  {sb['n']:>5d}  {sb['sharpe']:>6.2f}  "
+          f"{fmt_pnl(sb['total_pnl'])}  {sb['win_rate']:>5.1f}%  "
+          f"${sb_avg:>6.2f}  {fmt_pnl(sb['max_dd'])}       ---")
+    print(f"  {fold_name:<8s}  {'T7 Extreme':<12s}  {st7['n']:>5d}  {st7['sharpe']:>6.2f}  "
+          f"{fmt_pnl(st7['total_pnl'])}  {st7['win_rate']:>5.1f}%  "
+          f"${st7_avg:>6.2f}  {fmt_pnl(st7['max_dd'])}  {delta:>+6.2f} {'V' if won else 'X'}")
 
     if won:
         wins_030 += 1
     fold_results_030.append({
         'fold': fold_name, 'base_sharpe': sb['sharpe'], 't7_sharpe': st7['sharpe'],
-        'delta': delta, 'base_dd': sb.get('max_drawdown', 0), 't7_dd': st7.get('max_drawdown', 0),
+        'delta': delta, 'base_dd': sb['max_dd'], 't7_dd': st7['max_dd'],
         'base_pnl': sb['total_pnl'], 't7_pnl': st7['total_pnl'],
     })
 
@@ -247,18 +251,20 @@ for fold_name, start, end in FOLDS:
     delta = st7['sharpe'] - sb['sharpe']
     won = delta > 0
 
-    print(f"  {fold_name:<8s}  {'Baseline':<12s}  {sb['n_trades']:>5d}  {sb['sharpe']:>6.2f}  "
-          f"{fmt_pnl(sb['total_pnl'])}  {sb['win_rate']*100:>5.1f}%  "
-          f"${sb['avg_pnl_per_trade']:>6.2f}  {fmt_pnl(sb.get('max_drawdown',0))}       ---")
-    print(f"  {fold_name:<8s}  {'T7 Extreme':<12s}  {st7['n_trades']:>5d}  {st7['sharpe']:>6.2f}  "
-          f"{fmt_pnl(st7['total_pnl'])}  {st7['win_rate']*100:>5.1f}%  "
-          f"${st7['avg_pnl_per_trade']:>6.2f}  {fmt_pnl(st7.get('max_drawdown',0))}  {delta:>+6.2f} {'✓' if won else '✗'}")
+    sb_avg = sb['total_pnl'] / sb['n'] if sb['n'] > 0 else 0
+    st7_avg = st7['total_pnl'] / st7['n'] if st7['n'] > 0 else 0
+    print(f"  {fold_name:<8s}  {'Baseline':<12s}  {sb['n']:>5d}  {sb['sharpe']:>6.2f}  "
+          f"{fmt_pnl(sb['total_pnl'])}  {sb['win_rate']:>5.1f}%  "
+          f"${sb_avg:>6.2f}  {fmt_pnl(sb['max_dd'])}       ---")
+    print(f"  {fold_name:<8s}  {'T7 Extreme':<12s}  {st7['n']:>5d}  {st7['sharpe']:>6.2f}  "
+          f"{fmt_pnl(st7['total_pnl'])}  {st7['win_rate']:>5.1f}%  "
+          f"${st7_avg:>6.2f}  {fmt_pnl(st7['max_dd'])}  {delta:>+6.2f} {'V' if won else 'X'}")
 
     if won:
         wins_050 += 1
     fold_results_050.append({
         'fold': fold_name, 'base_sharpe': sb['sharpe'], 't7_sharpe': st7['sharpe'],
-        'delta': delta, 'base_dd': sb.get('max_drawdown', 0), 't7_dd': st7.get('max_drawdown', 0),
+        'delta': delta, 'base_dd': sb['max_dd'], 't7_dd': st7['max_dd'],
     })
 
 print(f"\n  K-Fold $0.50 result: T7 wins {wins_050}/6 folds")
@@ -351,7 +357,7 @@ print(f"""
   Phase 2 ($0.30 K-Fold):  T7 wins {wins_030}/6 folds {'PASS ✓' if wins_030 >= 5 else 'FAIL ✗'}
   Phase 3 ($0.50 K-Fold):  T7 wins {wins_050}/6 folds {'PASS ✓' if wins_050 >= 4 else 'FAIL ✗'}
   Phase 4 (Per-regime):    See breakdown above
-  Phase 5 (MaxDD $0.30):   {'PASS ✓' if fold_results_030 and max_dd_increase_pct < 20 else 'CHECK'}
+  Phase 5 (MaxDD $0.30):   {'PASS' if fold_results_030 and max_dd_increase_pct < 20 else 'CHECK'}
 """)
 
 all_pass = (wins_030 >= 5 and wins_050 >= 4 and
